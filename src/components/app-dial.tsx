@@ -1,7 +1,9 @@
 /* eslint-disable jsx-a11y/alt-text */
 'use client'
 
+import { useState, useCallback } from 'react';
 import { Stage, Layer, Circle, TextPath, Arc, Line, Image, Text, Rect, RegularPolygon, Group } from 'react-konva';
+import { Tween, Easings } from 'konva/lib/Tween';
 import elite from '@/images/patent-tree.png';
 import veteran from '@/images/patent-two.png'
 import green from '@/images/patent-one.png'
@@ -100,6 +102,9 @@ interface DialParams {
 
 
 export function AppDial(dialParams: DialParams) {
+  // State for dial rotation and damage tracking
+  const [dialRotation, setDialRotation] = useState(0);
+  const [damageClicks, setDamageClicks] = useState(0);
   
   const dialSlices = Array.from({ length: 12 }, (_, index) => index + 1);
   const primaryDamageTargets = Array.from({ length: dialParams.damageTypes.primaryDamage.targets }, (_, index) => index + 1);
@@ -109,6 +114,15 @@ export function AppDial(dialParams: DialParams) {
   const nameRotationAdjust = (((fullFrontArcText.length) * ANGLE_PER_CHARACTER) / 2) * -1
   const nameRotation = (90 + (nameRotationAdjust / 2)) * -1
   const patentRotationAdjust = (((-90 - nameRotation) * -1) - 11)
+
+  // Function to handle damage and rotate dial clockwise
+  const handleDamage = useCallback(() => {
+    const newDamageClicks = damageClicks + 1;
+    const newRotation = dialRotation + 30; // 30 degrees per click (360/12 slices)
+    
+    setDamageClicks(newDamageClicks);
+    setDialRotation(newRotation);
+  }, [damageClicks, dialRotation]);
 
   const [ventLogo] = useImage(vent.src, 'anonymous');
   const [ballisticDamage] = useImage(ballisticIcon.src, 'anonymous');
@@ -127,7 +141,8 @@ export function AppDial(dialParams: DialParams) {
   return (
       <>
       <Stage width={500} height={500} rotation={dialParams.dialSide === 'name' ? 0 : 180} x={dialParams.dialSide === 'name' ? 0 : 500} y={dialParams.dialSide === 'name' ? 0 : 500}>
-      <Layer>
+      {/* Main dial layer with rotation animation */}
+      <Layer rotation={dialRotation}>
         {dialSlices.map((slice) => (
           <Arc
             x={250}
@@ -141,7 +156,7 @@ export function AppDial(dialParams: DialParams) {
           />
         ))}
       </Layer>
-      <Layer>
+      <Layer rotation={dialRotation}>
         <Circle
           x={250}
           y={250}
@@ -211,7 +226,7 @@ export function AppDial(dialParams: DialParams) {
           rotation={(frontArcRotate - 180)} 
         />
       </Layer>
-      <Layer>
+      <Layer rotation={dialRotation}>
         <TextPath
           text={fullFrontArcText}
           fontSize={16}
@@ -238,7 +253,7 @@ export function AppDial(dialParams: DialParams) {
           data='M -175 0 A 175 175 0 0 0 175 0'
           rotation={42} />
       </Layer>
-      <Layer>
+      <Layer rotation={dialRotation}>
         <Image
           image={image}
           x={250}
@@ -485,6 +500,7 @@ export function AppDial(dialParams: DialParams) {
           />
         </Group>
       </Layer>
+      {/* Stats layer - this should NOT rotate, only the dial behind it */}
       <Layer>
         {/* Primary Attack stats */}
           <Rect
@@ -495,6 +511,8 @@ export function AppDial(dialParams: DialParams) {
           visible={dialParams.click.colors.primaryAttack.hasCollor}
           fill={dialParams.click.colors.primaryAttack.collorHex}
           cornerRadius={dialParams.click.colors.primaryAttack.singleUse === true ? [14, 14, 14, 14] : [0, 0, 0, 0]}
+          onClick={handleDamage}
+          style={{ cursor: 'pointer' }}
         />
         <Text
           x={250}
@@ -518,6 +536,8 @@ export function AppDial(dialParams: DialParams) {
               fill={dialParams.click.colors.secondaryAttack?.collorHex}
               cornerRadius={dialParams.click.colors.secondaryAttack?.singleUse === true ? [14, 14, 14, 14] : [0, 0, 0, 0]}
               visible={dialParams.click.colors.secondaryAttack?.hasCollor}
+              onClick={handleDamage}
+              style={{ cursor: 'pointer' }}
             />
             <Text
               x={250}
@@ -541,6 +561,8 @@ export function AppDial(dialParams: DialParams) {
           visible={dialParams.click.colors.movement.hasCollor}
           fill={dialParams.click.colors.movement.collorHex}
           cornerRadius={dialParams.click.colors.movement.singleUse === true ? [14, 14, 14, 14] : [0, 0, 0, 0]}
+          onClick={handleDamage}
+          style={{ cursor: 'pointer' }}
         />
         <Text
           x={250}
@@ -562,6 +584,8 @@ export function AppDial(dialParams: DialParams) {
           visible={dialParams.click.colors.attack.hasCollor}
           fill={dialParams.click.colors.attack.collorHex}
           cornerRadius={dialParams.click.colors.attack.singleUse === true ? [14, 14, 14, 14] : [0, 0, 0, 0]}
+          onClick={handleDamage}
+          style={{ cursor: 'pointer' }}
         />
         <Text
           x={250}
@@ -584,6 +608,8 @@ export function AppDial(dialParams: DialParams) {
           visible={dialParams.click.colors.defense.hasCollor}
           fill={dialParams.click.colors.defense.collorHex}
           cornerRadius={dialParams.click.colors.defense.singleUse === true ? [14, 14, 14, 14] : [0, 0, 0, 0]}
+          onClick={handleDamage}
+          style={{ cursor: 'pointer' }}
         />
         <Text
           x={250}

@@ -78,6 +78,7 @@ interface DialParams {
   rearArc: number,
   ventRating: number,
   rank: "Elite" | "Green" | "Veteran",
+  dialRotation?: number,
   click: {
     marker: {
       hasMarker: boolean,
@@ -102,27 +103,21 @@ interface DialParams {
 
 
 export function AppDial(dialParams: DialParams) {
-  // State for dial rotation and damage tracking
-  const [dialRotation, setDialRotation] = useState(0);
-  const [damageClicks, setDamageClicks] = useState(0);
+  // Use external rotation if provided, otherwise use internal state
+  const currentRotation = dialParams.dialRotation ?? 0;
   
   const dialSlices = Array.from({ length: 12 }, (_, index) => index + 1);
   const primaryDamageTargets = Array.from({ length: dialParams.damageTypes.primaryDamage.targets }, (_, index) => index + 1);
   const secondaryDamageTargets = Array.from({ length: dialParams.damageTypes.secondaryDamage.targets }, (_, index) => index + 1);
   const frontArcRotate = ((dialParams.frontArc - 180) * -1) / 2
-  const fullFrontArcText = dialParams.unique === true ? dialParams.points + "      " + UNIQUE_STAR_CHARACTER + " " + dialParams.name : dialParams.points + "      " + dialParams.name 
+  // Build text sequence: points + unique + name (rank shown as image)
+  const uniqueSymbol = dialParams.unique ? " " + UNIQUE_STAR_CHARACTER : ""
+  const RANK_SPACING = "     " // 4 spaces for <100 points, 5 spaces for >=100 points
+  const fullFrontArcText = dialParams.points + RANK_SPACING + uniqueSymbol + " " + dialParams.name 
   const nameRotationAdjust = (((fullFrontArcText.length) * ANGLE_PER_CHARACTER) / 2) * -1
   const nameRotation = (90 + (nameRotationAdjust / 2)) * -1
-  const patentRotationAdjust = (((-90 - nameRotation) * -1) - 11)
+  const patentRotationAdjust = Number(dialParams.points) < 100 ? (((-90 - nameRotation) * -1) - 8) : (((-90 - nameRotation) * -1) - 11)
 
-  // Function to handle damage and rotate dial clockwise
-  const handleDamage = useCallback(() => {
-    const newDamageClicks = damageClicks + 1;
-    const newRotation = dialRotation + 30; // 30 degrees per click (360/12 slices)
-    
-    setDamageClicks(newDamageClicks);
-    setDialRotation(newRotation);
-  }, [damageClicks, dialRotation]);
 
   const [ventLogo] = useImage(vent.src, 'anonymous');
   const [ballisticDamage] = useImage(ballisticIcon.src, 'anonymous');
@@ -141,8 +136,8 @@ export function AppDial(dialParams: DialParams) {
   return (
       <>
       <Stage width={500} height={500} rotation={dialParams.dialSide === 'name' ? 0 : 180} x={dialParams.dialSide === 'name' ? 0 : 500} y={dialParams.dialSide === 'name' ? 0 : 500}>
-      {/* Main dial layer with rotation animation */}
-      <Layer rotation={dialRotation}>
+      {/* Main dial layer - STATIC (no rotation) */}
+      <Layer>
         {dialSlices.map((slice) => (
           <Arc
             x={250}
@@ -156,7 +151,7 @@ export function AppDial(dialParams: DialParams) {
           />
         ))}
       </Layer>
-      <Layer rotation={dialRotation}>
+      <Layer>
         <Circle
           x={250}
           y={250}
@@ -226,7 +221,7 @@ export function AppDial(dialParams: DialParams) {
           rotation={(frontArcRotate - 180)} 
         />
       </Layer>
-      <Layer rotation={dialRotation}>
+      <Layer>
         <TextPath
           text={fullFrontArcText}
           fontSize={16}
@@ -253,7 +248,7 @@ export function AppDial(dialParams: DialParams) {
           data='M -175 0 A 175 175 0 0 0 175 0'
           rotation={42} />
       </Layer>
-      <Layer rotation={dialRotation}>
+      <Layer>
         <Image
           image={image}
           x={250}
@@ -500,10 +495,10 @@ export function AppDial(dialParams: DialParams) {
           />
         </Group>
       </Layer>
-      {/* Stats layer - this should NOT rotate, only the dial behind it */}
+      {/* L-shaped stats window - STATIC */}
       <Layer>
         {/* Primary Attack stats */}
-          <Rect
+        <Rect
           x={241}
           y={144}
           width={23}
@@ -511,46 +506,22 @@ export function AppDial(dialParams: DialParams) {
           visible={dialParams.click.colors.primaryAttack.hasCollor}
           fill={dialParams.click.colors.primaryAttack.collorHex}
           cornerRadius={dialParams.click.colors.primaryAttack.singleUse === true ? [14, 14, 14, 14] : [0, 0, 0, 0]}
-          onClick={handleDamage}
+          onClick={() => {}}
           style={{ cursor: 'pointer' }}
-        />
-        <Text
-          x={250}
-          y={250}
-          text={String(dialParams.click.values.primaryAttack)}
-          fontSize={16}
-          fontStyle='bold'
-          fill={dialParams.click.colors.primaryAttack.hasCollor && dialParams.click.colors.primaryAttack.collorHex === "#000000" ? "#FFFFFF" : "#000000"}
-          rotation={180}
-          offsetY={-88}
-          offsetX={dialParams.click.values.primaryAttack > 9 ? 11.5 : 6.5} 
         />
         {/* Secondary Attack stats */}
         {dialParams.click.values.secondaryAttack && (
-          <>
-            <Rect
-              x={241}
-              y={120}
-              width={23}
-              height={22}
-              fill={dialParams.click.colors.secondaryAttack?.collorHex}
-              cornerRadius={dialParams.click.colors.secondaryAttack?.singleUse === true ? [14, 14, 14, 14] : [0, 0, 0, 0]}
-              visible={dialParams.click.colors.secondaryAttack?.hasCollor}
-              onClick={handleDamage}
-              style={{ cursor: 'pointer' }}
-            />
-            <Text
-              x={250}
-              y={250}
-              text={String(dialParams.click.values.secondaryAttack)}
-              fontSize={16}
-              fontStyle='bold'
-              fill={dialParams.click.colors.secondaryAttack?.hasCollor && dialParams.click.colors.secondaryAttack?.collorHex === "#000000" ? "#FFFFFF" : "#000000"}
-              rotation={180}
-              offsetY={-113}
-              offsetX={dialParams.click.values.secondaryAttack > 9 ? 11.5 : 6.5} 
-            />
-          </>
+          <Rect
+            x={241}
+            y={120}
+            width={23}
+            height={22}
+            fill={dialParams.click.colors.secondaryAttack?.collorHex}
+            cornerRadius={dialParams.click.colors.secondaryAttack?.singleUse === true ? [14, 14, 14, 14] : [0, 0, 0, 0]}
+            visible={dialParams.click.colors.secondaryAttack?.hasCollor}
+            onClick={() => {}}
+            style={{ cursor: 'pointer' }}
+          />
         )}
         {/* Movement stats */}
         <Rect
@@ -561,19 +532,8 @@ export function AppDial(dialParams: DialParams) {
           visible={dialParams.click.colors.movement.hasCollor}
           fill={dialParams.click.colors.movement.collorHex}
           cornerRadius={dialParams.click.colors.movement.singleUse === true ? [14, 14, 14, 14] : [0, 0, 0, 0]}
-          onClick={handleDamage}
+          onClick={() => {}}
           style={{ cursor: 'pointer' }}
-        />
-        <Text
-          x={250}
-          y={250}
-          text={String(dialParams.click.values.movement)}
-          fontSize={16}
-          fontStyle='bold'
-          fill={dialParams.click.colors.movement.hasCollor && dialParams.click.colors.movement.collorHex === "#000000" ? "#FFFFFF" : "#000000"}
-          rotation={180}
-          offsetY={-136}
-          offsetX={dialParams.click.values.movement > 9 ? 11.5 : 6.5} 
         />
         {/* Attack stats */}
         <Rect
@@ -584,19 +544,8 @@ export function AppDial(dialParams: DialParams) {
           visible={dialParams.click.colors.attack.hasCollor}
           fill={dialParams.click.colors.attack.collorHex}
           cornerRadius={dialParams.click.colors.attack.singleUse === true ? [14, 14, 14, 14] : [0, 0, 0, 0]}
-          onClick={handleDamage}
+          onClick={() => {}}
           style={{ cursor: 'pointer' }}
-        />
-        <Text
-          x={250}
-          y={250}
-          text={String(dialParams.click.values.attack)}
-          fontSize={16}
-          fontStyle='bold'
-          fill={dialParams.click.colors.attack.hasCollor && dialParams.click.colors.attack.collorHex === "#000000" ? "#FFFFFF" : "#000000"}
-          rotation={180}
-          offsetY={-160}
-          offsetX={dialParams.click.values.attack > 9 ? 11.5 : 6.5} 
         />
         {/* Defense stats */}
         <Rect
@@ -608,9 +557,62 @@ export function AppDial(dialParams: DialParams) {
           visible={dialParams.click.colors.defense.hasCollor}
           fill={dialParams.click.colors.defense.collorHex}
           cornerRadius={dialParams.click.colors.defense.singleUse === true ? [14, 14, 14, 14] : [0, 0, 0, 0]}
-          onClick={handleDamage}
+          onClick={() => {}}
           style={{ cursor: 'pointer' }}
         />
+      </Layer>
+      {/* Rotating stats numbers layer */}
+      <Layer>
+        <Text
+          x={250}
+          y={250}
+          text={String(dialParams.click.values.primaryAttack)}
+          fontSize={16}
+          fontStyle='bold'
+          fill={dialParams.click.colors.primaryAttack.hasCollor && dialParams.click.colors.primaryAttack.collorHex === "#000000" ? "#FFFFFF" : "#000000"}
+          rotation={180 + currentRotation}
+          offsetY={-88}
+          offsetX={dialParams.click.values.primaryAttack > 9 ? 11.5 : 6.5} 
+        />
+        {/* Secondary Attack stats */}
+        {dialParams.click.values.secondaryAttack && (
+          <Text
+            x={250}
+            y={250}
+            text={String(dialParams.click.values.secondaryAttack)}
+            fontSize={16}
+            fontStyle='bold'
+            fill={dialParams.click.colors.secondaryAttack?.hasCollor && dialParams.click.colors.secondaryAttack?.collorHex === "#000000" ? "#FFFFFF" : "#000000"}
+            rotation={180 + currentRotation}
+            offsetY={-113}
+            offsetX={dialParams.click.values.secondaryAttack > 9 ? 11.5 : 6.5} 
+          />
+        )}
+        {/* Movement stats */}
+        <Text
+          x={250}
+          y={250}
+          text={String(dialParams.click.values.movement)}
+          fontSize={16}
+          fontStyle='bold'
+          fill={dialParams.click.colors.movement.hasCollor && dialParams.click.colors.movement.collorHex === "#000000" ? "#FFFFFF" : "#000000"}
+          rotation={180 + currentRotation}
+          offsetY={-136}
+          offsetX={dialParams.click.values.movement > 9 ? 11.5 : 6.5} 
+        />
+        {/* Attack stats */}
+        <Text
+          x={250}
+          y={250}
+          text={String(dialParams.click.values.attack)}
+          fontSize={16}
+          fontStyle='bold'
+          fill={dialParams.click.colors.attack.hasCollor && dialParams.click.colors.attack.collorHex === "#000000" ? "#FFFFFF" : "#000000"}
+          rotation={180 + currentRotation}
+          offsetY={-160}
+          offsetX={dialParams.click.values.attack > 9 ? 11.5 : 6.5} 
+        />
+        {/* Defense stats */}
         <Text
           x={250}
           y={250}
@@ -618,7 +620,7 @@ export function AppDial(dialParams: DialParams) {
           fontSize={16}
           fontStyle='bold'
           fill={dialParams.click.colors.defense.hasCollor && dialParams.click.colors.defense.collorHex === "#000000" ? "#FFFFFF" : "#000000"}
-          rotation={170}
+          rotation={170 + currentRotation}
           offsetY={-160.5}
           offsetX={dialParams.click.values.defense > 9 ? 11.5 : 7} 
         />
@@ -733,6 +735,7 @@ export function AppDial(dialParams: DialParams) {
         />
       </Layer>
     </Stage>
+    
     </>
   );
 };

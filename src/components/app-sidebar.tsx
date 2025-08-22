@@ -21,13 +21,13 @@ const items = [
     icon: Home,
   },
   {
-    title: "Search",
+    title: "Detalhe",
     url: "/list",
     icon: Search,
   },
   {
     title: "Settings",
-    url: "#",
+    url: "/search",
     icon: Settings,
   },
 ]

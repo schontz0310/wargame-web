@@ -1,0 +1,15 @@
+name: wargame-web
+services:
+- name: web
+  source_dir: /
+  github:
+    repo: your-username/wargame-web
+    branch: main
+  run_command: echo "This is a static site"
+  environment_slug: node-js
+  instance_count: 1
+  instance_size_slug: basic-xxs
+  routes:
+  - path: /
+  build_command: npm run build
+  output_dir: out

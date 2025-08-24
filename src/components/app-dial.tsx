@@ -1,13 +1,13 @@
 /* eslint-disable jsx-a11y/alt-text */
 'use client'
 
+import { useState, useCallback } from 'react';
 import { Stage, Layer, Circle, TextPath, Arc, Line, Image, Text, Rect, RegularPolygon, Group } from 'react-konva';
+import { Tween, Easings } from 'konva/lib/Tween';
 import elite from '@/images/patent-tree.png';
 import veteran from '@/images/patent-two.png'
 import green from '@/images/patent-one.png'
-import logo from '@/images/logo-dial-house-steiner-white.png';
 import vent from '@/images/vent.png';
-import battleforce from '@/images/battle-force.png'
 import ballisticIcon from '@/images/ballisticDamage.png'
 import energeticIcon from '@/images/energeticDamage.png'
 import meleeIcon from '@/images/meleeDamage.png'
@@ -17,6 +17,32 @@ import useImage from 'use-image'
 
 const ANGLE_PER_CHARACTER = 4.5;
 const UNIQUE_STAR_CHARACTER = "★";
+
+// Function to convert faction name to image path following the pattern: logo-dial-<faction-with-dashes>-white.png
+const getFactionLogoPath = (faction: string): string => {
+  const factionSlug = faction
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove diacritics/accents
+    .replace(/[''`]/g, '') // Remove apostrophes and similar characters
+    .replace(/\s+/g, '-'); // Replace spaces with hyphens
+  const path = `/images/logo-dial-${factionSlug}-white.png`;
+  console.log(`Faction: "${faction}" -> Slug: "${factionSlug}" -> Path: "${path}"`);
+  return path;
+};
+
+// Function to convert expansion abbreviation to image path following the pattern: logo-dial-<expansion>-white.png
+const getExpansionImagePath = (expansion: string): string => {
+  const expansionSlug = expansion
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove diacritics/accents
+    .replace(/[''`]/g, '') // Remove apostrophes and similar characters
+    .replace(/\s+/g, '-'); // Replace spaces with hyphens
+  const path = `/images/logo-dial-${expansionSlug}-white.png`;
+  console.log(`Expansion: "${expansion}" -> Slug: "${expansionSlug}" -> Path: "${path}"`);
+  return path;
+};
 
 const BALLISTIC_WIDTH = 4.5;
 const BALLISTIC_OFFSET = -8;
@@ -75,7 +101,11 @@ interface DialParams {
   frontArc: number,
   rearArc: number,
   ventRating: number,
-  rank: "Elite" | "Green" | "Veteran",
+  rank: "Elite" | "Green" | "Veteran" | "NA",
+  faction: string,
+  expansion: string,
+  collectionNumber: number,
+  dialRotation?: number,
   click: {
     marker: {
       hasMarker: boolean,
@@ -100,33 +130,41 @@ interface DialParams {
 
 
 export function AppDial(dialParams: DialParams) {
+  // Use external rotation if provided, otherwise use internal state
+  const currentRotation = dialParams.dialRotation ?? 0;
   
   const dialSlices = Array.from({ length: 12 }, (_, index) => index + 1);
   const primaryDamageTargets = Array.from({ length: dialParams.damageTypes.primaryDamage.targets }, (_, index) => index + 1);
   const secondaryDamageTargets = Array.from({ length: dialParams.damageTypes.secondaryDamage.targets }, (_, index) => index + 1);
   const frontArcRotate = ((dialParams.frontArc - 180) * -1) / 2
-  const fullFrontArcText = dialParams.unique === true ? dialParams.points + "      " + UNIQUE_STAR_CHARACTER + " " + dialParams.name : dialParams.points + "      " + dialParams.name 
+  // Build text sequence: points + unique + name (rank shown as image)
+  const uniqueSymbol = dialParams.unique ? " " + UNIQUE_STAR_CHARACTER : ""
+  // Only add rank spacing if rank exists, otherwise use minimal spacing
+  const RANK_SPACING = dialParams.rank !== "NA" ? "     " : ""
+  const fullFrontArcText = dialParams.points + RANK_SPACING + uniqueSymbol + " " + dialParams.name 
   const nameRotationAdjust = (((fullFrontArcText.length) * ANGLE_PER_CHARACTER) / 2) * -1
   const nameRotation = (90 + (nameRotationAdjust / 2)) * -1
-  const patentRotationAdjust = (((-90 - nameRotation) * -1) - 11)
+  const patentRotationAdjust = Number(dialParams.points) < 100 ? (((-90 - nameRotation) * -1) - 8) : (((-90 - nameRotation) * -1) - 11)
+
 
   const [ventLogo] = useImage(vent.src, 'anonymous');
   const [ballisticDamage] = useImage(ballisticIcon.src, 'anonymous');
   const [energeticDamage] = useImage(energeticIcon.src, 'anonymous');
   const [meleeDamage] = useImage(meleeIcon.src, 'anonymous');
   const [mechMovement] = useImage(mechSpeedIcon.src, 'anonymous');
-  const [image] = useImage(logo.src, 'anonymous');
+  const [factionImage] = useImage(getFactionLogoPath(dialParams.faction), 'anonymous');
   
 
   const [patentGreen] = useImage(green.src, 'anonymous');
   const [patentVeteran] = useImage(veteran.src, 'anonymous');
   const [patentElite] = useImage(elite.src, 'anonymous');
 
-  const [expansionBattleforce] = useImage(battleforce.src, 'anonymous')
+  const [expansionImage] = useImage(getExpansionImagePath(dialParams.expansion), 'anonymous')
 
   return (
       <>
       <Stage width={500} height={500} rotation={dialParams.dialSide === 'name' ? 0 : 180} x={dialParams.dialSide === 'name' ? 0 : 500} y={dialParams.dialSide === 'name' ? 0 : 500}>
+      {/* Main dial layer - STATIC (no rotation) */}
       <Layer>
         {dialSlices.map((slice) => (
           <Arc
@@ -222,13 +260,13 @@ export function AppDial(dialParams: DialParams) {
           rotation={nameRotation}
           onClick={() => console.log('clicou')} />
         <TextPath
-          text='027'
+          text={String(dialParams.collectionNumber).padStart(3, '0')}
           fontSize={16}
           fill={"#FFFFFF"}
           x={250}
           y={250}
           data='M -175 0 A 175 175 0 0 0 175 0'
-          rotation={-199} />
+          rotation={-200.5} />
         <TextPath
           text={dialParams.variant}
           fontSize={16}
@@ -240,7 +278,7 @@ export function AppDial(dialParams: DialParams) {
       </Layer>
       <Layer>
         <Image
-          image={image}
+          image={factionImage}
           x={250}
           y={250}
           width={30}
@@ -250,14 +288,14 @@ export function AppDial(dialParams: DialParams) {
           offsetY={-152}
         />
         <Image
-          image={expansionBattleforce}
+          image={expansionImage}
           x={250}
           y={250}
-          width={20}
-          height={25}
-          rotation={-106}
+          width={30}
+          height={30}
+          rotation={-104}
           offsetX={17}
-          offsetY={-155}
+          offsetY={-152}
         />
         {dialParams.rank === 'Elite' && 
           <Image
@@ -485,9 +523,10 @@ export function AppDial(dialParams: DialParams) {
           />
         </Group>
       </Layer>
+      {/* L-shaped stats window - STATIC */}
       <Layer>
         {/* Primary Attack stats */}
-          <Rect
+        <Rect
           x={241}
           y={144}
           width={23}
@@ -495,42 +534,22 @@ export function AppDial(dialParams: DialParams) {
           visible={dialParams.click.colors.primaryAttack.hasCollor}
           fill={dialParams.click.colors.primaryAttack.collorHex}
           cornerRadius={dialParams.click.colors.primaryAttack.singleUse === true ? [14, 14, 14, 14] : [0, 0, 0, 0]}
-        />
-        <Text
-          x={250}
-          y={250}
-          text={String(dialParams.click.values.primaryAttack)}
-          fontSize={16}
-          fontStyle='bold'
-          fill={dialParams.click.colors.primaryAttack.hasCollor && dialParams.click.colors.primaryAttack.collorHex === "#000000" ? "#FFFFFF" : "#000000"}
-          rotation={180}
-          offsetY={-88}
-          offsetX={dialParams.click.values.primaryAttack > 9 ? 11.5 : 6.5} 
+          onClick={() => {}}
+          style={{ cursor: 'pointer' }}
         />
         {/* Secondary Attack stats */}
         {dialParams.click.values.secondaryAttack && (
-          <>
-            <Rect
-              x={241}
-              y={120}
-              width={23}
-              height={22}
-              fill={dialParams.click.colors.secondaryAttack?.collorHex}
-              cornerRadius={dialParams.click.colors.secondaryAttack?.singleUse === true ? [14, 14, 14, 14] : [0, 0, 0, 0]}
-              visible={dialParams.click.colors.secondaryAttack?.hasCollor}
-            />
-            <Text
-              x={250}
-              y={250}
-              text={String(dialParams.click.values.secondaryAttack)}
-              fontSize={16}
-              fontStyle='bold'
-              fill={dialParams.click.colors.secondaryAttack?.hasCollor && dialParams.click.colors.secondaryAttack?.collorHex === "#000000" ? "#FFFFFF" : "#000000"}
-              rotation={180}
-              offsetY={-113}
-              offsetX={dialParams.click.values.secondaryAttack > 9 ? 11.5 : 6.5} 
-            />
-          </>
+          <Rect
+            x={241}
+            y={120}
+            width={23}
+            height={22}
+            fill={dialParams.click.colors.secondaryAttack?.collorHex}
+            cornerRadius={dialParams.click.colors.secondaryAttack?.singleUse === true ? [14, 14, 14, 14] : [0, 0, 0, 0]}
+            visible={dialParams.click.colors.secondaryAttack?.hasCollor}
+            onClick={() => {}}
+            style={{ cursor: 'pointer' }}
+          />
         )}
         {/* Movement stats */}
         <Rect
@@ -541,17 +560,8 @@ export function AppDial(dialParams: DialParams) {
           visible={dialParams.click.colors.movement.hasCollor}
           fill={dialParams.click.colors.movement.collorHex}
           cornerRadius={dialParams.click.colors.movement.singleUse === true ? [14, 14, 14, 14] : [0, 0, 0, 0]}
-        />
-        <Text
-          x={250}
-          y={250}
-          text={String(dialParams.click.values.movement)}
-          fontSize={16}
-          fontStyle='bold'
-          fill={dialParams.click.colors.movement.hasCollor && dialParams.click.colors.movement.collorHex === "#000000" ? "#FFFFFF" : "#000000"}
-          rotation={180}
-          offsetY={-136}
-          offsetX={dialParams.click.values.movement > 9 ? 11.5 : 6.5} 
+          onClick={() => {}}
+          style={{ cursor: 'pointer' }}
         />
         {/* Attack stats */}
         <Rect
@@ -562,17 +572,8 @@ export function AppDial(dialParams: DialParams) {
           visible={dialParams.click.colors.attack.hasCollor}
           fill={dialParams.click.colors.attack.collorHex}
           cornerRadius={dialParams.click.colors.attack.singleUse === true ? [14, 14, 14, 14] : [0, 0, 0, 0]}
-        />
-        <Text
-          x={250}
-          y={250}
-          text={String(dialParams.click.values.attack)}
-          fontSize={16}
-          fontStyle='bold'
-          fill={dialParams.click.colors.attack.hasCollor && dialParams.click.colors.attack.collorHex === "#000000" ? "#FFFFFF" : "#000000"}
-          rotation={180}
-          offsetY={-160}
-          offsetX={dialParams.click.values.attack > 9 ? 11.5 : 6.5} 
+          onClick={() => {}}
+          style={{ cursor: 'pointer' }}
         />
         {/* Defense stats */}
         <Rect
@@ -584,7 +585,62 @@ export function AppDial(dialParams: DialParams) {
           visible={dialParams.click.colors.defense.hasCollor}
           fill={dialParams.click.colors.defense.collorHex}
           cornerRadius={dialParams.click.colors.defense.singleUse === true ? [14, 14, 14, 14] : [0, 0, 0, 0]}
+          onClick={() => {}}
+          style={{ cursor: 'pointer' }}
         />
+      </Layer>
+      {/* Rotating stats numbers layer */}
+      <Layer>
+        <Text
+          x={250}
+          y={250}
+          text={String(dialParams.click.values.primaryAttack)}
+          fontSize={16}
+          fontStyle='bold'
+          fill={dialParams.click.colors.primaryAttack.hasCollor && dialParams.click.colors.primaryAttack.collorHex === "#000000" ? "#FFFFFF" : "#000000"}
+          rotation={180 + currentRotation}
+          offsetY={-88}
+          offsetX={dialParams.click.values.primaryAttack > 9 ? 11.5 : 6.5} 
+        />
+        {/* Secondary Attack stats */}
+        {dialParams.click.values.secondaryAttack && (
+          <Text
+            x={250}
+            y={250}
+            text={String(dialParams.click.values.secondaryAttack)}
+            fontSize={16}
+            fontStyle='bold'
+            fill={dialParams.click.colors.secondaryAttack?.hasCollor && dialParams.click.colors.secondaryAttack?.collorHex === "#000000" ? "#FFFFFF" : "#000000"}
+            rotation={180 + currentRotation}
+            offsetY={-113}
+            offsetX={dialParams.click.values.secondaryAttack > 9 ? 11.5 : 6.5} 
+          />
+        )}
+        {/* Movement stats */}
+        <Text
+          x={250}
+          y={250}
+          text={String(dialParams.click.values.movement)}
+          fontSize={16}
+          fontStyle='bold'
+          fill={dialParams.click.colors.movement.hasCollor && dialParams.click.colors.movement.collorHex === "#000000" ? "#FFFFFF" : "#000000"}
+          rotation={180 + currentRotation}
+          offsetY={-136}
+          offsetX={dialParams.click.values.movement > 9 ? 11.5 : 6.5} 
+        />
+        {/* Attack stats */}
+        <Text
+          x={250}
+          y={250}
+          text={String(dialParams.click.values.attack)}
+          fontSize={16}
+          fontStyle='bold'
+          fill={dialParams.click.colors.attack.hasCollor && dialParams.click.colors.attack.collorHex === "#000000" ? "#FFFFFF" : "#000000"}
+          rotation={180 + currentRotation}
+          offsetY={-160}
+          offsetX={dialParams.click.values.attack > 9 ? 11.5 : 6.5} 
+        />
+        {/* Defense stats */}
         <Text
           x={250}
           y={250}
@@ -592,7 +648,7 @@ export function AppDial(dialParams: DialParams) {
           fontSize={16}
           fontStyle='bold'
           fill={dialParams.click.colors.defense.hasCollor && dialParams.click.colors.defense.collorHex === "#000000" ? "#FFFFFF" : "#000000"}
-          rotation={170}
+          rotation={170 + currentRotation}
           offsetY={-160.5}
           offsetX={dialParams.click.values.defense > 9 ? 11.5 : 7} 
         />
@@ -707,6 +763,7 @@ export function AppDial(dialParams: DialParams) {
         />
       </Layer>
     </Stage>
+    
     </>
   );
 };

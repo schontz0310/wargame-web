@@ -73,14 +73,14 @@ class ApiService {
         },
         ...options,
       });
-      
+
       if (!response.ok) {
-        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       return await response.json();
-    } catch (error) {
-      console.error(`API request failed for ${endpoint}:`, error);
+    } catch (error: unknown) {
+      console.error('API request failed:', error);
       throw error;
     }
   }
@@ -100,7 +100,7 @@ class ApiService {
   async getAllUnits(): Promise<Unit[]> {
     try {
       const firstPage = await this.request<ApiResponse>('/units?page=1&limit=100');
-      let allUnits = [...firstPage.units];
+      const allUnits = [...firstPage.units];
       
       // If there are more pages, fetch them
       if (firstPage.pagination.totalPages > 1) {

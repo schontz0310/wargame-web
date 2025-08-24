@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useUnits } from '@/hooks/useUnits'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
-import { Unit, apiService } from '@/lib/api';
+import { Unit } from '@/lib/api';
 
+// Mock data for dial component
 const DAMAGE_EXAMPLE =  {
   primaryDamage: {
     type: 'melee',
@@ -16,82 +16,88 @@ const DAMAGE_EXAMPLE =  {
     }
   },
   secondaryDamage: {
-    type: 'energetic',
-    targets: 3,
+    type: 'ballistic',
+    targets: 1,
     range: {
       minimum: 0,
-      maximum: 12,
+      maximum: 14,
     }
   }
 }
 
-const HEAT_EXAMPLE =  {
+const HEAT_EXAMPLE = {
   primaryDamage: {
     value: 0,
     collor: {
-      hasColor: true,
-      hexValue: "#009000"
-    }, 
+      hasColor: false,
+      hexValue: "#000000"
+    }
   },
   secondaryDamage: {
     value: 0,
     collor: {
-      hasColor: true,
-      hexValue: "#009000"
-    }, 
+      hasColor: false,
+      hexValue: "#000000"
+    }
   },
   movement: {
     value: 0,
     collor: {
-      hasColor: true,
-      hexValue: "#009000"
-    }, 
+      hasColor: false,
+      hexValue: "#000000"
+    }
   }
 }
 
 const EXAMPLE = {
   marker: {
-    hasMarker: true,
-    markerColor: "#009000"
+    hasMarker: false,
+    markerColor: "#000000"
   },
   values: {
-    primaryAttack:  +3,
-    secondaryAttack: 10,
-    movement: 10,
-    attack: 10,
-    defense: 1
+    primaryAttack: 10,
+    secondaryAttack: 8,
+    tertiaryAttack: 6,
+    movement: 12,
+    attack: 11,
+    defense: 18
   },
   colors: {
     primaryAttack: {
-      hasCollor: true,
+      hasCollor: false,
       collorHex: "#000000",
-      singleUse: false,
+      singleUse: false
     },
     secondaryAttack: {
-      hasCollor: true,
+      hasCollor: false,
       collorHex: "#000000",
-      singleUse: false,
+      singleUse: false
+    },
+    tertiaryAttack: {
+      hasCollor: false,
+      collorHex: "#000000",
+      singleUse: false
     },
     movement: {
-      hasCollor: true,
+      hasCollor: false,
       collorHex: "#000000",
-      singleUse: false,
+      singleUse: false
     },
     attack: {
-      hasCollor: true,
-      collorHex: "#f2f",
-      singleUse: false,
+      hasCollor: false,
+      collorHex: "#000000",
+      singleUse: false
     },
     defense: {
-      hasCollor: true,
+      hasCollor: false,
       collorHex: "#000000",
-      singleUse: false,
+      singleUse: false
     }
   }
 }
 
 export default function SearchPage() {
-  const { units, loading, error } = useUnits();
+  const { units, loading } = useUnits();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('');
   const [selectedExpansion, setSelectedExpansion] = useState('');
@@ -421,15 +427,9 @@ export default function SearchPage() {
             <div key={unit.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleUnitClick(unit.id)}>
               <div className="flex justify-between items-start mb-3">
                 <div className="flex items-start gap-3 flex-1">
-                  <img 
-                    src={unit.imageUrl} 
-                    alt={unit.name}
-                    className="w-12 h-12 rounded-full object-cover border border-gray-200 flex-shrink-0"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = '/placeholder-unit.png';
-                    }}
-                  />
+                  <div className="w-16 h-16 rounded border border-gray-200 bg-gray-100 flex items-center justify-center">
+                    <span className="text-xs text-gray-500">IMG</span>
+                  </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="text-lg font-semibold text-gray-900">

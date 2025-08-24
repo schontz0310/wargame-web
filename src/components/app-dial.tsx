@@ -1,9 +1,7 @@
 /* eslint-disable jsx-a11y/alt-text */
 'use client'
 
-import { useState, useCallback } from 'react';
 import { Stage, Layer, Circle, TextPath, Arc, Line, Image, Text, Rect, RegularPolygon, Group } from 'react-konva';
-import { Tween, Easings } from 'konva/lib/Tween';
 import elite from '@/images/patent-tree.png';
 import veteran from '@/images/patent-two.png'
 import green from '@/images/patent-one.png'

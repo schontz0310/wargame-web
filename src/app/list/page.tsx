@@ -232,82 +232,119 @@ export default function List() {
             <p className="text-sm text-gray-600 mb-3">{selectedUnit.variant}</p>
             
             {/* Key stats in header */}
-            <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="space-y-3">
               <div>
                 <div className="text-sm text-gray-500">Pontos</div>
                 <div className="font-bold text-xl text-blue-600">{selectedUnit.points}</div>
-              </div>
-              <div>
-                <div className="text-sm text-gray-500">Rank</div>
-                <span className={`inline-flex px-2 py-1 text-sm font-semibold rounded-full ${
-                  selectedUnit.rank === 'Elite' ? 'bg-purple-100 text-purple-800' :
-                  selectedUnit.rank === 'Veteran' ? 'bg-blue-100 text-blue-800' :
-                  'bg-green-100 text-green-800'
-                }`}>
-                  {selectedUnit.rank}
-                </span>
               </div>
             </div>
           </div>
         </div>
           
         {/* Stats grid */}
-        <div className="space-y-4 flex-shrink-0 mt-4">
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <div className="text-sm text-gray-500">Facção</div>
-              <div className="font-medium text-base">{selectedUnit.faction}</div>
-            </div>
-            <div>
-              <div className="text-sm text-gray-500">Expansão</div>
-              <div className="font-medium text-base">{selectedUnit.expansion}</div>
-            </div>
-            <div>
-              <div className="text-sm text-gray-500">Tipo</div>
-              <div className="font-medium text-base capitalize">{selectedUnit.type}</div>
-            </div>
-            <div>
-              <div className="text-sm text-gray-500">Modo</div>
-              <div className="font-medium text-base">{selectedUnit.speedMode}</div>
+        <div className="space-y-1 flex-shrink-0 mt-1">
+          {/* Classification Section */}
+          <div className="bg-gray-50 p-2 rounded border text-xs">
+            <div className="grid grid-cols-3 gap-1 text-center">
+              <div>
+                <div className="text-gray-500">Tipo</div>
+                <div className="font-medium capitalize bg-white px-1 py-0.5 rounded">{selectedUnit.type}</div>
+              </div>
+              <div className="border-l border-gray-200 pl-1">
+                <div className="text-gray-500">Classe</div>
+                <div className="font-medium bg-white px-1 py-0.5 rounded">{selectedUnit.class}</div>
+              </div>
+              <div className="border-l border-gray-200 pl-1">
+                <div className="text-gray-500">Modo</div>
+                <div className="font-medium bg-white px-1 py-0.5 rounded">
+                  {selectedUnit.class === 'Colossal' && selectedUnit.speedMode === 'mech' 
+                    ? 'Tripod' 
+                    : selectedUnit.speedMode}
+                </div>
+              </div>
             </div>
           </div>
           
-          <div className="grid grid-cols-5 gap-3 text-center">
-            <div>
-              <div className="text-sm text-gray-500">HP</div>
-              <div className="font-bold text-lg">{selectedUnit.health}</div>
-            </div>
-            <div>
-              <div className="text-sm text-gray-500">ATK</div>
-              <div className="font-bold text-lg">{selectedUnit.maxAttack}</div>
-            </div>
-            <div>
-              <div className="text-sm text-gray-500">DEF</div>
-              <div className="font-bold text-lg">{selectedUnit.maxDefense}</div>
-            </div>
-            <div>
-              <div className="text-sm text-gray-500">DMG</div>
-              <div className="font-bold text-lg">{selectedUnit.maxDamage}</div>
-            </div>
-            <div>
-              <div className="text-sm text-gray-500">VENT</div>
-              <div className="font-bold text-lg">{selectedUnit.ventCapacity}</div>
+          {/* Origin Section */}
+          <div className="bg-gray-50 p-2 rounded border text-xs">
+            <div className="grid grid-cols-3 gap-1 text-center">
+              <div>
+                <div className="text-gray-500">Facção</div>
+                <div className="font-medium bg-white px-1 py-0.5 rounded">{selectedUnit.faction}</div>
+              </div>
+              <div className="border-l border-gray-200 pl-1">
+                <div className="text-gray-500">Rank</div>
+                <div className="font-medium bg-white px-1 py-0.5 rounded">
+                  {selectedUnit.rank}
+                </div>
+              </div>
+              <div className="border-l border-gray-200 pl-1">
+                <div className="text-gray-500">Expansão</div>
+                <div className="font-medium bg-white px-1 py-0.5 rounded">{selectedUnit.expansion}</div>
+              </div>
             </div>
           </div>
+          
+          {/* Combat Stats Section */}
+          <div className="bg-gray-50 p-2 rounded border text-xs">
+            <h4 className="text-xs font-semibold text-gray-700 mb-0.5 text-center">ESTATÍSTICAS</h4>
+            <div className="grid grid-cols-5 gap-1 text-center">
+              <div>
+                <div className="text-gray-500">HP</div>
+                <div className="font-bold text-xs bg-white px-1 py-0.5 rounded">{selectedUnit.health}</div>
+              </div>
+              <div className="border-l border-gray-200 pl-1">
+                <div className="text-gray-500">ATK</div>
+                <div className="font-bold text-xs bg-white px-1 py-0.5 rounded">{selectedUnit.maxAttack}</div>
+              </div>
+              <div className="border-l border-gray-200 pl-1">
+                <div className="text-gray-500">DEF</div>
+                <div className="font-bold text-xs bg-white px-1 py-0.5 rounded">{selectedUnit.maxDefense}</div>
+              </div>
+              <div className="border-l border-gray-200 pl-1">
+                <div className="text-gray-500">DMG</div>
+                <div className="font-bold text-xs bg-white px-1 py-0.5 rounded">{selectedUnit.maxDamage}</div>
+              </div>
+              <div className="border-l border-gray-200 pl-1">
+                <div className="text-gray-500">VENT</div>
+                <div className="font-bold text-xs bg-white px-1 py-0.5 rounded">{selectedUnit.ventCapacity}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Armor Arcs Section */}
+          <div className="bg-gray-50 p-2 rounded border text-xs">
+            <h4 className="text-xs font-semibold text-gray-700 mb-0.5 text-center">ARCOS</h4>
+            <div className="grid grid-cols-2 gap-1 text-center">
+              <div>
+                <div className="text-gray-500">Frontal</div>
+                <div className="font-bold text-xs bg-white px-1 py-0.5 rounded">{selectedUnit.frontArc}°</div>
+              </div>
+              <div className="border-l border-gray-200 pl-1">
+                <div className="text-gray-500">Traseiro</div>
+                <div className="font-bold text-xs bg-white px-1 py-0.5 rounded">{selectedUnit.rearArc}°</div>
+              </div>
+            </div>
+          </div>
+
         </div>
 
-        {/* Attack Stats Section - Enhanced */}
+        {/* Attack Stats Section - Compact */}
         {selectedUnit.attackStats && selectedUnit.attackStats.length > 0 && (
-          <div className="border-t pt-3 flex-shrink-0 mt-4">
-            <h3 className="text-sm font-semibold text-gray-700 mb-2">Estatísticas de Ataque</h3>
+          <div className="bg-gray-50 p-2 rounded border mt-1">
+            <h4 className="text-xs font-semibold text-gray-700 mb-1 text-center">ATAQUES</h4>
             
             {selectedUnit.attackStats.map((attack, index) => (
-              <div key={index} className="mb-2 p-2 bg-gray-50 rounded">
+              <div key={index} className="mb-1 p-1 bg-white rounded border">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="font-medium text-gray-700 text-sm">
-                    {attack.attackType === 'primary' ? 'Ataque Primário' : 'Ataque Secundário'}
+                  <span className="font-medium text-gray-700 text-xs">
+                    {attack.attackType === 'primary' ? 'Primário' : 
+                     attack.attackType === 'secondary' ? 'Secundário' :
+                     attack.attackType === 'tertiary' ? 'Terciário' :
+                     attack.attackType === 'quaternary' ? 'Quaternário' :
+                     `Ataque ${attack.attackType}`}
                   </span>
-                  <span className={`px-2 py-1 rounded text-sm font-medium ${
+                  <span className={`px-1 py-0.5 rounded text-xs font-medium ${
                     attack.damageType === 'ballistic' ? 'bg-blue-100 text-blue-800' : 
                     attack.damageType === 'melee' ? 'bg-red-100 text-red-800' : 
                     'bg-orange-100 text-orange-800'
@@ -317,27 +354,15 @@ export default function List() {
                      'Energético'}
                   </span>
                 </div>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <span className="text-gray-500">Alcance:</span>
-                    <span className="ml-1 font-medium text-base">{attack.minRange}-{attack.maxRange}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Alvos:</span>
-                    <span className="ml-1 font-medium text-base">{attack.targetCount}</span>
-                  </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-500">Alcance: {attack.minRange}-{attack.maxRange}</span>
+                  <span className="text-gray-500">Alvos: {attack.targetCount}</span>
                 </div>
               </div>
             ))}
           </div>
         )}
 
-        <div className="border-t pt-3 text-sm flex-shrink-0 mt-4">
-          <div className="flex justify-between">
-            <span>Arco Frontal: <span className="font-medium">{selectedUnit.frontArc}°</span></span>
-            <span>Arco Traseiro: <span className="font-medium">{selectedUnit.rearArc}°</span></span>
-          </div>
-        </div>
       </div>
 
       {/* Right Column - Dial and Controls */}
@@ -375,6 +400,9 @@ export default function List() {
             points={selectedUnit.points.toString()}
             variant={selectedUnit.variant}
             rank={selectedUnit.rank}
+            faction={selectedUnit.faction}
+            expansion={selectedUnit.expansion}
+            collectionNumber={selectedUnit.collectionNumber}
             ventRating={selectedUnit.ventCapacity}
             dialRotation={dialRotation}
             damageTypes={DAMAGE_EXAMPLE}

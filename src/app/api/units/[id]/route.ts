@@ -8,7 +8,7 @@ export async function GET(
     const { id } = params;
     
     // Forward request to backend API
-    const backendUrl = `http://localhost:4000/units/${id}`;
+    const backendUrl = `${process.env.API_BASE_URL || 'http://localhost:4000'}/units/${id}`;
     
     const response = await fetch(backendUrl, {
       headers: {

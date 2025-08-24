@@ -7,9 +7,7 @@ import { Tween, Easings } from 'konva/lib/Tween';
 import elite from '@/images/patent-tree.png';
 import veteran from '@/images/patent-two.png'
 import green from '@/images/patent-one.png'
-import logo from '@/images/logo-dial-house-steiner-white.png';
 import vent from '@/images/vent.png';
-import battleforce from '@/images/battle-force.png'
 import ballisticIcon from '@/images/ballisticDamage.png'
 import energeticIcon from '@/images/energeticDamage.png'
 import meleeIcon from '@/images/meleeDamage.png'
@@ -19,6 +17,32 @@ import useImage from 'use-image'
 
 const ANGLE_PER_CHARACTER = 4.5;
 const UNIQUE_STAR_CHARACTER = "★";
+
+// Function to convert faction name to image path following the pattern: logo-dial-<faction-with-dashes>-white.png
+const getFactionLogoPath = (faction: string): string => {
+  const factionSlug = faction
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove diacritics/accents
+    .replace(/[''`]/g, '') // Remove apostrophes and similar characters
+    .replace(/\s+/g, '-'); // Replace spaces with hyphens
+  const path = `/images/logo-dial-${factionSlug}-white.png`;
+  console.log(`Faction: "${faction}" -> Slug: "${factionSlug}" -> Path: "${path}"`);
+  return path;
+};
+
+// Function to convert expansion abbreviation to image path following the pattern: logo-dial-<expansion>-white.png
+const getExpansionImagePath = (expansion: string): string => {
+  const expansionSlug = expansion
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove diacritics/accents
+    .replace(/[''`]/g, '') // Remove apostrophes and similar characters
+    .replace(/\s+/g, '-'); // Replace spaces with hyphens
+  const path = `/images/logo-dial-${expansionSlug}-white.png`;
+  console.log(`Expansion: "${expansion}" -> Slug: "${expansionSlug}" -> Path: "${path}"`);
+  return path;
+};
 
 const BALLISTIC_WIDTH = 4.5;
 const BALLISTIC_OFFSET = -8;
@@ -77,7 +101,10 @@ interface DialParams {
   frontArc: number,
   rearArc: number,
   ventRating: number,
-  rank: "Elite" | "Green" | "Veteran",
+  rank: "Elite" | "Green" | "Veteran" | "NA",
+  faction: string,
+  expansion: string,
+  collectionNumber: number,
   dialRotation?: number,
   click: {
     marker: {
@@ -112,7 +139,8 @@ export function AppDial(dialParams: DialParams) {
   const frontArcRotate = ((dialParams.frontArc - 180) * -1) / 2
   // Build text sequence: points + unique + name (rank shown as image)
   const uniqueSymbol = dialParams.unique ? " " + UNIQUE_STAR_CHARACTER : ""
-  const RANK_SPACING = "     " // 4 spaces for <100 points, 5 spaces for >=100 points
+  // Only add rank spacing if rank exists, otherwise use minimal spacing
+  const RANK_SPACING = dialParams.rank !== "NA" ? "     " : ""
   const fullFrontArcText = dialParams.points + RANK_SPACING + uniqueSymbol + " " + dialParams.name 
   const nameRotationAdjust = (((fullFrontArcText.length) * ANGLE_PER_CHARACTER) / 2) * -1
   const nameRotation = (90 + (nameRotationAdjust / 2)) * -1
@@ -124,14 +152,14 @@ export function AppDial(dialParams: DialParams) {
   const [energeticDamage] = useImage(energeticIcon.src, 'anonymous');
   const [meleeDamage] = useImage(meleeIcon.src, 'anonymous');
   const [mechMovement] = useImage(mechSpeedIcon.src, 'anonymous');
-  const [image] = useImage(logo.src, 'anonymous');
+  const [factionImage] = useImage(getFactionLogoPath(dialParams.faction), 'anonymous');
   
 
   const [patentGreen] = useImage(green.src, 'anonymous');
   const [patentVeteran] = useImage(veteran.src, 'anonymous');
   const [patentElite] = useImage(elite.src, 'anonymous');
 
-  const [expansionBattleforce] = useImage(battleforce.src, 'anonymous')
+  const [expansionImage] = useImage(getExpansionImagePath(dialParams.expansion), 'anonymous')
 
   return (
       <>
@@ -232,13 +260,13 @@ export function AppDial(dialParams: DialParams) {
           rotation={nameRotation}
           onClick={() => console.log('clicou')} />
         <TextPath
-          text='027'
+          text={String(dialParams.collectionNumber).padStart(3, '0')}
           fontSize={16}
           fill={"#FFFFFF"}
           x={250}
           y={250}
           data='M -175 0 A 175 175 0 0 0 175 0'
-          rotation={-199} />
+          rotation={-200.5} />
         <TextPath
           text={dialParams.variant}
           fontSize={16}
@@ -250,7 +278,7 @@ export function AppDial(dialParams: DialParams) {
       </Layer>
       <Layer>
         <Image
-          image={image}
+          image={factionImage}
           x={250}
           y={250}
           width={30}
@@ -260,14 +288,14 @@ export function AppDial(dialParams: DialParams) {
           offsetY={-152}
         />
         <Image
-          image={expansionBattleforce}
+          image={expansionImage}
           x={250}
           y={250}
-          width={20}
-          height={25}
-          rotation={-106}
+          width={30}
+          height={30}
+          rotation={-104}
           offsetX={17}
-          offsetY={-155}
+          offsetY={-152}
         />
         {dialParams.rank === 'Elite' && 
           <Image

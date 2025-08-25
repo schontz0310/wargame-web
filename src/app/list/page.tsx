@@ -1,101 +1,14 @@
 'use client'
 
-import { AppSidebar } from "@/components/app-sidebar"
-import { AppDial } from "@/components/app-dial"
-import { SidebarProvider } from "@/components/ui/sidebar"
-import { useUnits } from "@/hooks/useUnits"
-import { useSearchParams } from 'next/navigation'
-import { Suspense, useState, useCallback, useEffect } from 'react';
-
-import { apiService } from '@/lib/api';
+import { AppDial } from '@/components/app-dial';
 import { Unit } from '@/lib/api';
-
-const DAMAGE_EXAMPLE =  {
-  primaryDamage: {
-    type: 'melee',
-    targets: 1,
-    range: {
-      minimum: 0,
-      maximum: 14,
-    }
-  },
-  secondaryDamage: {
-    type: 'energetic',
-    targets: 3,
-    range: {
-      minimum: 0,
-      maximum: 12,
-    }
-  }
-}
-
-const HEAT_EXAMPLE =  {
-  primaryDamage: {
-    value: 0,
-    collor: {
-      hasColor: true,
-      hexValue: "#009000"
-    }, 
-  },
-  secondaryDamage: {
-    value: 0,
-    collor: {
-      hasColor: true,
-      hexValue: "#009000"
-    }, 
-  },
-  movement: {
-    value: 0,
-    collor: {
-      hasColor: true,
-      hexValue: "#009000"
-    }, 
-  }
-}
-
-const EXAMPLE = {
-  marker: {
-    hasMarker: true,
-    markerColor: "#009000"
-  },
-  values: {
-    primaryAttack:  +3,
-    secondaryAttack: 10,
-    movement: 10,
-    attack: 10,
-    defense: 1
-  },
-  colors: {
-    primaryAttack: {
-      hasCollor: true,
-      collorHex: "#000000",
-      singleUse: false,
-    },
-    secondaryAttack: {
-      hasCollor: true,
-      collorHex: "#000000",
-      singleUse: false,
-    },
-    movement: {
-      hasCollor: true,
-      collorHex: "#000000",
-      singleUse: false,
-    },
-    attack: {
-      hasCollor: true,
-      collorHex: "#f2f",
-      singleUse: false,
-    },
-    defense: {
-      hasCollor: true,
-      collorHex: "#000000",
-      singleUse: false,
-    }
-  }
-}
+import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 
-export default function List() {
+
+
+function ListContent() {
   const searchParams = useSearchParams();
   const unitId = searchParams.get('unitId');
   const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
@@ -212,15 +125,9 @@ export default function List() {
         <div className="flex gap-4 flex-shrink-0">
           {/* Left side - Image */}
           <div className="flex flex-col items-center flex-shrink-0">
-            <img 
-              src={selectedUnit.imageUrl} 
-              alt={selectedUnit.name}
-              className="w-40 h-40 rounded-lg object-contain border border-gray-200"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.src = '/placeholder-unit.png';
-              }}
-            />
+            <div className="w-16 h-16 rounded border border-gray-200 bg-gray-100 flex items-center justify-center">
+              <span className="text-xs text-gray-500">IMG</span>
+            </div>
           </div>
           
           {/* Right side - Basic info */}
@@ -329,45 +236,6 @@ export default function List() {
 
         </div>
 
-        {/* Attack Stats Section - Compact */}
-        {selectedUnit.attackStats && selectedUnit.attackStats.length > 0 && (
-          <div className="bg-gray-50 p-2 rounded border mt-1">
-            <h4 className="text-xs font-semibold text-gray-700 mb-1 text-center">ATAQUES</h4>
-            
-            {selectedUnit.attackStats.map((attack, index) => (
-              <div key={index} className="mb-1 p-1 bg-white rounded border">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-medium text-gray-700 text-xs">
-                    {attack.attackType === 'primary' ? 'Primário' : 
-                     attack.attackType === 'secondary' ? 'Secundário' :
-                     attack.attackType === 'tertiary' ? 'Terciário' :
-                     attack.attackType === 'quaternary' ? 'Quaternário' :
-                     `Ataque ${attack.attackType}`}
-                  </span>
-                  <span className={`px-1 py-0.5 rounded text-xs font-medium ${
-                    attack.damageType === 'ballistic' ? 'bg-blue-100 text-blue-800' : 
-                    attack.damageType === 'melee' ? 'bg-red-100 text-red-800' : 
-                    'bg-orange-100 text-orange-800'
-                  }`}>
-                    {attack.damageType === 'ballistic' ? 'Balístico' : 
-                     attack.damageType === 'melee' ? 'Melee' : 
-                     'Energético'}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-500">Alcance: {attack.minRange}-{attack.maxRange}</span>
-                  <span className="text-gray-500">Alvos: {attack.targetCount}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-      </div>
-
-      {/* Right Column - Dial and Controls */}
-      <div className="flex flex-col gap-4 w-full lg:w-3/5 h-[90vh]">
-        {/* Dial Control Buttons */}
         <div className="flex flex-col gap-2">
           <button
             onClick={handleDamage}
@@ -391,7 +259,6 @@ export default function List() {
         {/* AppDial Component */}
         <div className="flex-1 flex items-center justify-center">
           <AppDial
-            heatClick={HEAT_EXAMPLE}
             dialSide="stats"
             frontArc={parseInt(selectedUnit.frontArc)}
             rearArc={parseInt(selectedUnit.rearArc)}
@@ -405,11 +272,60 @@ export default function List() {
             collectionNumber={selectedUnit.collectionNumber}
             ventRating={selectedUnit.ventCapacity}
             dialRotation={dialRotation}
-            damageTypes={DAMAGE_EXAMPLE}
-            click={EXAMPLE}
+            damageTypes={{
+              primaryDamage: {
+                type: 'ballistic',
+                targets: 1,
+                range: { minimum: 0, maximum: 14 }
+              },
+              secondaryDamage: {
+                type: 'energetic',
+                targets: 1,
+                range: { minimum: 0, maximum: 12 }
+              }
+            }}
+            click={{
+              marker: { hasMarker: false },
+              values: {
+                primaryAttack: 10,
+                secondaryAttack: 8,
+                movement: 12,
+                attack: 11,
+                defense: 18
+              },
+              colors: {
+                primaryAttack: { hasCollor: false, collorHex: "#000000", singleUse: false },
+                secondaryAttack: { hasCollor: false, collorHex: "#000000", singleUse: false },
+                movement: { hasCollor: false, collorHex: "#000000", singleUse: false },
+                attack: { hasCollor: false, collorHex: "#000000", singleUse: false },
+                defense: { hasCollor: false, collorHex: "#000000", singleUse: false }
+              }
+            }}
+            heatClick={{
+              primaryDamage: {
+                value: 0,
+                collor: { hasColor: false, hexValue: "#000000" }
+              },
+              secondaryDamage: {
+                value: 0,
+                collor: { hasColor: false, hexValue: "#000000" }
+              },
+              movement: {
+                value: 0,
+                collor: { hasColor: false, hexValue: "#000000" }
+              }
+            }}
           />
         </div>
       </div>
     </div>
-  ) 
+  )
+}
+
+export default function List() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ListContent />
+    </Suspense>
+  )
 }

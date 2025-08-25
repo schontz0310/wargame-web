@@ -48,7 +48,7 @@ export interface Unit {
   collectionNumber: number;
   attackStats?: AttackStat[];
   combatDial?: CombatDialStep[];
-  heatDial?: any[];
+  heatDial?: unknown[];
 }
 
 export interface ApiResponse {
@@ -82,6 +82,17 @@ class ApiService {
     } catch (error: unknown) {
       console.error('API request failed:', error);
       throw error;
+    }
+  }
+
+  // Get unit by ID
+  async getUnitById(id: string): Promise<Unit | null> {
+    try {
+      const unit = await this.request<Unit>(`/units/${id}`);
+      return unit;
+    } catch (error: unknown) {
+      console.error(`Failed to fetch unit with id ${id}:`, error);
+      return null;
     }
   }
 

@@ -1,5 +1,5 @@
-// Wargame API Service - Using Next.js API Routes to avoid CORS
-const API_BASE_URL = '/api';
+// Wargame API Service - Direct API calls for static export
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.agilityinsolutions.com';
 
 export interface AttackStat {
   unitId: string;
@@ -67,8 +67,9 @@ class ApiService {
     
     try {
       const response = await fetch(url, {
+        method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
+          'Accept': 'application/json',
           ...options?.headers,
         },
         ...options,
@@ -82,17 +83,6 @@ class ApiService {
     } catch (error: unknown) {
       console.error('API request failed:', error);
       throw error;
-    }
-  }
-
-  // Get unit by ID
-  async getUnitById(id: string): Promise<Unit | null> {
-    try {
-      const unit = await this.request<Unit>(`/units/${id}`);
-      return unit;
-    } catch (error: unknown) {
-      console.error(`Failed to fetch unit with id ${id}:`, error);
-      return null;
     }
   }
 
@@ -110,11 +100,14 @@ class ApiService {
   // Get all units across all pages
   async getAllUnits(): Promise<Unit[]> {
     try {
+      console.log('ApiService - API_BASE_URL:', API_BASE_URL);
       const firstPage = await this.request<ApiResponse>('/units?page=1&limit=100');
+      console.log('ApiService - First page response:', firstPage);
       const allUnits = [...firstPage.units];
       
       // If there are more pages, fetch them
       if (firstPage.pagination.totalPages > 1) {
+        console.log('ApiService - Fetching additional pages:', firstPage.pagination.totalPages - 1);
         const promises = [];
         for (let page = 2; page <= firstPage.pagination.totalPages; page++) {
           promises.push(this.request<ApiResponse>(`/units?page=${page}&limit=100`));
@@ -126,21 +119,23 @@ class ApiService {
         });
       }
       
+      console.log('ApiService - Total units fetched:', allUnits.length);
       return allUnits;
     } catch (error) {
-      console.error('Failed to fetch all units:', error);
+      console.error('ApiService - Failed to fetch all units:', error);
       throw error; // Re-throw to trigger error handling in useUnits
     }
   }
 
   // Get unit by ID
-  async getUnit(id: string): Promise<Unit> {
-    return this.request<Unit>(`/units/${id}`);
-  }
-
-  // Get unit details by ID (same as getUnit but more explicit naming)
-  async getUnitDetails(id: string): Promise<Unit> {
-    return this.getUnit(id);
+  async getUnit(id: string): Promise<Unit | null> {
+    try {
+      const unit = await this.request<Unit>(`/units/${id}`);
+      return unit;
+    } catch (error: unknown) {
+      console.error(`Failed to fetch unit with id ${id}:`, error);
+      return null;
+    }
   }
 
   // Search units by name

@@ -3,12 +3,14 @@
 import { useState } from 'react'
 import { useUnits } from '@/hooks/useUnits'
 import { useRouter } from 'next/navigation'
-import { Unit } from '@/lib/api';
 
 
 
 export default function SearchPage() {
-  const { units, loading } = useUnits();
+  const { units, loading, error } = useUnits();
+  
+  // Debug logging
+  console.log('SearchPage - units:', units.length, 'loading:', loading, 'error:', error);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('');
   const [selectedExpansion, setSelectedExpansion] = useState('');
@@ -19,33 +21,8 @@ export default function SearchPage() {
     router.push(`/list?unitId=${unitId}`);
   };
 
-  // Create mock unit data as fallback
-  const mockUnit: Unit = {
-    id: "mock-1",
-    name: "Vulture Mk IV 'Le Yuan [Paradise]'",
-    type: "mech",
-    speedMode: "Walk",
-    class: "Heavy",
-    points: 211,
-    health: 18,
-    faction: "House Steiner",
-    frontArc: "270",
-    rearArc: "90",
-    maxSpeed: 8,
-    ventCapacity: 2,
-    maxAttack: 10,
-    maxDefense: 17,
-    maxDamage: 3,
-    variant: "VTR-V1-H",
-    isUnique: true,
-    rank: "Elite",
-    expansion: "AOD",
-    imageUrl: "",
-    collectionNumber: 0
-  };
-
-  // Use API units if available, otherwise use mock data
-  const displayUnits = units.length > 0 ? units : [mockUnit];
+  // Use API units directly
+  const displayUnits = units;
 
   // Get unique values for filters
   const uniqueTypes = [...new Set(displayUnits.map(unit => unit.type))].sort();

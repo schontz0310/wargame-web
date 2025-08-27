@@ -11,9 +11,12 @@ export function useUnits() {
       try {
         setLoading(true);
         setError(null);
+        console.log('useUnits - Starting to fetch units...');
         const data = await apiService.getAllUnits();
+        console.log('useUnits - Fetched units:', data.length);
         setUnits(data);
       } catch (err) {
+        console.error('useUnits - Error fetching units:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch units');
       } finally {
         setLoading(false);

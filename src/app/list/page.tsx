@@ -1,7 +1,7 @@
 'use client'
 
 import { AppDial } from '@/components/app-dial';
-import { Unit } from '@/lib/api';
+import { Unit, apiService } from '@/lib/api';
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 
@@ -52,16 +52,15 @@ function ListContent() {
       setLoading(true);
       setError(null);
       
-      // Fetch individual unit with complete data including attackStats
-      const response = await fetch(`/api/units/${id}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch unit details');
+      // Use apiService to fetch unit details directly from API
+      const foundUnit = await apiService.getUnit(id);
+      if (foundUnit) {
+        setSelectedUnit(foundUnit);
+      } else {
+        throw new Error('Unit not found');
       }
-      
-      const foundUnit = await response.json();
-      setSelectedUnit(foundUnit);
     } catch (err) {
-      console.error('Failed to fetch unit details, using mock data:', err);
+      console.error('Failed to fetch unit details:', err);
       // Use mock data as fallback
       const mockUnit: Unit = {
         id: id,

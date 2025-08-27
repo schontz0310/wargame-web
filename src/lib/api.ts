@@ -4,7 +4,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.agilit
 export interface AttackStat {
   unitId: string;
   attackType: "primary" | "secondary";
-  damageType: "ballistic" | "energy" | "melee";
+  damageType: "ballistic" | "energetic" | "melee";
   targetCount: number;
   minRange: number;
   maxRange: number;

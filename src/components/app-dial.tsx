@@ -399,7 +399,7 @@ export function AppDial(dialParams: DialParams) {
     
     // Set colors immediately
     setTransitionColors(currentColors);
-  }, [damageClicks, selectedUnit]);
+  }, [damageClicks, selectedUnit, calculateDialValues, error, getAttackColor, getDefenseColor, getMovementColor, getPrimaryDamageColor, getSecondaryDamageColor, loading]);
 
   if (loading) return <div>Carregando...</div>;
   if (error || !selectedUnit) return <div>Erro ao carregar unidade</div>;
@@ -657,7 +657,7 @@ export function AppDial(dialParams: DialParams) {
   const uniqueSymbol = selectedUnit?.isUnique ? " " + UNIQUE_STAR_CHARACTER : ""
   // Only add rank spacing if rank exists, otherwise use minimal spacing
   const RANK_SPACING = selectedUnit?.rank !== "Green" ? "     " : ""
-  const fullFrontArcText = (selectedUnit?.points?.toString() || '0') + RANK_SPACING + uniqueSymbol + " " + (selectedUnit?.name || 'Unknown')
+  const fullFrontArcText = (selectedUnit?.points?.toString() || '0') + "  " + RANK_SPACING + uniqueSymbol + " " + (selectedUnit?.name || 'Unknown')
   const nameRotationAdjust = (((fullFrontArcText.length) * ANGLE_PER_CHARACTER) / 2) * -1
   const nameRotation = (90 + (nameRotationAdjust / 2)) * -1
   const patentRotationAdjust = Number(selectedUnit?.points || 0) < 100 ? (((-90 - nameRotation) * -1) - 8) : (((-90 - nameRotation) * -1) - 11)

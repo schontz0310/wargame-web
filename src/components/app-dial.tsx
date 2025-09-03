@@ -14,7 +14,7 @@ import bullet from '@/images/bullet.png'
 import { CombatDialStep } from '@/lib/api';
 import useImage from 'use-image'
 import { useSelectedUnit } from '@/hooks/useSelectedUnit'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 const ANGLE_PER_CHARACTER = 4.5;
 const UNIQUE_STAR_CHARACTER = "★";
@@ -110,7 +110,7 @@ export function AppDial(dialParams: DialParams) {
   const { unitId, dialSide } = dialParams;
   
   // Get equipment color by ID
-  const getEquipmentColorById = (colorMeaningId?: string): string => {
+  const getEquipmentColorById = useCallback((colorMeaningId?: string): string => {
     switch (colorMeaningId) {
       case '6724024d-1887-4150-829a-5485229b6f9d':
       case '6a51d7c5-00b2-428c-a60f-3ed7fdd877ca':
@@ -162,62 +162,56 @@ export function AppDial(dialParams: DialParams) {
       default:
         return '#ffffff'; // White default
     }
-  };
+  }, []);
 
-  // Get text color for equipment (white text on black background)
   const getTextColorForEquipment = (equipmentColor: string): string => {
     return equipmentColor === '#000000' ? '#ffffff' : '#000000';
   };
 
-  // Get primary damage color
-  const getPrimaryDamageColor = (step: CombatDialStep) => {
+  const getPrimaryDamageColor = useCallback((step: CombatDialStep) => {
     if (step.primaryEquipColorMeaningId) {
       const colorHex = getEquipmentColorById(step.primaryEquipColorMeaningId);
       const textColor = getTextColorForEquipment(colorHex);
-      return { hasCollor: true, collorHex: colorHex, textColor, singleUse: false };
+      return { color: colorHex, textColor };
     }
-    return { hasCollor: false, collorHex: "#ffffff", textColor: "#000000", singleUse: false };
-  };
+    return { color: '#ffffff', textColor: '#000000' };
+  }, [getEquipmentColorById]);
 
-  // Get secondary damage color
-  const getSecondaryDamageColor = (step: CombatDialStep) => {
+  const getSecondaryDamageColor = useCallback((step: CombatDialStep) => {
     if (step.secondaryEquipColorMeaningId) {
       const colorHex = getEquipmentColorById(step.secondaryEquipColorMeaningId);
       const textColor = getTextColorForEquipment(colorHex);
-      return { hasCollor: true, collorHex: colorHex, textColor, singleUse: false };
+      return { color: colorHex, textColor };
     }
-    return { hasCollor: false, collorHex: "#ffffff", textColor: "#000000", singleUse: false };
-  };
+    return { color: '#ffffff', textColor: '#000000' };
+  }, [getEquipmentColorById]);
 
-  // Get movement color
-  const getMovementColor = (step: CombatDialStep) => {
+  const getMovementColor = useCallback((step: CombatDialStep) => {
     if (step.movementEquipColorMeaningId) {
       const colorHex = getEquipmentColorById(step.movementEquipColorMeaningId);
       const textColor = getTextColorForEquipment(colorHex);
-      return { hasCollor: true, collorHex: colorHex, textColor, singleUse: false };
+      return { color: colorHex, textColor };
     }
-    return { hasCollor: false, collorHex: "#ffffff", textColor: "#000000", singleUse: false };
-  };
+    return { color: '#ffffff', textColor: '#000000' };
+  }, [getEquipmentColorById]);
 
-  // Get attack color
-  const getAttackColor = (step: CombatDialStep) => {
+  const getAttackColor = useCallback((step: CombatDialStep) => {
     if (step.attackEquipColorMeaningId) {
       const colorHex = getEquipmentColorById(step.attackEquipColorMeaningId);
       const textColor = getTextColorForEquipment(colorHex);
-      return { hasCollor: true, collorHex: colorHex, textColor, singleUse: false };
+      return { color: colorHex, textColor };
     }
-    return { hasCollor: false, collorHex: "#ffffff", textColor: "#000000", singleUse: false };
-  };
+    return { color: '#ffffff', textColor: '#000000' };
+  }, [getEquipmentColorById]);
 
-  // Get defense color
-  const getDefenseColor = (step: CombatDialStep) => {
+  const getDefenseColor = useCallback((step: CombatDialStep) => {
     if (step.defenseEquipColorMeaningId) {
       const colorHex = getEquipmentColorById(step.defenseEquipColorMeaningId);
       const textColor = getTextColorForEquipment(colorHex);
-      return { hasCollor: true, collorHex: colorHex, textColor, singleUse: false };
+      return { color: colorHex, textColor };
     }
-    return { hasCollor: false, collorHex: "#ffffff", textColor: "#000000", singleUse: false };
-  };
+    return { color: '#ffffff', textColor: '#000000' };
+  }, [getEquipmentColorById]);
 
   const { selectedUnit, loading, error, damageClicks, handleDamage, handleRepair } = useSelectedUnit(unitId);
   
@@ -264,15 +258,15 @@ export function AppDial(dialParams: DialParams) {
   });
   
   const [transitionColors, setTransitionColors] = useState({
-    primaryAttack: { hasCollor: false, collorHex: '#ffffff' },
-    secondaryAttack: { hasCollor: false, collorHex: '#ffffff' },
-    movement: { hasCollor: false, collorHex: '#ffffff' },
-    attack: { hasCollor: false, collorHex: '#ffffff' },
-    defense: { hasCollor: false, collorHex: '#ffffff' }
+    primaryAttack: { hasCollor: false, collorHex: '#ffffff', singleUse: false },
+    secondaryAttack: { hasCollor: false, collorHex: '#ffffff', singleUse: false },
+    movement: { hasCollor: false, collorHex: '#ffffff', singleUse: false },
+    attack: { hasCollor: false, collorHex: '#ffffff', singleUse: false },
+    defense: { hasCollor: false, collorHex: '#ffffff', singleUse: false }
   });
 
   // Calculate dial values based on damage clicks using combat dial data
-  const calculateDialValues = (damageClicks: number) => {
+  const calculateDialValues = useCallback((damageClicks: number) => {
     // Only use combat dial if it exists, no fallbacks
     if (selectedUnit?.combatDial && selectedUnit.combatDial.length > 0) {
       const maxCombatDialStep = selectedUnit.combatDial.length;
@@ -331,7 +325,7 @@ export function AppDial(dialParams: DialParams) {
       // Return null if no combat dial data - component should handle this
       return null;
     }
-  };
+  }, [selectedUnit]);
 
   // Animate transitions when damageClicks changes - MUST be before any conditional returns
   useEffect(() => {
@@ -359,11 +353,11 @@ export function AppDial(dialParams: DialParams) {
         // Extra safety check for stepIndex
         if (stepIndex < 0 || stepIndex >= selectedUnit.combatDial.length) {
           return {
-            primaryAttack: { hasCollor: false, collorHex: '#ffffff' },
-            secondaryAttack: { hasCollor: false, collorHex: '#ffffff' },
-            movement: { hasCollor: false, collorHex: '#ffffff' },
-            attack: { hasCollor: false, collorHex: '#ffffff' },
-            defense: { hasCollor: false, collorHex: '#ffffff' }
+            primaryAttack: { hasCollor: false, collorHex: '#ffffff', singleUse: false },
+            secondaryAttack: { hasCollor: false, collorHex: '#ffffff', singleUse: false },
+            movement: { hasCollor: false, collorHex: '#ffffff', singleUse: false },
+            attack: { hasCollor: false, collorHex: '#ffffff', singleUse: false },
+            defense: { hasCollor: false, collorHex: '#ffffff', singleUse: false }
           };
         }
         
@@ -372,28 +366,28 @@ export function AppDial(dialParams: DialParams) {
         // If currentStep is undefined, use safe defaults
         if (!currentStep) {
           return {
-            primaryAttack: { hasCollor: false, collorHex: '#ffffff' },
-            secondaryAttack: { hasCollor: false, collorHex: '#ffffff' },
-            movement: { hasCollor: false, collorHex: '#ffffff' },
-            attack: { hasCollor: false, collorHex: '#ffffff' },
-            defense: { hasCollor: false, collorHex: '#ffffff' }
+            primaryAttack: { hasCollor: false, collorHex: '#ffffff', singleUse: false },
+            secondaryAttack: { hasCollor: false, collorHex: '#ffffff', singleUse: false },
+            movement: { hasCollor: false, collorHex: '#ffffff', singleUse: false },
+            attack: { hasCollor: false, collorHex: '#ffffff', singleUse: false },
+            defense: { hasCollor: false, collorHex: '#ffffff', singleUse: false }
           };
         }
         
         return {
-          primaryAttack: getPrimaryDamageColor(currentStep),
-          secondaryAttack: getSecondaryDamageColor(currentStep),
-          movement: getMovementColor(currentStep),
-          attack: getAttackColor(currentStep),
-          defense: getDefenseColor(currentStep)
+          primaryAttack: { hasCollor: true, collorHex: getPrimaryDamageColor(currentStep).color, singleUse: false },
+          secondaryAttack: { hasCollor: true, collorHex: getSecondaryDamageColor(currentStep).color, singleUse: false },
+          movement: { hasCollor: true, collorHex: getMovementColor(currentStep).color, singleUse: false },
+          attack: { hasCollor: true, collorHex: getAttackColor(currentStep).color, singleUse: false },
+          defense: { hasCollor: true, collorHex: getDefenseColor(currentStep).color, singleUse: false }
         };
       }
       return {
-        primaryAttack: { hasCollor: false, collorHex: '#ffffff' },
-        secondaryAttack: { hasCollor: false, collorHex: '#ffffff' },
-        movement: { hasCollor: false, collorHex: '#ffffff' },
-        attack: { hasCollor: false, collorHex: '#ffffff' },
-        defense: { hasCollor: false, collorHex: '#ffffff' }
+        primaryAttack: { hasCollor: false, collorHex: '#ffffff', singleUse: false },
+        secondaryAttack: { hasCollor: false, collorHex: '#ffffff', singleUse: false },
+        movement: { hasCollor: false, collorHex: '#ffffff', singleUse: false },
+        attack: { hasCollor: false, collorHex: '#ffffff', singleUse: false },
+        defense: { hasCollor: false, collorHex: '#ffffff', singleUse: false }
       };
     })();
     
@@ -657,7 +651,7 @@ export function AppDial(dialParams: DialParams) {
   const uniqueSymbol = selectedUnit?.isUnique ? " " + UNIQUE_STAR_CHARACTER : ""
   // Only add rank spacing if rank exists, otherwise use minimal spacing
   const RANK_SPACING = selectedUnit?.rank !== "Green" ? "     " : ""
-  const fullFrontArcText = (selectedUnit?.points?.toString() || '0') + "  " + RANK_SPACING + uniqueSymbol + " " + (selectedUnit?.name || 'Unknown')
+  const fullFrontArcText = (selectedUnit?.points?.toString() || '0') + "    " + RANK_SPACING + uniqueSymbol + "  " + (selectedUnit?.name || 'Unknown')
   const nameRotationAdjust = (((fullFrontArcText.length) * ANGLE_PER_CHARACTER) / 2) * -1
   const nameRotation = (90 + (nameRotationAdjust / 2)) * -1
   const patentRotationAdjust = Number(selectedUnit?.points || 0) < 100 ? (((-90 - nameRotation) * -1) - 8) : (((-90 - nameRotation) * -1) - 11)
@@ -1030,7 +1024,7 @@ export function AppDial(dialParams: DialParams) {
             height={22}
             visible={heatClick.primaryDamage.collor.hasColor}
             fill={heatClick.primaryDamage.collor.hexValue}
-            cornerRadius={click.colors?.primaryAttack?.singleUse === true ? [14, 14, 14, 14] : [0, 0, 0, 0]}
+            cornerRadius={[0, 0, 0, 0]}
           />
           <Text
             x={250}
@@ -1058,7 +1052,7 @@ export function AppDial(dialParams: DialParams) {
           height={22}
           visible={transitionColors.primaryAttack.hasCollor}
           fill={transitionColors.primaryAttack.collorHex}
-          cornerRadius={click.colors?.primaryAttack?.singleUse === true ? [14, 14, 14, 14] : [0, 0, 0, 0]}
+          cornerRadius={[0, 0, 0, 0]}
           onClick={() => {}}
           style={{ cursor: 'pointer' }}
           opacity={1}
@@ -1071,9 +1065,9 @@ export function AppDial(dialParams: DialParams) {
             y={120}
             width={23}
             height={22}
-            fill={click.colors?.secondaryAttack?.collorHex}
-            cornerRadius={click.colors?.secondaryAttack?.singleUse === true ? [14, 14, 14, 14] : [0, 0, 0, 0]}
-            visible={click.colors?.secondaryAttack?.hasCollor}
+            fill={transitionColors.secondaryAttack.collorHex}
+            cornerRadius={[0, 0, 0, 0]}
+            visible={transitionColors.secondaryAttack.hasCollor}
             onClick={() => {}}
             style={{ cursor: 'pointer' }}
           />
@@ -1084,9 +1078,9 @@ export function AppDial(dialParams: DialParams) {
           y={96}
           width={23}
           height={22}
-          visible={click.colors?.movement?.hasCollor}
-          fill={click.colors?.movement?.collorHex}
-          cornerRadius={click.colors?.movement?.singleUse === true ? [14, 14, 14, 14] : [0, 0, 0, 0]}
+          visible={transitionColors.movement.hasCollor}
+          fill={transitionColors.movement.collorHex}
+          cornerRadius={[0, 0, 0, 0]}
           onClick={() => {}}
           style={{ cursor: 'pointer' }}
         />
@@ -1096,9 +1090,9 @@ export function AppDial(dialParams: DialParams) {
           y={72}
           width={23}
           height={22}
-          visible={click.colors?.attack?.hasCollor}
-          fill={click.colors?.attack?.collorHex}
-          cornerRadius={click.colors?.attack?.singleUse === true ? [14, 14, 14, 14] : [0, 0, 0, 0]}
+          visible={transitionColors.attack.hasCollor}
+          fill={transitionColors.attack.collorHex}
+          cornerRadius={[0, 0, 0, 0]}
           onClick={() => {}}
           style={{ cursor: 'pointer' }}
         />
@@ -1109,9 +1103,9 @@ export function AppDial(dialParams: DialParams) {
           width={23}
           height={22}
           rotation={-12}
-          visible={click.colors?.defense?.hasCollor}
-          fill={click.colors?.defense?.collorHex}
-          cornerRadius={click.colors?.defense?.singleUse === true ? [14, 14, 14, 14] : [0, 0, 0, 0]}
+          visible={transitionColors.defense.hasCollor}
+          fill={transitionColors.defense.collorHex}
+          cornerRadius={[0, 0, 0, 0]}
           onClick={() => {}}
           style={{ cursor: 'pointer' }}
         />

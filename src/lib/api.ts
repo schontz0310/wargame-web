@@ -13,15 +13,22 @@ export interface AttackStat {
 export interface CombatDialStep {
   unitId: string;
   step: number;
-  marker: string;
+  marker: "none" | "black" | "green";
   primaryValue: number;
   secondaryValue: number;
   movementValue: number;
   defenseValue: number;
   attackValue: number;
   primaryEquipType: string;
+  primaryEquipColorMeaningId?: string;
+  secondaryEquipType?: string;
+  secondaryEquipColorMeaningId?: string;
   movementEquipType: string;
+  movementEquipColorMeaningId?: string;
   defenseEquipType: string;
+  defenseEquipColorMeaningId?: string;
+  attackEquipType?: string;
+  attackEquipColorMeaningId?: string;
 }
 
 export interface Unit {

@@ -1,96 +1,19 @@
 'use client'
 
 import { AppDial } from '@/components/app-dial';
-import { Unit, apiService } from '@/lib/api';
-import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useSelectedUnit } from '@/hooks/useSelectedUnit';
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-
-
-
 
 function ListContent() {
   const searchParams = useSearchParams();
   const unitId = searchParams.get('unitId');
-  const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   
-  // State for dial rotation and damage tracking
-  const [dialRotation, setDialRotation] = useState(0);
-  const [damageClicks, setDamageClicks] = useState(0);
-
-  useEffect(() => {
-    if (unitId) {
-      fetchUnitDetails(unitId);
-    }
-  }, [unitId]);
-
-  // Function to handle damage (clockwise rotation)
-  const handleDamage = useCallback(() => {
-    if (damageClicks < 17) { // Prevent exceeding maximum damage (17 clicks - unit starts at position 1)
-      const newDamageClicks = damageClicks + 1;
-      const newRotation = dialRotation + 20; // 20 degrees per click (360/18 positions - max mech health)
-      
-      setDamageClicks(newDamageClicks);
-      setDialRotation(newRotation);
-    }
-  }, [damageClicks, dialRotation]);
-
-  // Function to handle repair (counter-clockwise rotation)
-  const handleRepair = useCallback(() => {
-    if (damageClicks > 0) { // Prevent going below 0 damage
-      const newDamageClicks = damageClicks - 1;
-      const newRotation = dialRotation - 20; // -20 degrees per repair
-      
-      setDamageClicks(newDamageClicks);
-      setDialRotation(newRotation);
-    }
-  }, [damageClicks, dialRotation]);
-
-  const fetchUnitDetails = async (id: string) => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Use apiService to fetch unit details directly from API
-      const foundUnit = await apiService.getUnit(id);
-      if (foundUnit) {
-        setSelectedUnit(foundUnit);
-      } else {
-        throw new Error('Unit not found');
-      }
-    } catch (err) {
-      console.error('Failed to fetch unit details:', err);
-      // Use mock data as fallback
-      const mockUnit: Unit = {
-        id: id,
-        name: "Vulture Mk IV 'Le Yuan [Paradise]'",
-        type: "mech",
-        speedMode: "Walk",
-        class: "Heavy",
-        points: 211,
-        health: 18,
-        faction: "House Steiner",
-        frontArc: "270",
-        rearArc: "90",
-        maxSpeed: 8,
-        ventCapacity: 2,
-        maxAttack: 10,
-        maxDefense: 17,
-        maxDamage: 3,
-        variant: "VTR-V1-H",
-        isUnique: true,
-        rank: "Elite",
-        expansion: "AOD",
-        imageUrl: "",
-        collectionNumber: 1
-      };
-      setSelectedUnit(mockUnit);
-      setError(null); // Clear error since we're showing mock data
-    } finally {
-      setLoading(false);
-    }
-  };
+  const {
+    selectedUnit,
+    loading,
+    error
+  } = useSelectedUnit(unitId);
 
   if (loading) {
     return (
@@ -120,7 +43,7 @@ function ListContent() {
   return (
     <div className="h-screen flex overflow-hidden p-8 gap-8">
       {/* Left Column - Unit Card (40%) */}
-      <div className="w-[40%] bg-white shadow-lg p-4 space-y-3 overflow-y-auto max-h-screen">
+      <div className="w-[55%] bg-white shadow-lg p-4 space-y-3 overflow-y-auto max-h-screen">
           {/* Unit Header */}
           <div className="border-b pb-4">
             <div className="flex gap-3 h-44">
@@ -262,103 +185,20 @@ function ListContent() {
       </div>
 
       {/* Right Column - Dial and Controls */}
-      <div className="flex-1 flex flex-col gap-4 h-full">
-        {/* Action Buttons - Only for Mech units */}
-        {selectedUnit.type.toLowerCase() === 'mech' && 
-         selectedUnit.speedMode.toLowerCase() === 'mech' && 
-         selectedUnit.class.toLowerCase() !== 'colossal' && (
-          <div className="flex justify-center gap-3 flex-shrink-0">
-            <button
-              onClick={handleDamage}
-              disabled={damageClicks >= 17}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium"
-            >
-              Aplicar Dano (+20°)
-            </button>
-            <button
-              onClick={handleRepair}
-              disabled={damageClicks === 0}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium"
-            >
-              Reparar (-20°)
-            </button>
-            <div className="px-4 py-2 bg-gray-200 rounded-lg text-sm font-medium text-center">
-              Posição: {damageClicks + 1}/18
-            </div>
-          </div>
-        )}
+      
 
         {/* AppDial Component ou Fallback */}
-        <div className="flex-1 flex items-center justify-center min-h-0 w-full">
+        <div className="flex-1 flex-col items-center justify-center min-h-0 w-full">
           {selectedUnit.type.toLowerCase() === 'mech' && 
            selectedUnit.speedMode.toLowerCase() === 'mech' && 
            selectedUnit.class.toLowerCase() !== 'colossal' ? (
             <AppDial
+              unitId={unitId || ''}
               dialSide="stats"
-              frontArc={parseInt(selectedUnit.frontArc)}
-              rearArc={parseInt(selectedUnit.rearArc)}
-              name={selectedUnit.name}
-              unique={selectedUnit.isUnique}
-              points={selectedUnit.points.toString()}
-              variant={selectedUnit.variant}
-              rank={selectedUnit.rank}
-              faction={selectedUnit.faction}
-              expansion={selectedUnit.expansion}
-              collectionNumber={selectedUnit.collectionNumber}
-              ventRating={selectedUnit.ventCapacity}
-              dialRotation={dialRotation}
-              damageTypes={{
-                primaryDamage: {
-                  type: 'ballistic',
-                  targets: 1,
-                  range: { minimum: 0, maximum: 14 }
-                },
-                secondaryDamage: {
-                  type: 'energetic',
-                  targets: 1,
-                  range: { minimum: 0, maximum: 12 }
-                }
-              }}
-              click={{
-                marker: { hasMarker: false },
-                values: {
-                  primaryAttack: 10,
-                  secondaryAttack: 8,
-                  movement: 12,
-                  attack: 11,
-                  defense: 18
-                },
-                colors: {
-                  primaryAttack: { hasCollor: false, collorHex: "#000000", singleUse: false },
-                  secondaryAttack: { hasCollor: false, collorHex: "#000000", singleUse: false },
-                  movement: { hasCollor: false, collorHex: "#000000", singleUse: false },
-                  attack: { hasCollor: false, collorHex: "#000000", singleUse: false },
-                  defense: { hasCollor: false, collorHex: "#000000", singleUse: false }
-                }
-              }}
-              heatClick={{
-                primaryDamage: {
-                  value: 0,
-                  collor: { hasColor: false, hexValue: "#000000" }
-                },
-                secondaryDamage: {
-                  value: 0,
-                  collor: { hasColor: false, hexValue: "#000000" }
-                },
-                movement: {
-                  value: 0,
-                  collor: { hasColor: false, hexValue: "#000000" }
-                }
-              }}
             />
           ) : (
-            <div className="bg-white rounded-lg shadow-lg p-8 max-w-md text-center">
-              <div className="mb-6">
-                <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
-                  </svg>
-                </div>
+            <div className="flex flex-col items-center justify-center p-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+              <div className="text-center max-w-md">
                 <h3 className="text-xl font-bold text-gray-800 mb-2">Dial em Desenvolvimento</h3>
                 <p className="text-gray-600 mb-4">
                   O dial interativo para unidades do tipo <span className="font-semibold text-blue-600">{selectedUnit.type}</span>, 
@@ -375,7 +215,7 @@ function ListContent() {
             </div>
           )}
         </div>
-      </div>
+      
     </div>
   )
 }

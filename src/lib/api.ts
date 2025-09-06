@@ -49,7 +49,7 @@ export interface Unit {
   maxDamage: number;
   variant: string;
   isUnique: boolean;
-  rank: "Elite" | "Green" | "Veteran";
+  rank: "Elite" | "Green" | "Veteran" | "NA";
   expansion: string;
   imageUrl: string;
   collectionNumber: number;

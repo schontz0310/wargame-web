@@ -1,16 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useUnits } from '@/hooks/useUnits'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
-
-
-export default function SearchPage() {
+function SearchPageContent() {
   const { units, loading, error } = useUnits();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   
   // Debug logging
   console.log('SearchPage - units:', units.length, 'loading:', loading, 'error:', error);
+  
+  // Initialize state from URL params or localStorage
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('');
   const [selectedExpansion, setSelectedExpansion] = useState('');
@@ -21,7 +23,81 @@ export default function SearchPage() {
   const [pointsRange, setPointsRange] = useState({ min: '', max: '' });
   const [sortBy, setSortBy] = useState('name');
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const router = useRouter();
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Load state from URL params and localStorage on mount
+  useEffect(() => {
+    const loadStateFromStorage = () => {
+      try {
+        const saved = localStorage.getItem('searchPageState');
+        return saved ? JSON.parse(saved) : {};
+      } catch {
+        return {};
+      }
+    };
+
+    const savedState = loadStateFromStorage();
+    
+    // Priority: URL params > localStorage > defaults
+    setSearchTerm(searchParams.get('q') || savedState.searchTerm || '');
+    setSelectedType(searchParams.get('type') || savedState.selectedType || '');
+    setSelectedExpansion(searchParams.get('expansion') || savedState.selectedExpansion || '');
+    setSelectedFaction(searchParams.get('faction') || savedState.selectedFaction || '');
+    setSelectedRank(searchParams.get('rank') || savedState.selectedRank || '');
+    setSelectedClass(searchParams.get('class') || savedState.selectedClass || '');
+    setShowUniqueOnly(searchParams.get('unique') === 'true' || savedState.showUniqueOnly || false);
+    setPointsRange({
+      min: searchParams.get('minPoints') || savedState.pointsRange?.min || '',
+      max: searchParams.get('maxPoints') || savedState.pointsRange?.max || ''
+    });
+    setSortBy(searchParams.get('sort') || savedState.sortBy || 'name');
+    setSidebarOpen(savedState.sidebarOpen !== false); // Default to true
+    
+    setIsInitialized(true);
+  }, [searchParams]);
+
+  // Update URL and localStorage when state changes
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    const params = new URLSearchParams();
+    
+    if (searchTerm) params.set('q', searchTerm);
+    if (selectedType) params.set('type', selectedType);
+    if (selectedExpansion) params.set('expansion', selectedExpansion);
+    if (selectedFaction) params.set('faction', selectedFaction);
+    if (selectedRank) params.set('rank', selectedRank);
+    if (selectedClass) params.set('class', selectedClass);
+    if (showUniqueOnly) params.set('unique', 'true');
+    if (pointsRange.min) params.set('minPoints', pointsRange.min);
+    if (pointsRange.max) params.set('maxPoints', pointsRange.max);
+    if (sortBy !== 'name') params.set('sort', sortBy);
+
+    const newUrl = params.toString() ? `/search?${params.toString()}` : '/search';
+    
+    // Update URL without causing navigation
+    window.history.replaceState({}, '', newUrl);
+    
+    // Save to localStorage
+    const stateToSave = {
+      searchTerm,
+      selectedType,
+      selectedExpansion,
+      selectedFaction,
+      selectedRank,
+      selectedClass,
+      showUniqueOnly,
+      pointsRange,
+      sortBy,
+      sidebarOpen
+    };
+    
+    try {
+      localStorage.setItem('searchPageState', JSON.stringify(stateToSave));
+    } catch (error) {
+      console.warn('Failed to save search state to localStorage:', error);
+    }
+  }, [searchTerm, selectedType, selectedExpansion, selectedFaction, selectedRank, selectedClass, showUniqueOnly, pointsRange, sortBy, sidebarOpen, isInitialized]);
 
   const handleUnitClick = (unitId: string) => {
     router.push(`/list?unitId=${unitId}`);
@@ -579,5 +655,17 @@ export default function SearchPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-lg">Carregando página de busca...</div>
+      </div>
+    }>
+      <SearchPageContent />
+    </Suspense>
   );
 }

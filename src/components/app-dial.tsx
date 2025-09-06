@@ -8,7 +8,7 @@ import green from '@/images/patent-one.png'
 import vent from '@/images/vent.png';
 import ballisticIcon from '@/images/ballisticDamage.png'
 import energeticIcon from '@/images/energeticDamage.png'
-import meleeIcon from '@/images/bullet.png'
+import meleeIcon from '@/images/meleeDamage.png'
 import mechSpeedIcon from '@/images/bullet.png'
 import bullet from '@/images/bullet.png'
 import { CombatDialStep } from '@/lib/api';
@@ -17,7 +17,7 @@ import { useSelectedUnit } from '@/hooks/useSelectedUnit'
 import { useState, useEffect, useCallback } from 'react'
 
 const ANGLE_PER_CHARACTER = 4.5;
-const UNIQUE_STAR_CHARACTER = "★";
+const UNIQUE_STAR_CHARACTER = "★ ";
 
 // Dial dimensions
 const DIAL_WIDTH = 500;
@@ -522,7 +522,7 @@ export function AppDial(dialParams: DialParams) {
   };
   
   const dialSlices = Array.from({ length: 12 }, (_, index) => index + 1);
-  const primaryDamageTargets = damageTypes.primaryDamage ? Array.from({ length: damageTypes.primaryDamage.targets }, (_, index) => index + 1) : [];
+  const primaryDamageTargets = damageTypes.primaryDamage ? Array.from({ length: Math.max(damageTypes.primaryDamage.targets, 1) }, (_, index) => index + 1) : [];
   const secondaryDamageTargets = damageTypes.secondaryDamage ? Array.from({ length: damageTypes.secondaryDamage.targets }, (_, index) => index + 1) : [];
   
   const dialValues = calculateDialValues(damageClicks);
@@ -647,11 +647,14 @@ export function AppDial(dialParams: DialParams) {
     );
   }
   
-  // Build text sequence: points + unique + name (rank shown as image)
-  const uniqueSymbol = selectedUnit?.isUnique ? " " + UNIQUE_STAR_CHARACTER : ""
-  // Only add rank spacing if rank exists, otherwise use minimal spacing
-  const RANK_SPACING = selectedUnit?.rank !== "Green" ? "     " : ""
-  const fullFrontArcText = (selectedUnit?.points?.toString() || '0') + "    " + RANK_SPACING + uniqueSymbol + "  " + (selectedUnit?.name || 'Unknown')
+  // Build text sequence: points + RANK_SPACE (if rank) + UNIQUE (if unique) + name
+  const uniqueSymbol = selectedUnit?.isUnique ? UNIQUE_STAR_CHARACTER : ""
+  // Only add rank spacing if rank exists and unit has patent/rank (exclude only Gunslinger and Mercenary factions)
+  const hasRank = selectedUnit?.rank && selectedUnit?.faction !== "Gunslinger" && selectedUnit?.faction !== "Mercenary"
+
+  // Rank space always comes right after points when there's a rank - the rank icon will be printed in this space
+  const RANK_SPACING = hasRank ? "     " : ""
+  const fullFrontArcText = (selectedUnit?.points?.toString() || '0') + " " + RANK_SPACING + uniqueSymbol + (selectedUnit?.name || 'Unknown')
   const nameRotationAdjust = (((fullFrontArcText.length) * ANGLE_PER_CHARACTER) / 2) * -1
   const nameRotation = (90 + (nameRotationAdjust / 2)) * -1
   const patentRotationAdjust = Number(selectedUnit?.points || 0) < 100 ? (((-90 - nameRotation) * -1) - 8) : (((-90 - nameRotation) * -1) - 11)
@@ -1215,7 +1218,7 @@ export function AppDial(dialParams: DialParams) {
             offsetY={-84}
           />  
         ))}
-        {damageTypes.primaryDamage && (
+        {damageTypes.primaryDamage && (damageTypes.primaryDamage.range.minimum > 0 || damageTypes.primaryDamage.range.maximum > 0 || damageTypes.primaryDamage.type === 'melee') && (
           <Text
             x={DIAL_CENTER_X}
             y={DIAL_CENTER_Y}
@@ -1224,7 +1227,10 @@ export function AppDial(dialParams: DialParams) {
             fontStyle='bold'
             fill="#FFFFFF"
             rotation={180}
-            offsetX={  -18 + (primaryDamageTargets.length * -8)}
+            offsetX={damageTypes.primaryDamage.type === 'melee' 
+              ? MELEE_PADDING + (primaryDamageTargets.length * MELEE_OFFSET) - 3
+              : -18 + (primaryDamageTargets.length * -8)
+            }
             offsetY={-86}
           />
         )}

@@ -650,7 +650,7 @@ export function AppDial(dialParams: DialParams) {
   // Build text sequence: points + RANK_SPACE (if rank) + UNIQUE (if unique) + name
   const uniqueSymbol = selectedUnit?.isUnique ? UNIQUE_STAR_CHARACTER : ""
   // Only add rank spacing if rank exists and unit has patent/rank (exclude only Gunslinger and Mercenary factions)
-  const hasRank = selectedUnit?.rank && selectedUnit?.faction !== "Gunslinger" && selectedUnit?.faction !== "Mercenary"
+  const hasRank = selectedUnit?.rank && selectedUnit?.rank !== "NA" && selectedUnit?.faction !== "Gunslinger" && selectedUnit?.faction !== "Mercenary"
 
   // Rank space always comes right after points when there's a rank - the rank icon will be printed in this space
   const RANK_SPACING = hasRank ? "     " : ""

@@ -265,6 +265,15 @@ export function AppDial(dialParams: DialParams) {
     defense: { hasCollor: false, collorHex: '#ffffff', singleUse: false }
   });
 
+  // Fade animation states
+  const [fadeState, setFadeState] = useState({
+    primaryAttack: { opacity: 1, isTransitioning: false },
+    secondaryAttack: { opacity: 1, isTransitioning: false },
+    movement: { opacity: 1, isTransitioning: false },
+    attack: { opacity: 1, isTransitioning: false },
+    defense: { opacity: 1, isTransitioning: false }
+  });
+
   // Calculate dial values based on damage clicks using combat dial data
   const calculateDialValues = useCallback((damageClicks: number) => {
     // Only use combat dial if it exists, no fallbacks
@@ -337,14 +346,13 @@ export function AppDial(dialParams: DialParams) {
       return;
     }
     
-    // Set values immediately without animation
-    setTransitionValues({
+    const newValues = {
       primaryAttack: dialValues.primaryAttack,
       secondaryAttack: dialValues.secondaryAttack,
       movement: dialValues.movement,
       attack: dialValues.attack,
       defense: dialValues.defense
-    });
+    };
     
     const currentColors = (() => {
       if (selectedUnit?.combatDial && selectedUnit.combatDial.length > 0) {
@@ -391,8 +399,25 @@ export function AppDial(dialParams: DialParams) {
       };
     })();
     
-    // Set colors immediately
-    setTransitionColors(currentColors);
+    // Always trigger fade animation for consistency
+    // Start fade out animation
+    setFadeState(prev => Object.keys(prev).reduce((acc, key) => ({
+      ...acc,
+      [key]: { opacity: 0, isTransitioning: true }
+    }), {} as typeof prev));
+    
+    // After fade out, update values and colors, then fade in
+    setTimeout(() => {
+      setTransitionValues(newValues);
+      setTransitionColors(currentColors);
+      
+      setTimeout(() => {
+        setFadeState(prev => Object.keys(prev).reduce((acc, key) => ({
+          ...acc,
+          [key]: { opacity: 1, isTransitioning: false }
+        }), {} as typeof prev));
+      }, 50);
+    }, 150);
   }, [damageClicks, selectedUnit, calculateDialValues, error, getAttackColor, getDefenseColor, getMovementColor, getPrimaryDamageColor, getSecondaryDamageColor, loading]);
 
   if (loading) return <div>Carregando...</div>;
@@ -556,33 +581,45 @@ export function AppDial(dialParams: DialParams) {
             </span>
           </div>
           
-          {/* Right arrow button - Apply Damage */}
-          <button
-            onClick={handleDamage}
-            disabled={damageClicks >= 17}
-            className="absolute right-[-80px] top-1/2 transform -translate-y-1/2 group px-4 py-4 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-full hover:from-red-700 hover:to-red-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-110 disabled:transform-none disabled:shadow-md z-10"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
-            </svg>
-            <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs font-semibold text-red-600 whitespace-nowrap">
-              DANO
-            </span>
-          </button>
-          
+        </div>
+        
+        {/* Centralized interaction buttons */}
+        <div className="flex justify-center items-center gap-6 mt-6">
           {/* Left arrow button - Repair */}
           <button
             onClick={handleRepair}
             disabled={damageClicks <= 0}
-            className="absolute left-[-80px] top-1/2 transform -translate-y-1/2 group px-4 py-4 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-full hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-110 disabled:transform-none disabled:shadow-md z-10"
+            className="group bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-110 disabled:transform-none disabled:shadow-md z-10"
+            style={{
+              clipPath: 'polygon(25% 0%, 100% 0%, 75% 50%, 100% 100%, 25% 100%, 0% 50%)',
+              width: '60px',
+              height: '40px'
+            }}
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
-            </svg>
-            <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs font-semibold text-green-600 whitespace-nowrap">
-              REPARO
-            </span>
           </button>
+          
+          {/* Right arrow button - Apply Damage */}
+          <button
+            onClick={handleDamage}
+            disabled={damageClicks >= 17}
+            className="group bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-700 hover:to-red-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-110 disabled:transform-none disabled:shadow-md z-10"
+            style={{
+              clipPath: 'polygon(0% 0%, 75% 0%, 100% 50%, 75% 100%, 0% 100%, 25% 50%)',
+              width: '60px',
+              height: '40px'
+            }}
+          >
+          </button>
+        </div>
+        
+        {/* Button labels */}
+        <div className="flex justify-center items-center gap-6 mt-2">
+          <span className="text-xs font-semibold text-green-600 whitespace-nowrap">
+            REPARO
+          </span>
+          <span className="text-xs font-semibold text-red-600 whitespace-nowrap">
+            DANO
+          </span>
         </div>
 
         {/* Death Click Dial */}
@@ -692,33 +729,45 @@ export function AppDial(dialParams: DialParams) {
         </span>
       </div>
       
-      {/* Right arrow button - Apply Damage */}
-      <button
-        onClick={handleDamage}
-        disabled={damageClicks >= 17}
-        className="absolute right-[-80px] top-1/2 transform -translate-y-1/2 group px-4 py-4 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-full hover:from-red-700 hover:to-red-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-110 disabled:transform-none disabled:shadow-md z-10"
-      >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
-        </svg>
-        <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs font-semibold text-red-600 whitespace-nowrap">
-          DANO
-        </span>
-      </button>
-      
+    </div>
+    
+    {/* Centralized interaction buttons */}
+    <div className="flex justify-center items-center gap-6 mt-6">
       {/* Left arrow button - Repair */}
       <button
         onClick={handleRepair}
         disabled={damageClicks <= 0}
-        className="absolute left-[-80px] top-1/2 transform -translate-y-1/2 group px-4 py-4 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-full hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-110 disabled:transform-none disabled:shadow-md z-10"
+        className="group bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-110 disabled:transform-none disabled:shadow-md z-10"
+        style={{
+          clipPath: 'polygon(25% 0%, 100% 0%, 75% 50%, 100% 100%, 25% 100%, 0% 50%)',
+          width: '60px',
+          height: '40px'
+        }}
       >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
-        </svg>
-        <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs font-semibold text-green-600 whitespace-nowrap">
-          REPARO
-        </span>
       </button>
+      
+      {/* Right arrow button - Apply Damage */}
+      <button
+        onClick={handleDamage}
+        disabled={damageClicks >= 17}
+        className="group bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-700 hover:to-red-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-110 disabled:transform-none disabled:shadow-md z-10"
+        style={{
+          clipPath: 'polygon(0% 0%, 75% 0%, 100% 50%, 75% 100%, 0% 100%, 25% 50%)',
+          width: '60px',
+          height: '40px'
+        }}
+      >
+      </button>
+    </div>
+    
+    {/* Button labels */}
+    <div className="flex justify-center items-center gap-6 mt-2">
+      <span className="text-xs font-semibold text-green-600 whitespace-nowrap">
+        REPARO
+      </span>
+      <span className="text-xs font-semibold text-red-600 whitespace-nowrap">
+        DANO
+      </span>
     </div>
     
     <Stage width={500} height={500} rotation={dialSide === 'name' ? 0 : 180} x={dialSide === 'name' ? 0 : DIAL_WIDTH} y={dialSide === 'name' ? 0 : DIAL_HEIGHT}>
@@ -1093,8 +1142,7 @@ export function AppDial(dialParams: DialParams) {
           fill={transitionColors.primaryAttack.collorHex}
           cornerRadius={[0, 0, 0, 0]}
           onClick={() => {}}
-          style={{ cursor: 'pointer' }}
-          opacity={1}
+          opacity={fadeState.primaryAttack.opacity}
           listening={false}
         />
         {/* Secondary Attack stats */}
@@ -1109,6 +1157,7 @@ export function AppDial(dialParams: DialParams) {
             visible={transitionColors.secondaryAttack.hasCollor}
             onClick={() => {}}
             style={{ cursor: 'pointer' }}
+            opacity={fadeState.secondaryAttack.opacity}
           />
         )}
         {/* Movement stats */}
@@ -1122,6 +1171,7 @@ export function AppDial(dialParams: DialParams) {
           cornerRadius={[0, 0, 0, 0]}
           onClick={() => {}}
           style={{ cursor: 'pointer' }}
+          opacity={fadeState.movement.opacity}
         />
         {/* Attack stats */}
         <Rect
@@ -1134,6 +1184,7 @@ export function AppDial(dialParams: DialParams) {
           cornerRadius={[0, 0, 0, 0]}
           onClick={() => {}}
           style={{ cursor: 'pointer' }}
+          opacity={fadeState.attack.opacity}
         />
         {/* Defense stats */}
         <Rect
@@ -1147,6 +1198,7 @@ export function AppDial(dialParams: DialParams) {
           cornerRadius={[0, 0, 0, 0]}
           onClick={() => {}}
           style={{ cursor: 'pointer' }}
+          opacity={fadeState.defense.opacity}
         />
       </Layer>
       {/* Rotating stats numbers layer */}
@@ -1160,7 +1212,8 @@ export function AppDial(dialParams: DialParams) {
           fill={transitionColors.primaryAttack.hasCollor && transitionColors.primaryAttack.collorHex === "#000000" ? "#FFFFFF" : "#000000"}
           rotation={180}
           offsetY={-88}
-          offsetX={transitionValues.primaryAttack > 9 ? 11.5 : 6.5} 
+          offsetX={transitionValues.primaryAttack > 9 ? 11.5 : 6.5}
+          opacity={fadeState.primaryAttack.opacity}
         />
         {/* Secondary Attack stats */}
         {transitionValues.secondaryAttack !== undefined && transitionValues.secondaryAttack !== null && (
@@ -1173,7 +1226,8 @@ export function AppDial(dialParams: DialParams) {
             fill={transitionColors.secondaryAttack?.hasCollor && transitionColors.secondaryAttack?.collorHex === "#000000" ? "#FFFFFF" : "#000000"}
             rotation={180}
             offsetY={-113}
-            offsetX={transitionValues.secondaryAttack > 9 ? 11.5 : 6.5} 
+            offsetX={transitionValues.secondaryAttack > 9 ? 11.5 : 6.5}
+            opacity={fadeState.secondaryAttack.opacity}
           />
         )}
         {/* Movement stats */}
@@ -1186,7 +1240,8 @@ export function AppDial(dialParams: DialParams) {
           fill={transitionColors.movement.hasCollor && transitionColors.movement.collorHex === "#000000" ? "#FFFFFF" : "#000000"}
           rotation={180}
           offsetY={-136}
-          offsetX={transitionValues.movement > 9 ? 11.5 : 6.5} 
+          offsetX={transitionValues.movement > 9 ? 11.5 : 6.5}
+          opacity={fadeState.movement.opacity}
         />
         {/* Attack stats */}
         <Text
@@ -1198,7 +1253,8 @@ export function AppDial(dialParams: DialParams) {
           fill={transitionColors.attack.hasCollor && transitionColors.attack.collorHex === "#000000" ? "#FFFFFF" : "#000000"}
           rotation={180}
           offsetY={-160}
-          offsetX={transitionValues.attack > 9 ? 11.5 : 6.5} 
+          offsetX={transitionValues.attack > 9 ? 11.5 : 6.5}
+          opacity={fadeState.attack.opacity}
         />
         {/* Defense stats */}
         <Text
@@ -1210,7 +1266,8 @@ export function AppDial(dialParams: DialParams) {
           fill={transitionColors.defense.hasCollor && transitionColors.defense.collorHex === "#000000" ? "#FFFFFF" : "#000000"}
           rotation={170}
           offsetY={-160.5}
-          offsetX={transitionValues.defense > 9 ? 11.5 : 7} 
+          offsetX={transitionValues.defense > 9 ? 11.5 : 7}
+          opacity={fadeState.defense.opacity}
         />
         {/* Marker */}
         {click.marker?.hasMarker && (

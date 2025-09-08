@@ -544,27 +544,45 @@ export function AppDial(dialParams: DialParams) {
   if (dialValues.isDeathClick) {
     return (
       <>
-        {/* Damage Control Interface */}
-        <div className="flex flex justify-center items-center gap-3 flex-shrink-0 mb-4">
+        {/* Damage Control Interface - Curved arrows around dial */}
+        <div className="relative flex justify-center items-center mb-6">
+          {/* Position indicator - centered above dial */}
+          <div className="absolute -top-16 left-1/2 transform -translate-x-1/2 px-5 py-3 bg-gradient-to-r from-slate-100 to-slate-200 border border-slate-300 rounded-xl text-sm font-semibold text-slate-700 shadow-md z-10">
+            <span className="flex items-center gap-2">
+              <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Posição: {damageClicks + 1}/18
+            </span>
+          </div>
+          
+          {/* Right arrow button - Apply Damage */}
           <button
             onClick={handleDamage}
             disabled={damageClicks >= 17}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+            className="absolute right-[-80px] top-1/2 transform -translate-y-1/2 group px-4 py-4 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-full hover:from-red-700 hover:to-red-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-110 disabled:transform-none disabled:shadow-md z-10"
           >
-            Aplicar Dano
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
+            </svg>
+            <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs font-semibold text-red-600 whitespace-nowrap">
+              DANO
+            </span>
           </button>
           
+          {/* Left arrow button - Repair */}
           <button
             onClick={handleRepair}
             disabled={damageClicks <= 0}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+            className="absolute left-[-80px] top-1/2 transform -translate-y-1/2 group px-4 py-4 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-full hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-110 disabled:transform-none disabled:shadow-md z-10"
           >
-            Reparar
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
+            </svg>
+            <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs font-semibold text-green-600 whitespace-nowrap">
+              REPARO
+            </span>
           </button>
-          
-          <div className="px-4 py-2 bg-gray-200 rounded-lg text-sm font-medium text-center">
-            Posição: {damageClicks + 1}/18
-          </div>
         </div>
 
         {/* Death Click Dial */}
@@ -662,27 +680,45 @@ export function AppDial(dialParams: DialParams) {
 
   return (
     <>
-    {/* Damage Control Interface */}
-    <div className="flex flex justify-center items-center gap-3 flex-shrink-0 mb-4">
+    {/* Damage Control Interface - Curved arrows around dial */}
+    <div className="relative flex justify-center items-center mb-6">
+      {/* Position indicator - centered above dial */}
+      <div className="absolute -top-16 left-1/2 transform -translate-x-1/2 px-5 py-3 bg-gradient-to-r from-slate-100 to-slate-200 border border-slate-300 rounded-xl text-sm font-semibold text-slate-700 shadow-md z-10">
+        <span className="flex items-center gap-2">
+          <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Posição: {damageClicks + 1}/18
+        </span>
+      </div>
+      
+      {/* Right arrow button - Apply Damage */}
       <button
         onClick={handleDamage}
         disabled={damageClicks >= 17}
-        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+        className="absolute right-[-80px] top-1/2 transform -translate-y-1/2 group px-4 py-4 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-full hover:from-red-700 hover:to-red-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-110 disabled:transform-none disabled:shadow-md z-10"
       >
-        Aplicar Dano
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
+        </svg>
+        <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs font-semibold text-red-600 whitespace-nowrap">
+          DANO
+        </span>
       </button>
       
+      {/* Left arrow button - Repair */}
       <button
         onClick={handleRepair}
         disabled={damageClicks <= 0}
-        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+        className="absolute left-[-80px] top-1/2 transform -translate-y-1/2 group px-4 py-4 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-full hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-110 disabled:transform-none disabled:shadow-md z-10"
       >
-        Reparar
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
+        </svg>
+        <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs font-semibold text-green-600 whitespace-nowrap">
+          REPARO
+        </span>
       </button>
-      
-      <div className="px-4 py-2 bg-gray-200 rounded-lg text-sm font-medium text-center">
-        Posição: {damageClicks + 1}/18
-      </div>
     </div>
     
     <Stage width={500} height={500} rotation={dialSide === 'name' ? 0 : 180} x={dialSide === 'name' ? 0 : DIAL_WIDTH} y={dialSide === 'name' ? 0 : DIAL_HEIGHT}>

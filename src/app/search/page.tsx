@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useUnits } from '@/hooks/useUnits'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { Unit } from '@/lib/api'
 
 function SearchPageContent() {
   const { units, loading, error } = useUnits();
@@ -24,6 +25,7 @@ function SearchPageContent() {
   const [sortBy, setSortBy] = useState('name');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [loadingUnits, setLoadingUnits] = useState<Set<string>>(new Set());
 
   // Load state from URL params and localStorage on mount
   useEffect(() => {
@@ -103,6 +105,69 @@ function SearchPageContent() {
     router.push(`/list?unitId=${unitId}`);
   };
 
+  // Get unit counts in collections
+  const getUnitCounts = (unitId: string) => {
+    const haveCollection = JSON.parse(localStorage.getItem('myHaveCollection') || '[]');
+    const wantCollection = JSON.parse(localStorage.getItem('myWantCollection') || '[]');
+    
+    const haveUnit = haveCollection.find((u: { id: string }) => u.id === unitId);
+    const wantUnit = wantCollection.find((u: { id: string }) => u.id === unitId);
+    
+    const haveCount = haveUnit ? (haveUnit.quantity || 1) : 0;
+    const wantCount = wantUnit ? (wantUnit.quantity || 1) : 0;
+    
+    return { haveCount, wantCount };
+  };
+
+  // Add unit to collection
+  const addToCollection = async (unit: Unit, listType: 'have' | 'want') => {
+    const loadingKey = `${unit.id}-${listType}`;
+    
+    // Start loading
+    setLoadingUnits(prev => new Set([...prev, loadingKey]));
+    
+    // Simulate async operation
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    const storageKey = listType === 'have' ? 'myHaveCollection' : 'myWantCollection';
+    const existing = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    
+    // Check if unit already exists
+    const existingUnitIndex = existing.findIndex((u: { id: string }) => u.id === unit.id);
+    
+    let updated;
+    if (existingUnitIndex >= 0) {
+      // Unit exists, increment quantity
+      updated = [...existing];
+      updated[existingUnitIndex] = {
+        ...updated[existingUnitIndex],
+        quantity: (updated[existingUnitIndex].quantity || 1) + 1
+      };
+    } else {
+      // Unit doesn't exist, add new
+      const myUnit = {
+        id: unit.id,
+        name: unit.name,
+        points: unit.points,
+        faction: unit.faction,
+        type: unit.type,
+        quantity: 1,
+        expansion: unit.expansion,
+        collectionNumber: unit.collectionNumber
+      };
+      updated = [...existing, myUnit];
+    }
+
+    localStorage.setItem(storageKey, JSON.stringify(updated));
+    
+    // Stop loading
+    setLoadingUnits(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(loadingKey);
+      return newSet;
+    });
+  };
+
   // Use API units directly
   const displayUnits = units;
 
@@ -139,6 +204,28 @@ function SearchPageContent() {
         return a.type.localeCompare(b.type);
       case 'rank':
         return a.rank.localeCompare(b.rank);
+      case 'collectionNumber':
+        // Convert collection numbers to proper sorting format
+        const aNum = String(a.collectionNumber);
+        const bNum = String(b.collectionNumber);
+        
+        // Check if both are purely numeric
+        const aIsNumeric = /^\d+$/.test(aNum);
+        const bIsNumeric = /^\d+$/.test(bNum);
+        
+        if (aIsNumeric && bIsNumeric) {
+          // Both numeric - compare as numbers
+          return parseInt(aNum) - parseInt(bNum);
+        } else if (aIsNumeric && !bIsNumeric) {
+          // a is numeric, b is alphanumeric - a comes first
+          return -1;
+        } else if (!aIsNumeric && bIsNumeric) {
+          // a is alphanumeric, b is numeric - b comes first
+          return 1;
+        } else {
+          // Both alphanumeric - compare as strings
+          return aNum.localeCompare(bNum);
+        }
       default:
         return a.name.localeCompare(b.name);
     }
@@ -202,6 +289,7 @@ function SearchPageContent() {
               className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="name">Nome (A-Z)</option>
+              <option value="collectionNumber">Número (#)</option>
               <option value="points">Pontos (menor)</option>
               <option value="pointsDesc">Pontos (maior)</option>
               <option value="faction">Facção</option>
@@ -462,6 +550,13 @@ function SearchPageContent() {
                 </p>
               </div>
               <div className="flex items-center gap-4 text-blue-100">
+                <button
+                  onClick={() => router.push('/my-collection')}
+                  className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center gap-2 backdrop-blur-sm"
+                  title="Ver Minha Coleção"
+                >
+                  📋 Minha Coleção
+                </button>
                 <div className="flex items-center gap-2 text-sm">
                   <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
                   <span>Dados atualizados</span>
@@ -470,50 +565,53 @@ function SearchPageContent() {
             </div>
           </div>
 
-              <div className="bg-white">
+              <div className="bg-white max-h-[calc(100vh-300px)] overflow-y-auto">
                 <table className="w-full bg-white table-fixed divide-y divide-gray-200">
-                  <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-blue-200">
+                  <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-blue-200 sticky top-0 z-10">
                   <tr>
-                <th scope="col" className="px-1 py-2 text-left text-xs font-bold text-gray-700 uppercase tracking-wider w-24 border-r border-gray-200">
+                <th scope="col" className="px-1 py-2 text-left text-xs font-bold text-gray-700 uppercase tracking-wider w-24 border-r border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
                   <div className="flex items-center gap-1">
                     <span className="truncate text-xs">Nome</span>
                   </div>
                 </th>
-                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-8 border-r border-gray-200">
+                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-8 border-r border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
                   <span className="text-xs">Exp</span>
                 </th>
-                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-6 border-r border-gray-200">
+                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-6 border-r border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
                   <span className="text-xs">#</span>
                 </th>
-                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-8 border-r border-gray-200">
+                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-8 border-r border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
                   <span className="text-xs">Tipo</span>
                 </th>
-                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-8 border-r border-gray-200">
+                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-8 border-r border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
                   <span className="text-xs">Modo</span>
                 </th>
-                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-12 border-r border-gray-200">
+                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-12 border-r border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
                   <span className="text-xs">Classe</span>
                 </th>
-                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-8 border-r border-gray-200">
+                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-8 border-r border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
                   <span className="text-xs">Pts</span>
                 </th>
-                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-6 border-r border-gray-200">
+                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-6 border-r border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
                   <span className="text-xs">HP</span>
                 </th>
-                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-6 border-r border-gray-200">
+                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-6 border-r border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
                   <span className="text-xs">Vent</span>
                 </th>
-                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-16 border-r border-gray-200">
+                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-16 border-r border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
                   <span className="text-xs">Facção</span>
                 </th>
-                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-6 border-r border-gray-200">
+                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-6 border-r border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
                   <span className="text-xs">ATK</span>
                 </th>
-                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-6 border-r border-gray-200">
+                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-6 border-r border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
                   <span className="text-xs">SPD</span>
                 </th>
-                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-6 border-r border-gray-200">
+                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-6 border-r border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
                   <span className="text-xs">DEF</span>
+                </th>
+                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-16 border-r border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
+                  <span className="text-xs">Ações</span>
                 </th>
                   </tr>
                   </thead>
@@ -560,6 +658,50 @@ function SearchPageContent() {
                     </td>
                     <td className="px-1 py-2 text-xs text-gray-900 text-center">
                       {unit.maxDefense}
+                    </td>
+                    <td className="px-1 py-2 text-center">
+                      <div className="flex gap-1 justify-center">
+                        {(() => {
+                          const { haveCount, wantCount } = getUnitCounts(unit.id);
+                          const isHaveLoading = loadingUnits.has(`${unit.id}-have`);
+                          const isWantLoading = loadingUnits.has(`${unit.id}-want`);
+                          
+                          return (
+                            <>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  addToCollection(unit, 'have');
+                                }}
+                                disabled={isHaveLoading}
+                                className="bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1 rounded transition-all duration-200 disabled:opacity-50 min-w-[32px] flex items-center justify-center"
+                                title="Adicionar à lista Tenho"
+                              >
+                                {isHaveLoading ? (
+                                  <div className="animate-spin w-3 h-3 border border-white border-t-transparent rounded-full"></div>
+                                ) : (
+                                  `📦${haveCount}`
+                                )}
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  addToCollection(unit, 'want');
+                                }}
+                                disabled={isWantLoading}
+                                className="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded transition-all duration-200 disabled:opacity-50 min-w-[32px] flex items-center justify-center"
+                                title="Adicionar à lista Procuro"
+                              >
+                                {isWantLoading ? (
+                                  <div className="animate-spin w-3 h-3 border border-white border-t-transparent rounded-full"></div>
+                                ) : (
+                                  `🔍${wantCount}`
+                                )}
+                              </button>
+                            </>
+                          );
+                        })()}
+                      </div>
                     </td>
                   </tr>
                 ))}

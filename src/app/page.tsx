@@ -10,24 +10,24 @@ export default function Home() {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Card Lista de Unidades */}
-          <Link href="/list" className="group">
-            <div className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow duration-300 border-l-4 border-blue-500">
+          {/* Card Minha Coleção */}
+          <Link href="/my-collection" className="group">
+            <div className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow duration-300 border-l-4 border-purple-500">
               <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
-                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-4">
+                  <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-1.586-1.586A2 2 0 0017 5H7a2 2 0 00-1.414.586L4 7m16 0v11a2 2 0 01-2 2H6a2 2 0 01-2-2V7m16 0H4m4 0V4a1 1 0 011-1h6a1 1 0 011 1v3" />
                   </svg>
                 </div>
-                <h2 className="text-xl font-bold text-gray-800 group-hover:text-blue-600 transition-colors">
-                  Lista de Unidades
+                <h2 className="text-xl font-bold text-gray-800 group-hover:text-purple-600 transition-colors">
+                  Minha Coleção
                 </h2>
               </div>
               <p className="text-gray-600 mb-4">
-                Visualize todas as unidades disponíveis com informações detalhadas, estatísticas de combate e dials interativos.
+                Gerencie sua coleção pessoal de unidades. Adicione unidades existentes à sua coleção e organize sua biblioteca.
               </p>
-              <div className="flex items-center text-blue-600 font-medium">
-                <span>Acessar Lista</span>
+              <div className="flex items-center text-purple-600 font-medium">
+                <span>Gerenciar Coleção</span>
                 <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>

@@ -1,5 +1,5 @@
 // Wargame API Service - Direct API calls for static export
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.agilityinsolutions.com';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export interface AttackStat {
   unitId: string;
@@ -21,14 +21,19 @@ export interface CombatDialStep {
   attackValue: number;
   primaryEquipType: string;
   primaryEquipColorMeaningId?: string;
+  primaryEquipUsageType?: "standard" | "single-use" | "unknown";
   secondaryEquipType?: string;
   secondaryEquipColorMeaningId?: string;
+  secondaryEquipUsageType?: "standard" | "single-use" | "unknown";
   movementEquipType: string;
   movementEquipColorMeaningId?: string;
+  movementEquipUsageType?: "standard" | "single-use" | "unknown";
   defenseEquipType: string;
   defenseEquipColorMeaningId?: string;
+  defenseEquipUsageType?: "standard" | "single-use" | "unknown";
   attackEquipType?: string;
   attackEquipColorMeaningId?: string;
+  attackEquipUsageType?: "standard" | "single-use" | "unknown";
 }
 
 export interface Unit {

@@ -1140,7 +1140,14 @@ export function AppDial(dialParams: DialParams) {
           height={22}
           visible={transitionColors.primaryAttack.hasCollor}
           fill={transitionColors.primaryAttack.collorHex}
-          cornerRadius={[0, 0, 0, 0]}
+          cornerRadius={(() => {
+            if (selectedUnit?.combatDial && selectedUnit.combatDial.length > 0) {
+              const stepIndex = Math.min(damageClicks, selectedUnit.combatDial.length - 1);
+              const currentStep = selectedUnit.combatDial[stepIndex];
+              return currentStep?.primaryEquipUsageType === 'single-use' ? 11.5 : [0, 0, 0, 0];
+            }
+            return [0, 0, 0, 0];
+          })()}
           onClick={() => {}}
           opacity={fadeState.primaryAttack.opacity}
           listening={false}
@@ -1153,7 +1160,14 @@ export function AppDial(dialParams: DialParams) {
             width={23}
             height={22}
             fill={transitionColors.secondaryAttack.collorHex}
-            cornerRadius={[0, 0, 0, 0]}
+            cornerRadius={(() => {
+              if (selectedUnit?.combatDial && selectedUnit.combatDial.length > 0) {
+                const stepIndex = Math.min(damageClicks, selectedUnit.combatDial.length - 1);
+                const currentStep = selectedUnit.combatDial[stepIndex];
+                return currentStep?.secondaryEquipUsageType === 'single-use' ? 11.5 : [0, 0, 0, 0];
+              }
+              return [0, 0, 0, 0];
+            })()}
             visible={transitionColors.secondaryAttack.hasCollor}
             onClick={() => {}}
             style={{ cursor: 'pointer' }}
@@ -1168,7 +1182,14 @@ export function AppDial(dialParams: DialParams) {
           height={22}
           visible={transitionColors.movement.hasCollor}
           fill={transitionColors.movement.collorHex}
-          cornerRadius={[0, 0, 0, 0]}
+          cornerRadius={(() => {
+            if (selectedUnit?.combatDial && selectedUnit.combatDial.length > 0) {
+              const stepIndex = Math.min(damageClicks, selectedUnit.combatDial.length - 1);
+              const currentStep = selectedUnit.combatDial[stepIndex];
+              return currentStep?.movementEquipUsageType === 'single-use' ? 11.5 : [0, 0, 0, 0];
+            }
+            return [0, 0, 0, 0];
+          })()}
           onClick={() => {}}
           style={{ cursor: 'pointer' }}
           opacity={fadeState.movement.opacity}
@@ -1181,7 +1202,14 @@ export function AppDial(dialParams: DialParams) {
           height={22}
           visible={transitionColors.attack.hasCollor}
           fill={transitionColors.attack.collorHex}
-          cornerRadius={[0, 0, 0, 0]}
+          cornerRadius={(() => {
+            if (selectedUnit?.combatDial && selectedUnit.combatDial.length > 0) {
+              const stepIndex = Math.min(damageClicks, selectedUnit.combatDial.length - 1);
+              const currentStep = selectedUnit.combatDial[stepIndex];
+              return currentStep?.attackEquipUsageType === 'single-use' ? 11.5 : [0, 0, 0, 0];
+            }
+            return [0, 0, 0, 0];
+          })()}
           onClick={() => {}}
           style={{ cursor: 'pointer' }}
           opacity={fadeState.attack.opacity}
@@ -1195,7 +1223,14 @@ export function AppDial(dialParams: DialParams) {
           rotation={-12}
           visible={transitionColors.defense.hasCollor}
           fill={transitionColors.defense.collorHex}
-          cornerRadius={[0, 0, 0, 0]}
+          cornerRadius={(() => {
+            if (selectedUnit?.combatDial && selectedUnit.combatDial.length > 0) {
+              const stepIndex = Math.min(damageClicks, selectedUnit.combatDial.length - 1);
+              const currentStep = selectedUnit.combatDial[stepIndex];
+              return currentStep?.defenseEquipUsageType === 'single-use' ? 11.5 : [0, 0, 0, 0];
+            }
+            return [0, 0, 0, 0];
+          })()}
           onClick={() => {}}
           style={{ cursor: 'pointer' }}
           opacity={fadeState.defense.opacity}

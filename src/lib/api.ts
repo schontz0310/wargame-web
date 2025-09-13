@@ -36,6 +36,54 @@ export interface CombatDialStep {
   attackEquipUsageType?: "standard" | "single-use" | "unknown";
 }
 
+export interface DraftUnit {
+  id: string;
+  name: string;
+  points: number;
+  faction: string;
+  type: string;
+  quantity: number;
+  expansion?: string;
+  collectionNumber?: string;
+}
+
+export interface DraftBoosterConfig {
+  unitType: string; // 'Infantry', 'Vehicle', 'Mech', etc.
+  quantity: number;
+}
+
+export interface DraftSettings {
+  numberOfPlayers: number;
+  boostersPerPlayer: number;
+  boosterConfigs: DraftBoosterConfig[];
+  useCollection: boolean; // true = use my-collection, false = use search results
+  respectFilters: boolean; // respect current page filters
+}
+
+export interface DraftResult {
+  playerId: number;
+  playerName: string;
+  units: DraftUnit[];
+  totalPoints: number;
+}
+
+export interface DraftUnitWithQuantity {
+  unit: Unit;
+  quantity: number;
+}
+
+export interface Draft {
+  id: string;
+  name: string;
+  description?: string;
+  settings: DraftSettings;
+  availableUnits: DraftUnitWithQuantity[]; // Units that can be drafted with quantities
+  results: DraftResult[];
+  sourceFilters?: Record<string, unknown>; // Store the filters used when generating
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Unit {
   id: string;
   name: string;

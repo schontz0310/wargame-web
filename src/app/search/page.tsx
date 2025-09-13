@@ -168,6 +168,7 @@ function SearchPageContent() {
     });
   };
 
+
   // Use API units directly
   const displayUnits = units;
 
@@ -288,15 +289,15 @@ function SearchPageContent() {
               onChange={(e) => setSortBy(e.target.value)}
               className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="name">Nome (A-Z)</option>
-              <option value="collectionNumber">Número (#)</option>
-              <option value="points">Pontos (menor)</option>
-              <option value="pointsDesc">Pontos (maior)</option>
+              <option value="name">Nome</option>
+              <option value="points">Pontos</option>
               <option value="faction">Facção</option>
               <option value="type">Tipo</option>
-              <option value="rank">Rank</option>
+              <option value="expansion">Expansão</option>
+              <option value="collectionNumber">Número (#)</option>
             </select>
           </div>
+            
 
           {/* Type Filter */}
           <div className="mb-4">
@@ -551,6 +552,13 @@ function SearchPageContent() {
               </div>
               <div className="flex items-center gap-4 text-blue-100">
                 <button
+                  onClick={() => router.push('/drafts')}
+                  className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center gap-2 backdrop-blur-sm"
+                  title="Ver Meus Drafts"
+                >
+                  📝 Drafts
+                </button>
+                <button
                   onClick={() => router.push('/my-collection')}
                   className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center gap-2 backdrop-blur-sm"
                   title="Ver Minha Coleção"
@@ -610,7 +618,7 @@ function SearchPageContent() {
                 <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-6 border-r border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
                   <span className="text-xs">DEF</span>
                 </th>
-                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-16 border-r border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
+                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-20 border-r border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
                   <span className="text-xs">Ações</span>
                 </th>
                   </tr>
@@ -660,7 +668,7 @@ function SearchPageContent() {
                       {unit.maxDefense}
                     </td>
                     <td className="px-1 py-2 text-center">
-                      <div className="flex gap-1 justify-center">
+                      <div className="flex gap-1 justify-center flex-wrap">
                         {(() => {
                           const { haveCount, wantCount } = getUnitCounts(unit.id);
                           const isHaveLoading = loadingUnits.has(`${unit.id}-have`);
@@ -674,11 +682,11 @@ function SearchPageContent() {
                                   addToCollection(unit, 'have');
                                 }}
                                 disabled={isHaveLoading}
-                                className="bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1 rounded transition-all duration-200 disabled:opacity-50 min-w-[32px] flex items-center justify-center"
+                                className="bg-green-500 hover:bg-green-600 text-white text-xs px-1 py-1 rounded transition-all duration-200 disabled:opacity-50 min-w-[28px] flex items-center justify-center"
                                 title="Adicionar à lista Tenho"
                               >
                                 {isHaveLoading ? (
-                                  <div className="animate-spin w-3 h-3 border border-white border-t-transparent rounded-full"></div>
+                                  <div className="animate-spin w-2 h-2 border border-white border-t-transparent rounded-full"></div>
                                 ) : (
                                   `📦${haveCount}`
                                 )}
@@ -689,11 +697,11 @@ function SearchPageContent() {
                                   addToCollection(unit, 'want');
                                 }}
                                 disabled={isWantLoading}
-                                className="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded transition-all duration-200 disabled:opacity-50 min-w-[32px] flex items-center justify-center"
+                                className="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-1 py-1 rounded transition-all duration-200 disabled:opacity-50 min-w-[28px] flex items-center justify-center"
                                 title="Adicionar à lista Procuro"
                               >
                                 {isWantLoading ? (
-                                  <div className="animate-spin w-3 h-3 border border-white border-t-transparent rounded-full"></div>
+                                  <div className="animate-spin w-2 h-2 border border-white border-t-transparent rounded-full"></div>
                                 ) : (
                                   `🔍${wantCount}`
                                 )}

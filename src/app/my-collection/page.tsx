@@ -69,7 +69,7 @@ export default function MyCollection() {
   };
 
   // Export collection to JSON file
-  const exportCollection = () => {
+  const exportCollection = async () => {
     try {
       const collectionData = {
         exportDate: new Date().toISOString(),
@@ -87,19 +87,43 @@ export default function MyCollection() {
       };
 
       const dataStr = JSON.stringify(collectionData, null, 2);
-      const dataBlob = new Blob([dataStr], { type: 'application/json' });
 
-      // Try to download the file
       try {
-        const url = URL.createObjectURL(dataBlob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `minha-colecao-${new Date().toISOString().split('T')[0]}.json`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-      } catch {
+        // Check if File System Access API is supported
+        if ('showSaveFilePicker' in window) {
+          const fileHandle = await (window as unknown as { showSaveFilePicker: (options: { suggestedName: string; types: { description: string; accept: Record<string, string[]> }[] }) => Promise<{ createWritable: () => Promise<{ write: (data: string) => Promise<void>; close: () => Promise<void> }> }> }).showSaveFilePicker({
+            suggestedName: `minha-colecao-${new Date().toISOString().split('T')[0]}.json`,
+            types: [{
+              description: 'JSON files',
+              accept: { 'application/json': ['.json'] }
+            }]
+          });
+          
+          const writable = await fileHandle.createWritable();
+          await writable.write(dataStr);
+          await writable.close();
+          
+          alert('Coleção exportada com sucesso!');
+        } else {
+          // Fallback to traditional download
+          const dataBlob = new Blob([dataStr], { type: 'application/json' });
+          const url = URL.createObjectURL(dataBlob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `minha-colecao-${new Date().toISOString().split('T')[0]}.json`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          
+          alert('Coleção exportada com sucesso!');
+        }
+      } catch (error) {
+        if ((error as Error & { name: string }).name === 'AbortError') {
+          // User cancelled the save dialog
+          return;
+        }
+        
         // Fallback: Copy to clipboard
         navigator.clipboard.writeText(dataStr).then(() => {
           alert('Não foi possível baixar o arquivo. Os dados foram copiados para a área de transferência. Cole em um arquivo .json manualmente.');

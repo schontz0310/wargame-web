@@ -1,5 +1,6 @@
-'use client'
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+'use client'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -58,7 +59,7 @@ export default function DraftsPage() {
       if (savedDrafts) {
         const parsedDrafts = JSON.parse(savedDrafts)
         // Migrate old drafts without availableUnits
-        const migratedDrafts = parsedDrafts.map((draft: Draft) => ({
+        const migratedDrafts = parsedDrafts.map((draft: any) => ({
           ...draft,
           availableUnits: draft.availableUnits || []
         }))
@@ -73,16 +74,35 @@ export default function DraftsPage() {
       // Load collection units from localStorage
       const savedHaveCollection = localStorage.getItem('myHaveCollection')
       if (savedHaveCollection) {
-        const jsonData = JSON.parse(savedHaveCollection)
+        const haveUnits = JSON.parse(savedHaveCollection)
         const unitsFromCollection: Unit[] = []
         
         // Extract units from have collection
-        jsonData.forEach((unit: any) => {
+        haveUnits.forEach((unit: any) => {
           // Add multiple copies based on quantity
           for (let i = 0; i < unit.quantity; i++) {
-            unitsFromCollection.push(unit)
+            unitsFromCollection.push({
+              ...unit,
+              expansion: unit.expansion || '',
+              collectionNumber: unit.collectionNumber || 0,
+              variant: unit.variant || '',
+              speedMode: unit.speedMode || '',
+              class: unit.class || '',
+              health: unit.health || 0,
+              maxMovement: unit.maxMovement || 0,
+              maxAttack: unit.maxAttack || 0,
+              maxDefense: unit.maxDefense || 0,
+              maxDamage: unit.maxDamage || 0,
+              isUnique: unit.isUnique || false,
+              rank: unit.rank || 'NA',
+              imageUrl: unit.imageUrl || '',
+              attackStats: unit.attackStats || [],
+              combatDial: unit.combatDial || [],
+              heatDial: unit.heatDial || []
+            } as Unit)
           }
         })
+        
         setCollectionUnits(unitsFromCollection)
       }
     } catch (error) {
@@ -171,7 +191,7 @@ export default function DraftsPage() {
   // Confirm delete draft
   const confirmDeleteDraft = () => {
     if (draftToDelete) {
-      const updatedDrafts = drafts.filter((d: Draft) => d.id !== draftToDelete)
+      const updatedDrafts = drafts.filter(d => d.id !== draftToDelete)
       saveDrafts(updatedDrafts)
       if (selectedDraft?.id === draftToDelete) {
         setSelectedDraft(null)
@@ -297,7 +317,7 @@ export default function DraftsPage() {
       
       // For each unit type in booster config
       for (const config of settings.boosterConfigs) {
-        const availableUnits = availableUnitsPool.filter((unit: Unit) => 
+        const availableUnits = availableUnitsPool.filter((unit: any) => 
           unit.type.toLowerCase() === config.unitType.toLowerCase()
         )
         
@@ -449,8 +469,8 @@ export default function DraftsPage() {
           })
         }
         // Legacy format - try to extract from old structure
-        else if (Array.isArray(jsonData) && jsonData.length > 0 && (jsonData[0] as { quantity?: number }).quantity !== undefined) {
-          jsonData.forEach((unit: any) => {
+        else if (jsonData.collection && Array.isArray(jsonData.collection)) {
+          jsonData.collection.forEach((unit: any) => {
             // Add multiple copies based on quantity
             for (let i = 0; i < (unit.quantity || 1); i++) {
               unitsFromFile.push({
@@ -477,7 +497,7 @@ export default function DraftsPage() {
         }
         // Very old format - object with unit IDs as keys
         else {
-          Object.entries(jsonData).forEach(([, data]: [string, any]) => {
+          Object.entries(jsonData).forEach(([unitId, data]: [string, any]) => {
             if (data.have > 0 && data.unit) {
               // Add multiple copies based on quantity
               for (let i = 0; i < data.have; i++) {
@@ -757,7 +777,7 @@ export default function DraftsPage() {
                 {drafts.length === 0 ? (
                   <p className="text-gray-500 text-center py-8">
                     Nenhum draft criado ainda.<br />
-                    Clique em &quot;Gerar Draft&quot; para começar o processo de draft!
+                    Clique em &quot;Novo Draft&quot; para começar!
                   </p>
                 ) : (
                   drafts.map(draft => (

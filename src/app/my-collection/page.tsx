@@ -1,4 +1,5 @@
 'use client'
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useState, useEffect } from 'react'
 
@@ -91,7 +92,7 @@ export default function MyCollection() {
       try {
         // Check if File System Access API is supported
         if ('showSaveFilePicker' in window) {
-          const fileHandle = await (window as unknown as { showSaveFilePicker: (options: { suggestedName: string; types: { description: string; accept: Record<string, string[]> }[] }) => Promise<{ createWritable: () => Promise<{ write: (data: string) => Promise<void>; close: () => Promise<void> }> }> }).showSaveFilePicker({
+          const fileHandle = await (window as any).showSaveFilePicker({
             suggestedName: `minha-colecao-${new Date().toISOString().split('T')[0]}.json`,
             types: [{
               description: 'JSON files',
@@ -119,7 +120,7 @@ export default function MyCollection() {
           alert('Coleção exportada com sucesso!');
         }
       } catch (error) {
-        if ((error as Error & { name: string }).name === 'AbortError') {
+        if ((error as any).name === 'AbortError') {
           // User cancelled the save dialog
           return;
         }

@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useUnits } from '@/hooks/useUnits'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Unit } from '@/lib/api'
+import { Unit, Draft } from '@/lib/api'
 
 function SearchPageContent() {
   const { units, loading, error } = useUnits();
@@ -26,6 +26,20 @@ function SearchPageContent() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
   const [loadingUnits, setLoadingUnits] = useState<Set<string>>(new Set());
+  const [drafts, setDrafts] = useState<Draft[]>([]);
+  const [selectedDraftId, setSelectedDraftId] = useState<string>('');
+
+  // Load drafts from localStorage
+  useEffect(() => {
+    const savedDrafts = localStorage.getItem('myDrafts');
+    if (savedDrafts) {
+      try {
+        setDrafts(JSON.parse(savedDrafts));
+      } catch (error) {
+        console.error('Error loading drafts:', error);
+      }
+    }
+  }, []);
 
   // Load state from URL params and localStorage on mount
   useEffect(() => {
@@ -168,6 +182,14 @@ function SearchPageContent() {
     });
   };
 
+  // Add unit to draft
+  const addToDraft = async (unit: Unit, draftId: string) => {
+    if (!draftId) return;
+    
+    const loadingKey = `${unit.id}-draft`;
+    setLoadingUnits(prev => new Set([...prev, loadingKey]));
+    
+  };
 
   // Use API units directly
   const displayUnits = units;
@@ -298,6 +320,22 @@ function SearchPageContent() {
             </select>
           </div>
             
+          {/* Draft Selection */}
+          <div className="mb-4">
+            <label className="block text-xs font-medium text-gray-700 mb-1">Draft</label>
+            <select
+              value={selectedDraftId}
+              onChange={(e) => setSelectedDraftId(e.target.value)}
+              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+            >
+                <option value="">Selecionar Draft</option>
+                {drafts.map(draft => (
+                  <option key={draft.id} value={draft.id}>
+                    {draft.name} ({draft.results?.length || 0} jogadores)
+                  </option>
+                ))}
+              </select>
+            </div>
 
           {/* Type Filter */}
           <div className="mb-4">
@@ -565,6 +603,13 @@ function SearchPageContent() {
                 >
                   📋 Minha Coleção
                 </button>
+                <button
+                  onClick={() => router.push('/cards')}
+                  className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center gap-2 backdrop-blur-sm"
+                  title="Ver Cartas"
+                >
+                  🃏 Cartas
+                </button>
                 <div className="flex items-center gap-2 text-sm">
                   <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
                   <span>Dados atualizados</span>
@@ -673,6 +718,7 @@ function SearchPageContent() {
                           const { haveCount, wantCount } = getUnitCounts(unit.id);
                           const isHaveLoading = loadingUnits.has(`${unit.id}-have`);
                           const isWantLoading = loadingUnits.has(`${unit.id}-want`);
+                          const isDraftLoading = loadingUnits.has(`${unit.id}-draft`);
                           
                           return (
                             <>
@@ -706,6 +752,23 @@ function SearchPageContent() {
                                   `🔍${wantCount}`
                                 )}
                               </button>
+                              {selectedDraftId && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    addToDraft(unit, selectedDraftId);
+                                  }}
+                                  disabled={isDraftLoading}
+                                  className="bg-purple-500 hover:bg-purple-600 text-white text-xs px-1 py-1 rounded transition-all duration-200 disabled:opacity-50 min-w-[28px] flex items-center justify-center"
+                                  title="Adicionar ao Draft"
+                                >
+                                  {isDraftLoading ? (
+                                    <div className="animate-spin w-2 h-2 border border-white border-t-transparent rounded-full"></div>
+                                  ) : (
+                                    '📝'
+                                  )}
+                                </button>
+                              )}
                             </>
                           );
                         })()}

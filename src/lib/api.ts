@@ -1,5 +1,5 @@
 // Wargame API Service - Direct API calls for static export
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+const API_BASE_URL = '/api';
 
 export interface AttackStat {
   unitId: string;
@@ -82,6 +82,43 @@ export interface Draft {
   sourceFilters?: Record<string, unknown>; // Store the filters used when generating
   createdAt: string;
   updatedAt: string;
+}
+
+export interface Card {
+  id: string; // Format: EXPANSION-TYPE-NUMBER (e.g., AOD-F-001)
+  name: string;
+  type: "F" | "P" | "G" | "S" | "C"; // F=Faction Pride, P=Pilot, G=Gear, S=Special, C=Command
+  typeName: "Faction Pride" | "Pilot" | "Gear" | "Special" | "Command";
+  cost: string | number; // Can be string like "10/150" or number
+  alternativeCost?: string | number; // Optional alternative cost
+  haveSeeText?: boolean; // Optional flag for see text
+  faction: string;
+  factionLogoVersion?: "standard" | "blue" | "gray" | "black";
+  rarity: "Common" | "Uncommon" | "Rare" | "Ultra Rare" | "Promo";
+  expansion: string; // e.g., "AOD", "DA", "FI"
+  collectionNumber: string; // e.g., "001", "002", etc.
+  imageUrl: string;
+  description: string;
+  flavorText?: string;
+  keywords?: string[];
+  requirements?: string[];
+  effects?: CardEffect[];
+  isUnique: boolean;
+  variant?: string;
+  // Back side properties
+  backImageUrl?: string;
+  backDescription?: string;
+  backFlavorText?: string;
+  backEffects?: CardEffect[];
+  backKeywords?: string[];
+}
+
+export interface CardEffect {
+  type: "passive" | "active" | "triggered";
+  timing?: "deployment" | "combat" | "end_turn" | "start_turn";
+  description: string;
+  target?: string;
+  condition?: string;
 }
 
 export interface Unit {

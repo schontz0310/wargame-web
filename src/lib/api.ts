@@ -1,5 +1,5 @@
 // Wargame API Service - Direct API calls for static export
-const API_BASE_URL = '/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export interface AttackStat {
   unitId: string;

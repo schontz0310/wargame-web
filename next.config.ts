@@ -7,14 +7,6 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
-  async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: 'https://api.agilityinsolutions.com/:path*',
-      },
-    ];
-  },
 };
 
 export default nextConfig;

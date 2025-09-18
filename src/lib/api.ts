@@ -88,29 +88,14 @@ export interface Card {
   id: string; // Format: EXPANSION-TYPE-NUMBER (e.g., AOD-F-001)
   name: string;
   type: "F" | "P" | "G" | "S" | "C"; // F=Faction Pride, P=Pilot, G=Gear, S=Special, C=Command
-  typeName: "Faction Pride" | "Pilot" | "Gear" | "Special" | "Command";
-  cost: string | number; // Can be string like "10/150" or number
-  alternativeCost?: string | number; // Optional alternative cost
-  haveSeeText?: boolean; // Optional flag for see text
-  faction: string;
-  factionLogoVersion?: "standard" | "blue" | "gray" | "black";
-  rarity: "Common" | "Uncommon" | "Rare" | "Ultra Rare" | "Promo";
+  faction: string; // Required - unit faction
   expansion: string; // e.g., "AOD", "DA", "FI"
-  collectionNumber: string; // e.g., "001", "002", etc.
-  imageUrl: string;
-  description: string;
-  flavorText?: string;
-  keywords?: string[];
-  requirements?: string[];
-  effects?: CardEffect[];
-  isUnique: boolean;
-  variant?: string;
-  // Back side properties
-  backImageUrl?: string;
-  backDescription?: string;
-  backFlavorText?: string;
-  backEffects?: CardEffect[];
-  backKeywords?: string[];
+  collectionNumber: string; // Required - collection number (e.g., "001", "002", etc.)
+  description: string; // Required - card description
+  flavorText: string; // Required - flavor text for the card
+  cost: string | number; // Required - can be string like "10/150" or number
+  alternativeCost: string | number; // Required - alternative cost
+  haveSeeText: boolean; // Required - flag for see text
 }
 
 export interface CardEffect {

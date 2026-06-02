@@ -1,6 +1,20 @@
 // Wargame API Service - Direct API calls for static export
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
+export interface ColorMeaning {
+  id: string;
+  colorId: string;
+  meaning: string;
+  description: string;
+  context: string;
+  usageType: string;
+  color: {
+    id: string;
+    name: string;
+    hexCode: string;
+  };
+}
+
 export interface AttackStat {
   unitId: string;
   attackType: "primary" | "secondary";
@@ -91,6 +105,8 @@ export interface Card {
   typeName: "Faction Pride" | "Pilot" | "Gear" | "Special" | "Command";
   cost: string | number; // Can be string like "10/150" or number
   alternativeCost?: string | number; // Optional alternative cost
+  haveAlternativeCost?: boolean; // Optional flag for alternative cost
+  haveLogo?: boolean; // Optional flag for faction logo
   haveSeeText?: boolean; // Optional flag for see text
   faction: string;
   factionLogoVersion?: "standard" | "blue" | "gray" | "black";
@@ -111,6 +127,45 @@ export interface Card {
   backFlavorText?: string;
   backEffects?: CardEffect[];
   backKeywords?: string[];
+}
+
+export interface IFactionPride {
+  id: string;
+  cardId: string;
+  type: string;
+  faction: string;
+  expansion: string;
+  collectionNumber: string;
+  description: string;
+  flavorText?: string | null;
+  cost: string;
+  alternativeCost?: string | null;
+  haveAlternativeCost: boolean;
+  haveSeeText: boolean;
+  haveLogo: boolean;
+  logoVariant: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FactionPridesResponse {
+  factionPrides: IFactionPride[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface FactionPridesFilters {
+  page?: number;
+  limit?: number;
+  faction?: string;
+  expansion?: string;
+  type?: string;
+  logoVariant?: string;
+  haveSeeText?: boolean;
+  haveLogo?: boolean;
+  search?: string;
 }
 
 export interface CardEffect {
@@ -178,7 +233,6 @@ class ApiService {
 
       return await response.json();
     } catch (error: unknown) {
-      console.error('API request failed:', error);
       throw error;
     }
   }
@@ -189,7 +243,6 @@ class ApiService {
       const response = await this.request<ApiResponse>(`/units?page=${page}&limit=${limit}`);
       return response.units;
     } catch (error) {
-      console.error('Failed to fetch units:', error);
       return []; // Return empty array on error
     }
   }
@@ -197,14 +250,11 @@ class ApiService {
   // Get all units across all pages
   async getAllUnits(): Promise<Unit[]> {
     try {
-      console.log('ApiService - API_BASE_URL:', API_BASE_URL);
       const firstPage = await this.request<ApiResponse>('/units?page=1&limit=100');
-      console.log('ApiService - First page response:', firstPage);
       const allUnits = [...firstPage.units];
       
       // If there are more pages, fetch them
       if (firstPage.pagination.totalPages > 1) {
-        console.log('ApiService - Fetching additional pages:', firstPage.pagination.totalPages - 1);
         const promises = [];
         for (let page = 2; page <= firstPage.pagination.totalPages; page++) {
           promises.push(this.request<ApiResponse>(`/units?page=${page}&limit=100`));
@@ -216,10 +266,8 @@ class ApiService {
         });
       }
       
-      console.log('ApiService - Total units fetched:', allUnits.length);
       return allUnits;
     } catch (error) {
-      console.error('ApiService - Failed to fetch all units:', error);
       throw error; // Re-throw to trigger error handling in useUnits
     }
   }
@@ -243,6 +291,42 @@ class ApiService {
   // Get units by faction
   async getUnitsByFaction(faction: string): Promise<Unit[]> {
     return this.request<Unit[]>(`/units/faction/${faction}`);
+  }
+
+  // Get faction prides with filters and pagination
+  async getFactionPrides(filters: FactionPridesFilters = {}): Promise<FactionPridesResponse> {
+    const params = new URLSearchParams();
+    if (filters.page) params.set('page', String(filters.page));
+    if (filters.limit) params.set('limit', String(filters.limit));
+    if (filters.faction) params.set('faction', filters.faction);
+    if (filters.expansion) params.set('expansion', filters.expansion);
+    if (filters.type) params.set('type', filters.type);
+    if (filters.logoVariant) params.set('logoVariant', filters.logoVariant);
+    if (filters.haveSeeText !== undefined) params.set('haveSeeText', String(filters.haveSeeText));
+    if (filters.haveLogo !== undefined) params.set('haveLogo', String(filters.haveLogo));
+    if (filters.search) params.set('search', filters.search);
+    const qs = params.toString();
+    return this.request<FactionPridesResponse>(`/faction-prides${qs ? `?${qs}` : ''}`);
+  }
+
+  // Get faction pride by id
+  async getFactionPrideById(id: string): Promise<IFactionPride | null> {
+    try {
+      return await this.request<IFactionPride>(`/faction-prides/${id}`);
+    } catch {
+      return null;
+    }
+  }
+
+  // Get all color meanings for dynamic color mapping
+  async getColorMeanings(): Promise<ColorMeaning[]> {
+    try {
+      const response = await this.request<{ colorMeanings: ColorMeaning[] }>('/color-meanings');
+      return response.colorMeanings || [];
+    } catch (error) {
+      console.error('Failed to fetch color meanings:', error);
+      return []; // Return empty array on error
+    }
   }
 }
 

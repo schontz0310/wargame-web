@@ -1,261 +1,231 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
-import { Card } from '@/lib/api'
-import CardDesktop from '@/components/CardDesktop'
-import CardMobile from '@/components/CardMobile'
+import { useRouter } from 'next/navigation'
+import { IFactionPride, FactionPridesFilters, apiService } from '@/lib/api'
 
-// Faction logo mapping with version support
-const getFactionLogo = (faction: string, version: string = 'standard'): string => {
-  const factionMap: Record<string, string> = {
-    'Federated Suns': 'federated-suns',
-    'House Steiner': 'house-steiner',
-  };
+const EXPANSIONS = ['AOD', 'DA', 'FI', 'CW', 'RotS'];
 
-  const baseName = factionMap[faction] || 'federated-suns';
-  const logoPath = `${baseName}-${version}.png`;
-  console.log(`Getting faction logo for: ${faction} (${version}) -> ${logoPath}`);
-  return logoPath;
-};
+function CardsListContent() {
+  const router = useRouter();
 
-// Mock data for Faction Pride cards
-const mockFactionPrideCards: Card[] = [
-  {
-    id: '001',
-    name: 'House Steiner Gray',
-    type: 'F',
-    typeName: 'Faction Pride',
-    cost: '10/150',
-    alternativeCost: '5/150',
-    haveSeeText: true,
-    faction: 'House Steiner',
-    factionLogoVersion: 'gray',
-    rarity: 'Common',
-    expansion: 'AOD',
-    collectionNumber: '001',
-    imageUrl: '/images/cards/aod-f-001-front.png',
-    description: 'The Jade Falcons soar above all others, their pride unmatched in battle.',
-    flavorText: '"We are the Jade Falcons, and we shall not be denied!" - Khan Marthe Pryde',
-    keywords: ['Pride', 'Clan'],
-    isUnique: false,
-    effects: [{
-      type: 'passive',
-      description: 'Your Clan Jade Falcon units gain +1 attack when attacking.',
-      target: 'faction_units'
-    }],
-    // Back side data
-    backImageUrl: '/images/cards/aod-f-001-back.png',
-    backDescription: 'A Casa Steiner representa força industrial e poder militar. Seus MechWarriors são conhecidos pela disciplina e pela tecnologia avançada.',
-    backFlavorText: '"Ferro e honra, a tradição Steiner perdura através dos séculos." - Arquiduque Steiner',
-    backKeywords: ['Industrial', 'Militar', 'Tecnologia'],
-    backEffects: [{
-      type: 'passive',
-      description: 'Suas unidades House Steiner ganham +1 defesa quando defendendo.',
-      target: 'faction_units'
-    }]
-  },
-  {
-    id: '002',
-    name: 'Federated Suns',
-    type: 'F',
-    typeName: 'Faction Pride',
-    cost: '8/120',
-    alternativeCost: '4/120',
-    haveSeeText: true,
-    faction: 'Federated Suns',
-    factionLogoVersion: 'standard',
-    rarity: 'Common',
-    expansion: 'AOD',
-    collectionNumber: '002',
-    imageUrl: '/images/cards/aod-f-002-front.png',
-    description: 'The Federated Suns stands as a beacon of honor and military excellence.',
-    flavorText: '"For the glory of the Federated Suns!" - Prince Victor Steiner-Davion',
-    keywords: ['Honor', 'Military'],
-    isUnique: false,
-    effects: [{
-      type: 'active',
-      description: 'Your Federated Suns units gain +2 attack this turn.',
-      target: 'faction_units'
-    }],
-    backImageUrl: '/images/cards/aod-f-002-back.png',
-    backDescription: 'Os Sóis Federados representam honra militar e excelência tática em combate.',
-    backFlavorText: '"Pela glória dos Sóis Federados!" - Príncipe Victor Steiner-Davion',
-    backKeywords: ['Honra', 'Militar', 'Tática'],
-    backEffects: [{
-      type: 'active',
-      description: 'Suas unidades Federated Suns ganham +2 ataque neste turno.',
-      target: 'faction_units'
-    }]
-  }
-];
+  const [cards, setCards] = useState<IFactionPride[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
-function CardsContent() {
-  const searchParams = useSearchParams()
-  const cardId = searchParams.get('cardId')
-  const [selectedCard, setSelectedCard] = useState(() => {
-    return cardId ? mockFactionPrideCards.find(card => card.id === cardId) || mockFactionPrideCards[0] : mockFactionPrideCards[0]
-  })
-  const [isFlipped, setIsFlipped] = useState(false)
-  const [isDesktop, setIsDesktop] = useState(false)
-  const [isSmallMobile, setIsSmallMobile] = useState(false)
+  const [filters, setFilters] = useState<FactionPridesFilters>({ page: 1, limit: 20 });
+  const [search, setSearch] = useState('');
+  const [selectedFaction, setSelectedFaction] = useState('');
+  const [selectedExpansion, setSelectedExpansion] = useState('');
+
+  const [factions, setFactions] = useState<string[]>([]);
 
   useEffect(() => {
-    const checkScreenSize = () => {
-      const width = window.innerWidth
-      setIsDesktop(width >= 1400 && width >= 550)
-      setIsSmallMobile(width < 550)
-    }
-    
-    checkScreenSize()
-    window.addEventListener('resize', checkScreenSize)
-    
-    return () => window.removeEventListener('resize', checkScreenSize)
-  }, [])
+    setLoading(true);
+    setError(null);
+    const f: FactionPridesFilters = {
+      ...filters,
+      search: search || undefined,
+      faction: selectedFaction || undefined,
+      expansion: selectedExpansion || undefined,
+    };
+    apiService.getFactionPrides(f)
+      .then(res => {
+        setCards(res.factionPrides);
+        setTotal(res.total);
+        setTotalPages(res.totalPages);
+        const uniqueFactions = [...new Set(res.factionPrides.map(c => c.faction))].sort();
+        setFactions(prev => {
+          const merged = [...new Set([...prev, ...uniqueFactions])].sort();
+          return merged;
+        });
+      })
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false));
+  }, [filters, search, selectedFaction, selectedExpansion]);
 
-  if (!selectedCard) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-        <div className="text-lg text-gray-600">Nenhuma carta selecionada</div>
-        <div className="text-sm text-gray-500">Selecione uma carta para ver os detalhes</div>
-      </div>
-    )
-  }
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setFilters(f => ({ ...f, page: 1 }));
+  };
+
+  const clearFilters = () => {
+    setSearch('');
+    setSelectedFaction('');
+    setSelectedExpansion('');
+    setFilters({ page: 1, limit: 20 });
+  };
+
+  const goToPage = (page: number) => setFilters(f => ({ ...f, page }));
 
   return (
-    <div className={`min-h-screen flex overflow-hidden ${isSmallMobile ? 'p-1' : 'p-2 md:p-4 lg:p-8'} ${isSmallMobile ? 'gap-1' : 'gap-2 md:gap-4 lg:gap-8'} ${isDesktop ? 'flex-row' : 'flex-col'}`}>
-      {/* Left Column - Card Details */}
-      <div className={`bg-white shadow-lg ${isSmallMobile ? 'p-2' : 'p-3 md:p-4'} flex flex-col overflow-hidden h-full ${isDesktop ? 'w-[40%]' : 'w-full'}`}>
-        {/* Card Header - Fixed */}
-        <div className="border-b pb-3 mb-3 flex-shrink-0">
-          <div className="flex flex-col md:flex-row gap-3">
-            <div className={`bg-gradient-to-br from-blue-100 to-purple-100 rounded-lg flex items-center justify-center flex-shrink-0 p-2 border-2 border-blue-200 ${
-              isDesktop ? 'w-24 lg:w-32 h-24 md:h-28' : isSmallMobile ? 'w-12 h-12' : 'w-16 h-16'
-            }`}>
-              <div className="text-center">
-                <div className={`mb-1 ${isDesktop ? 'text-2xl' : isSmallMobile ? 'text-sm' : 'text-lg'}`}>🃏</div>
-                <div className={`font-bold text-blue-600 ${isDesktop ? 'text-xs' : isSmallMobile ? 'text-[8px]' : 'text-[10px]'}`}>{selectedCard.type}</div>
-              </div>
-            </div>
-            <div className="flex-1 flex flex-col justify-center space-y-1">
-              <div className={`text-gray-600 ${isDesktop ? 'text-xs' : isSmallMobile ? 'text-[8px]' : 'text-[10px]'}`}>{selectedCard.typeName}</div>
-              <div className={`text-gray-600 ${isDesktop ? 'text-xs' : isSmallMobile ? 'text-[8px]' : 'text-[10px]'}`}>#{selectedCard.collectionNumber}</div>
-              <div className={`font-bold bg-blue-100 text-blue-800 px-2 py-1 rounded inline-block w-fit ${
-                isDesktop ? 'text-sm' : isSmallMobile ? 'text-[10px]' : 'text-xs'
-              }`}>
-                {selectedCard.cost} ⚡
-              </div>
-            </div>
-          </div>
-        </div>
+    <div className="flex h-screen bg-gray-50">
+      {/* Sidebar Filtros */}
+      <div className="w-64 bg-white border-r border-gray-200 shadow-sm flex flex-col h-full overflow-y-auto flex-shrink-0">
+        <div className="p-4">
+          <h2 className="text-base font-semibold text-gray-900 mb-4">Filtros</h2>
 
-        {/* Scrollable Content Area */}
-        <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-          {/* Basic Info */}
-          <div className={`bg-gray-50 rounded-lg border ${isDesktop ? 'p-2' : 'p-1'}`}>
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div>
-                <div className={`text-gray-500 ${isDesktop ? 'text-xs' : 'text-[10px]'}`}>Tipo</div>
-                <div className={`font-bold bg-white px-1 py-0.5 rounded ${isDesktop ? 'text-xs' : 'text-[10px]'}`}>{selectedCard.typeName}</div>
-              </div>
-              <div>
-                <div className={`text-gray-500 ${isDesktop ? 'text-xs' : 'text-[10px]'}`}>Custo</div>
-                <div className={`font-bold bg-white px-1 py-0.5 rounded ${isDesktop ? 'text-xs' : 'text-[10px]'}`}>{selectedCard.cost} ⚡</div>
-              </div>
-            </div>
+          <form onSubmit={handleSearch} className="mb-4">
+            <label className="block text-xs font-medium text-gray-700 mb-1">Buscar descrição</label>
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Palavra-chave..."
+              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+            />
+          </form>
+
+          <div className="mb-4">
+            <label className="block text-xs font-medium text-gray-700 mb-1">Facção</label>
+            <select
+              value={selectedFaction}
+              onChange={e => { setSelectedFaction(e.target.value); setFilters(f => ({ ...f, page: 1 })); }}
+              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="">Todas as facções</option>
+              {factions.map(fac => <option key={fac} value={fac}>{fac}</option>)}
+            </select>
           </div>
 
-          {/* Faction & Expansion */}
-          <div className="bg-gray-50 p-2 rounded-lg border">
-            <div className="grid grid-cols-2 gap-2 text-center">
-              <div>
-                <div className="text-gray-500 text-xs">Facção</div>
-                <div className="font-bold text-xs bg-white px-1 py-0.5 rounded">{selectedCard.faction}</div>
-              </div>
-              <div>
-                <div className="text-gray-500 text-xs">Expansão</div>
-                <div className="font-bold text-xs bg-white px-1 py-0.5 rounded">{selectedCard.expansion}</div>
-              </div>
-            </div>
+          <div className="mb-4">
+            <label className="block text-xs font-medium text-gray-700 mb-1">Expansão</label>
+            <select
+              value={selectedExpansion}
+              onChange={e => { setSelectedExpansion(e.target.value); setFilters(f => ({ ...f, page: 1 })); }}
+              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="">Todas as expansões</option>
+              {EXPANSIONS.map(exp => <option key={exp} value={exp}>{exp}</option>)}
+            </select>
           </div>
 
-          {/* Description */}
-          <div className="bg-gray-50 p-2 rounded-lg border">
-            <div className="text-gray-500 text-xs mb-1">Descrição {isFlipped ? '(Verso)' : '(Frente)'}</div>
-            <p className="text-gray-700 text-xs leading-relaxed">
-              {isFlipped ? selectedCard.backDescription || selectedCard.description : selectedCard.description}
-            </p>
-          </div>
-          {/* Flavor Text */}
-          {(isFlipped ? selectedCard.backFlavorText : selectedCard.flavorText) && (
-            <div className="bg-gray-50 p-2 rounded-lg border">
-              <div className="text-gray-500 text-xs mb-1">Texto de Sabor {isFlipped ? '(Verso)' : '(Frente)'}</div>
-              <p className="text-xs italic text-gray-600 leading-relaxed">
-                {isFlipped ? selectedCard.backFlavorText : selectedCard.flavorText}
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Card Selection - Fixed at bottom */}
-        <div className="bg-gray-50 p-2 rounded-lg border mt-3 flex-shrink-0">
-          <div className="text-gray-500 text-xs mb-2">Selecionar Carta</div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-1">
-            {mockFactionPrideCards.map(card => (
-              <button
-                key={card.id}
-                onClick={() => setSelectedCard(card)}
-                className={`p-1 text-xs rounded border transition-colors ${
-                  selectedCard.id === card.id
-                    ? 'bg-blue-500 text-white border-blue-500'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
-                }`}
-              >
-                {card.name.split(' ').slice(0, 2).join(' ')}
-              </button>
-            ))}
-          </div>
+          <button
+            onClick={clearFilters}
+            className="w-full px-3 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors text-xs"
+          >
+            Limpar Filtros
+          </button>
         </div>
       </div>
 
-      {/* Right Column - Card Display */}
-      <div className={`flex flex-col items-center justify-center overflow-hidden h-full ${isDesktop ? 'flex-1' : 'w-full'}`}>
-        {/* Flip Button */}
-        <button
-          onClick={() => setIsFlipped(!isFlipped)}
-          className={`bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors shadow-lg flex-shrink-0 mb-4 font-ocr ${
-            isDesktop ? 'px-6 py-3 text-base' : isSmallMobile ? 'px-2 py-1 text-xs' : 'px-4 py-2 text-sm'
-          }`}
-        >
-          {isFlipped ? '🔄 Ver Frente' : '🔄 Ver Verso'}
-        </button>
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-bold text-white flex items-center gap-2">
+                🃏 Cartas — Faction Pride
+              </h1>
+              <p className="text-blue-100 text-sm mt-1">{total} carta(s) encontrada(s)</p>
+            </div>
+            <button
+              onClick={() => router.push('/search')}
+              className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+            >
+              🔍 Buscar Unidades
+            </button>
+          </div>
+        </div>
 
-        {/* Card Container */}
-        <div className="w-full flex-1 flex items-center justify-center">
-          {isDesktop ? (
-            <CardDesktop 
-              selectedCard={selectedCard}
-              isFlipped={isFlipped}
-              getFactionLogo={getFactionLogo}
-            />
+        {/* Table */}
+        <div className="flex-1 overflow-auto p-4">
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-gray-500">Carregando cartas...</div>
+            </div>
+          ) : error ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-red-500">Erro: {error}</div>
+            </div>
+          ) : cards.length === 0 ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-gray-500">Nenhuma carta encontrada</div>
+            </div>
           ) : (
-            <CardMobile 
-              selectedCard={selectedCard}
-              isFlipped={isFlipped}
-              isSmallMobile={isSmallMobile}
-              getFactionLogo={getFactionLogo}
-            />
+            <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+              <table className="w-full text-sm divide-y divide-gray-200">
+                <thead className="bg-gray-50 sticky top-0 z-10">
+                  <tr>
+                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase">Card ID</th>
+                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase">#</th>
+                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase">Facção</th>
+                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase">Expansão</th>
+                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase">Custo</th>
+                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase">Logo</th>
+                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase">Descrição</th>
+                    <th className="px-3 py-2 text-center text-xs font-bold text-gray-700 uppercase">Ver</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {cards.map(card => (
+                    <tr
+                      key={card.id}
+                      className="hover:bg-blue-50 cursor-pointer transition-colors"
+                      onClick={() => router.push(`/cards/detail?id=${card.id}`)}
+                    >
+                      <td className="px-3 py-2 text-xs font-mono text-gray-700">{card.cardId}</td>
+                      <td className="px-3 py-2 text-xs text-gray-600">{card.collectionNumber}</td>
+                      <td className="px-3 py-2 text-xs text-gray-800 font-medium">{card.faction}</td>
+                      <td className="px-3 py-2 text-xs text-gray-600">{card.expansion}</td>
+                      <td className="px-3 py-2 text-xs text-gray-700">
+                        <span className="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-medium">{card.cost}</span>
+                        {card.alternativeCost && (
+                          <span className="ml-1 bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded text-[10px]">{card.alternativeCost}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-xs text-gray-600 capitalize">{card.logoVariant}</td>
+                      <td className="px-3 py-2 text-xs text-gray-600 max-w-xs truncate">{card.description}</td>
+                      <td className="px-3 py-2 text-center">
+                        <button
+                          onClick={e => { e.stopPropagation(); router.push(`/cards/detail?id=${card.id}`); }}
+                          className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded transition-colors"
+                        >
+                          Ver
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Pagination */}
+              <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 flex items-center justify-between">
+                <span className="text-xs text-gray-600">
+                  Página {filters.page} de {totalPages} — {total} total
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    disabled={(filters.page ?? 1) <= 1}
+                    onClick={() => goToPage((filters.page ?? 1) - 1)}
+                    className="px-3 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    ← Anterior
+                  </button>
+                  <button
+                    disabled={(filters.page ?? 1) >= totalPages}
+                    onClick={() => goToPage((filters.page ?? 1) + 1)}
+                    className="px-3 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Próxima →
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </div>
     </div>
-  )
+  );
 }
 
-export default function Cards() {
+export default function CardsPage() {
   return (
-    <Suspense fallback={<div>Carregando...</div>}>
-      <CardsContent />
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="text-lg">Carregando...</div></div>}>
+      <CardsListContent />
     </Suspense>
-  )
+  );
 }

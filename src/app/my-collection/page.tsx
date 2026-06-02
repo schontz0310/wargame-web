@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useState, useEffect } from 'react'
+import { safeLocalStorage } from '@/lib/storage'
 
 type ListType = "have" | "want";
 
@@ -25,11 +26,19 @@ export default function MyCollection() {
   const [selectedType, setSelectedType] = useState('');
   const [selectedFaction, setSelectedFaction] = useState('');
   const [sortBy, setSortBy] = useState('name');
+  const [isClient, setIsClient] = useState(false);
 
-  // Load collections from localStorage
+  // Set client-side flag
   useEffect(() => {
-    const savedHave = localStorage.getItem('myHaveCollection');
-    const savedWant = localStorage.getItem('myWantCollection');
+    setIsClient(true);
+  }, []);
+
+  // Load collections from localStorage (client-side only)
+  useEffect(() => {
+    if (!isClient) return;
+    
+    const savedHave = safeLocalStorage.getItem('myHaveCollection');
+    const savedWant = safeLocalStorage.getItem('myWantCollection');
     
     if (savedHave) {
       try {
@@ -46,17 +55,21 @@ export default function MyCollection() {
         console.error('Error loading want collection:', error);
       }
     }
-  }, []);
+  }, [isClient]);
 
   // Save collections to localStorage
   const saveHaveCollection = (newCollection: MyUnit[]) => {
     setHaveUnits(newCollection);
-    localStorage.setItem('myHaveCollection', JSON.stringify(newCollection));
+    if (isClient) {
+      safeLocalStorage.setItem('myHaveCollection', JSON.stringify(newCollection));
+    }
   };
 
   const saveWantCollection = (newCollection: MyUnit[]) => {
     setWantUnits(newCollection);
-    localStorage.setItem('myWantCollection', JSON.stringify(newCollection));
+    if (isClient) {
+      safeLocalStorage.setItem('myWantCollection', JSON.stringify(newCollection));
+    }
   };
 
   // Get current collection based on list type
@@ -184,8 +197,8 @@ export default function MyCollection() {
           
           console.log('After save - haveUnits:', haveUnits.length);
           console.log('After save - wantUnits:', wantUnits.length);
-          console.log('localStorage have:', JSON.parse(localStorage.getItem('myHaveCollection') || '[]').length);
-          console.log('localStorage want:', JSON.parse(localStorage.getItem('myWantCollection') || '[]').length);
+          console.log('localStorage have:', isClient ? JSON.parse(safeLocalStorage.getItem('myHaveCollection') || '[]').length : 0);
+          console.log('localStorage want:', isClient ? JSON.parse(safeLocalStorage.getItem('myWantCollection') || '[]').length : 0);
           
           console.log('Import completed');
           

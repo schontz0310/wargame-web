@@ -42,3 +42,4 @@ next-env.d.ts
 
 # claude
 .claude/
+blender-5.1.2-macos-arm64.dmg

@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { Card, IFactionPride, apiService } from '@/lib/api'
 import CardDesktop from '@/components/CardDesktop'
 import CardMobile from '@/components/CardMobile'
+import Card3DViewer from '@/components/Card3DViewer'
 
 const getFactionLogo = (faction: string, version: string = 'standard'): string => {
   const baseName = faction.toLowerCase().replace(/'/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -44,6 +45,7 @@ function CardDetailContent() {
   const [isFlipped, setIsFlipped] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
   const [isSmallMobile, setIsSmallMobile] = useState(false);
+  const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
 
   useEffect(() => {
     const checkScreenSize = () => {
@@ -191,28 +193,62 @@ function CardDetailContent() {
 
       {/* Right Column - Card Display */}
       <div className={`flex flex-col items-center justify-center ${isDesktop ? 'flex-1 overflow-hidden' : 'w-full min-h-[300px]'}`}>
-        <button
-          onClick={() => setIsFlipped(!isFlipped)}
-          className={`bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors shadow-lg flex-shrink-0 mb-4 ${
-            isDesktop ? 'px-6 py-3 text-base' : isSmallMobile ? 'px-2 py-1 text-xs' : 'px-4 py-2 text-sm'
-          }`}
-        >
-          {isFlipped ? '🔄 Ver Frente' : '🔄 Ver Verso'}
-        </button>
+        {/* View Mode Toggle */}
+        <div className="flex gap-2 flex-shrink-0 mb-4">
+          <button
+            onClick={() => setViewMode('2d')}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              viewMode === '2d' 
+                ? 'bg-blue-500 text-white' 
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            } ${isSmallMobile ? 'px-2 py-1 text-xs' : isDesktop ? 'px-6 py-3 text-base' : 'px-4 py-2 text-sm'}`}
+          >
+            📄 2D
+          </button>
+          <button
+            onClick={() => setViewMode('3d')}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              viewMode === '3d' 
+                ? 'bg-blue-500 text-white' 
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            } ${isSmallMobile ? 'px-2 py-1 text-xs' : isDesktop ? 'px-6 py-3 text-base' : 'px-4 py-2 text-sm'}`}
+          >
+            🎮 3D
+          </button>
+        </div>
+
+        {/* Flip Button - only show in 2D mode */}
+        {viewMode === '2d' && (
+          <button
+            onClick={() => setIsFlipped(!isFlipped)}
+            className={`bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors shadow-lg flex-shrink-0 mb-4 ${
+              isDesktop ? 'px-6 py-3 text-base' : isSmallMobile ? 'px-2 py-1 text-xs' : 'px-4 py-2 text-sm'
+            }`}
+          >
+            {isFlipped ? '🔄 Ver Frente' : '🔄 Ver Verso'}
+          </button>
+        )}
 
         <div className="w-full flex-1 flex items-center justify-center">
-          {isDesktop ? (
-            <CardDesktop
-              selectedCard={card}
-              isFlipped={isFlipped}
-              getFactionLogo={getFactionLogo}
-            />
+          {viewMode === '2d' ? (
+            isDesktop ? (
+              <CardDesktop
+                selectedCard={card}
+                isFlipped={isFlipped}
+                getFactionLogo={getFactionLogo}
+              />
+            ) : (
+              <CardMobile
+                selectedCard={card}
+                isFlipped={isFlipped}
+                isSmallMobile={isSmallMobile}
+                getFactionLogo={getFactionLogo}
+              />
+            )
           ) : (
-            <CardMobile
-              selectedCard={card}
-              isFlipped={isFlipped}
-              isSmallMobile={isSmallMobile}
-              getFactionLogo={getFactionLogo}
+            <Card3DViewer 
+              card={card}
+              className={isDesktop ? 'w-full h-full' : 'w-full h-80'}
             />
           )}
         </div>

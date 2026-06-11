@@ -4,14 +4,19 @@ import { useState, useEffect, Suspense } from 'react'
 import { useUnits } from '@/hooks/useUnits'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Unit, Draft } from '@/lib/api'
+import { safeLocalStorage } from '@/lib/storage'
 
 function SearchPageContent() {
   const { units, loading, error } = useUnits();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [isClient, setIsClient] = useState(false);
   
-  // Debug logging
-  console.log('SearchPage - units:', units.length, 'loading:', loading, 'error:', error);
+  // Set client-side flag
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+  
   
   // Initialize state from URL params or localStorage
   const [searchTerm, setSearchTerm] = useState('');
@@ -21,6 +26,8 @@ function SearchPageContent() {
   const [selectedRank, setSelectedRank] = useState('');
   const [selectedClass, setSelectedClass] = useState('');
   const [showUniqueOnly, setShowUniqueOnly] = useState(false);
+  const [showHaveOnly, setShowHaveOnly] = useState(false);
+  const [showWantOnly, setShowWantOnly] = useState(false);
   const [pointsRange, setPointsRange] = useState({ min: '', max: '' });
   const [sortBy, setSortBy] = useState('name');
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -29,9 +36,11 @@ function SearchPageContent() {
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [selectedDraftId, setSelectedDraftId] = useState<string>('');
 
-  // Load drafts from localStorage
+  // Load drafts from localStorage (client-side only)
   useEffect(() => {
-    const savedDrafts = localStorage.getItem('myDrafts');
+    if (!isClient) return;
+    
+    const savedDrafts = safeLocalStorage.getItem('myDrafts');
     if (savedDrafts) {
       try {
         setDrafts(JSON.parse(savedDrafts));
@@ -39,13 +48,15 @@ function SearchPageContent() {
         console.error('Error loading drafts:', error);
       }
     }
-  }, []);
+  }, [isClient]);
 
-  // Load state from URL params and localStorage on mount
+  // Load state from URL params and localStorage on mount (client-side only)
   useEffect(() => {
+    if (!isClient) return;
+
     const loadStateFromStorage = () => {
       try {
-        const saved = localStorage.getItem('searchPageState');
+        const saved = safeLocalStorage.getItem('searchPageState');
         return saved ? JSON.parse(saved) : {};
       } catch {
         return {};
@@ -62,6 +73,8 @@ function SearchPageContent() {
     setSelectedRank(searchParams.get('rank') || savedState.selectedRank || '');
     setSelectedClass(searchParams.get('class') || savedState.selectedClass || '');
     setShowUniqueOnly(searchParams.get('unique') === 'true' || savedState.showUniqueOnly || false);
+    setShowHaveOnly(searchParams.get('have') === 'true' || savedState.showHaveOnly || false);
+    setShowWantOnly(searchParams.get('want') === 'true' || savedState.showWantOnly || false);
     setPointsRange({
       min: searchParams.get('minPoints') || savedState.pointsRange?.min || '',
       max: searchParams.get('maxPoints') || savedState.pointsRange?.max || ''
@@ -70,11 +83,11 @@ function SearchPageContent() {
     setSidebarOpen(savedState.sidebarOpen !== false); // Default to true
     
     setIsInitialized(true);
-  }, [searchParams]);
+  }, [searchParams, isClient]);
 
-  // Update URL and localStorage when state changes
+  // Update URL and localStorage when state changes (client-side only)
   useEffect(() => {
-    if (!isInitialized) return;
+    if (!isInitialized || !isClient) return;
 
     const params = new URLSearchParams();
     
@@ -85,6 +98,8 @@ function SearchPageContent() {
     if (selectedRank) params.set('rank', selectedRank);
     if (selectedClass) params.set('class', selectedClass);
     if (showUniqueOnly) params.set('unique', 'true');
+    if (showHaveOnly) params.set('have', 'true');
+    if (showWantOnly) params.set('want', 'true');
     if (pointsRange.min) params.set('minPoints', pointsRange.min);
     if (pointsRange.max) params.set('maxPoints', pointsRange.max);
     if (sortBy !== 'name') params.set('sort', sortBy);
@@ -103,26 +118,32 @@ function SearchPageContent() {
       selectedRank,
       selectedClass,
       showUniqueOnly,
+      showHaveOnly,
+      showWantOnly,
       pointsRange,
       sortBy,
       sidebarOpen
     };
     
     try {
-      localStorage.setItem('searchPageState', JSON.stringify(stateToSave));
+      safeLocalStorage.setItem('searchPageState', JSON.stringify(stateToSave));
     } catch (error) {
       console.warn('Failed to save search state to localStorage:', error);
     }
-  }, [searchTerm, selectedType, selectedExpansion, selectedFaction, selectedRank, selectedClass, showUniqueOnly, pointsRange, sortBy, sidebarOpen, isInitialized]);
+  }, [searchTerm, selectedType, selectedExpansion, selectedFaction, selectedRank, selectedClass, showUniqueOnly, showHaveOnly, showWantOnly, pointsRange, sortBy, sidebarOpen, isInitialized, isClient]);
 
   const handleUnitClick = (unitId: string) => {
     router.push(`/list?unitId=${unitId}`);
   };
 
-  // Get unit counts in collections
+  // Get unit counts in collections (client-side only)
   const getUnitCounts = (unitId: string) => {
-    const haveCollection = JSON.parse(localStorage.getItem('myHaveCollection') || '[]');
-    const wantCollection = JSON.parse(localStorage.getItem('myWantCollection') || '[]');
+    if (!isClient) {
+      return { haveCount: 0, wantCount: 0 };
+    }
+    
+    const haveCollection = JSON.parse(safeLocalStorage.getItem('myHaveCollection') || '[]');
+    const wantCollection = JSON.parse(safeLocalStorage.getItem('myWantCollection') || '[]');
     
     const haveUnit = haveCollection.find((u: { id: string }) => u.id === unitId);
     const wantUnit = wantCollection.find((u: { id: string }) => u.id === unitId);
@@ -144,7 +165,7 @@ function SearchPageContent() {
     await new Promise(resolve => setTimeout(resolve, 300));
     
     const storageKey = listType === 'have' ? 'myHaveCollection' : 'myWantCollection';
-    const existing = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    const existing = JSON.parse(safeLocalStorage.getItem(storageKey) || '[]');
     
     // Check if unit already exists
     const existingUnitIndex = existing.findIndex((u: { id: string }) => u.id === unit.id);
@@ -172,7 +193,10 @@ function SearchPageContent() {
       updated = [...existing, myUnit];
     }
 
-    localStorage.setItem(storageKey, JSON.stringify(updated));
+    // Only save to localStorage if on client side
+    if (isClient) {
+      safeLocalStorage.setItem(storageKey, JSON.stringify(updated));
+    }
     
     // Stop loading
     setLoadingUnits(prev => {
@@ -213,8 +237,13 @@ function SearchPageContent() {
     const matchesPoints = (!pointsRange.min || unit.points >= parseInt(pointsRange.min)) &&
                          (!pointsRange.max || unit.points <= parseInt(pointsRange.max));
     
+    // Collection filters
+    const { haveCount, wantCount } = getUnitCounts(unit.id);
+    const matchesHave = !showHaveOnly || haveCount > 0;
+    const matchesWant = !showWantOnly || wantCount > 0;
+    
     return matchesSearch && matchesType && matchesExpansion && matchesFaction && 
-           matchesRank && matchesClass && matchesUnique && matchesPoints;
+           matchesRank && matchesClass && matchesUnique && matchesPoints && matchesHave && matchesWant;
   }).sort((a, b) => {
     switch (sortBy) {
       case 'points':
@@ -254,6 +283,47 @@ function SearchPageContent() {
     }
   });
 
+  const exportToCSV = () => {
+    const headers = ['Nome', 'Único', 'Expansão', '#', 'Tipo', 'Modo', 'Classe', 'Pontos', 'HP', 'Vent', 'Facção', 'Rank', 'ATK', 'SPD', 'DEF', 'Dano Máx'];
+    const rows = filteredUnits.map(unit => [
+      unit.name,
+      unit.isUnique ? 'Sim' : 'Não',
+      unit.expansion,
+      unit.collectionNumber,
+      unit.type,
+      unit.speedMode,
+      unit.class,
+      unit.points,
+      unit.health,
+      unit.ventCapacity,
+      unit.faction,
+      unit.rank,
+      unit.maxAttack,
+      unit.maxSpeed,
+      unit.maxDefense,
+      unit.maxDamage,
+    ]);
+
+    const escape = (val: unknown) => {
+      const s = String(val ?? '');
+      return s.includes(',') || s.includes('"') || s.includes('\n')
+        ? `"${s.replace(/"/g, '""')}"`
+        : s;
+    };
+
+    const csvContent =
+      '\uFEFF' + // BOM for Excel UTF-8
+      [headers, ...rows].map(row => row.map(escape).join(',')).join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `unidades_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const clearFilters = () => {
     setSelectedType('');
     setSelectedExpansion('');
@@ -261,6 +331,8 @@ function SearchPageContent() {
     setSelectedRank('');
     setSelectedClass('');
     setShowUniqueOnly(false);
+    setShowHaveOnly(false);
+    setShowWantOnly(false);
     setPointsRange({ min: '', max: '' });
     setSearchTerm('');
     setSortBy('name');
@@ -452,6 +524,37 @@ function SearchPageContent() {
             </div>
           </div>
 
+          {/* Collection Filters */}
+          <div className="mb-4">
+            <label className="block text-xs font-medium text-gray-700 mb-2">Coleção</label>
+            <div className="space-y-2">
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="haveOnly"
+                  checked={showHaveOnly}
+                  onChange={(e) => setShowHaveOnly(e.target.checked)}
+                  className="h-3 w-3 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                />
+                <label htmlFor="haveOnly" className="ml-2 text-xs text-gray-700">
+                  Tenho na coleção
+                </label>
+              </div>
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="wantOnly"
+                  checked={showWantOnly}
+                  onChange={(e) => setShowWantOnly(e.target.checked)}
+                  className="h-3 w-3 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label htmlFor="wantOnly" className="ml-2 text-xs text-gray-700">
+                  Procuro / Quero
+                </label>
+              </div>
+            </div>
+          </div>
+
           {/* Clear Filters Button */}
           <button
             onClick={clearFilters}
@@ -589,6 +692,13 @@ function SearchPageContent() {
                 </p>
               </div>
               <div className="flex items-center gap-4 text-blue-100">
+                <button
+                  onClick={exportToCSV}
+                  className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center gap-2 backdrop-blur-sm"
+                  title="Exportar lista como CSV"
+                >
+                  ⬇️ Exportar CSV
+                </button>
                 <button
                   onClick={() => router.push('/drafts')}
                   className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center gap-2 backdrop-blur-sm"

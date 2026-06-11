@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Unit, Draft, DraftSettings, DraftUnitWithQuantity, DraftResult, apiService } from '@/lib/api'
+import { safeLocalStorage } from '@/lib/storage'
 
 export default function DraftsPage() {
   const router = useRouter()
@@ -51,11 +52,19 @@ export default function DraftsPage() {
     useCollection: false,
     respectFilters: false
   })
+  const [isClient, setIsClient] = useState(false)
 
-  // Load drafts from localStorage on mount
+  // Set client-side flag
   useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  // Load drafts from localStorage on mount (client-side only)
+  useEffect(() => {
+    if (!isClient) return;
+    
     try {
-      const savedDrafts = localStorage.getItem('myDrafts')
+      const savedDrafts = safeLocalStorage.getItem('myDrafts')
       if (savedDrafts) {
         const parsedDrafts = JSON.parse(savedDrafts)
         // Migrate old drafts without availableUnits
@@ -71,8 +80,8 @@ export default function DraftsPage() {
         }
       }
 
-      // Load collection units from localStorage
-      const savedHaveCollection = localStorage.getItem('myHaveCollection')
+      // Load collection units from localStorage (client-side only)
+      const savedHaveCollection = safeLocalStorage.getItem('myHaveCollection')
       if (savedHaveCollection) {
         const haveUnits = JSON.parse(savedHaveCollection)
         const unitsFromCollection: Unit[] = []
@@ -108,7 +117,7 @@ export default function DraftsPage() {
     } catch (error) {
       console.error('Error loading drafts:', error)
     }
-  }, [])
+  }, [isClient])
 
   // Load all units from API using the existing service
   useEffect(() => {
@@ -175,7 +184,9 @@ export default function DraftsPage() {
   // Save drafts to localStorage
   const saveDrafts = (updatedDrafts: Draft[]) => {
     setDrafts(updatedDrafts)
-    localStorage.setItem('myDrafts', JSON.stringify(updatedDrafts))
+    if (isClient) {
+      safeLocalStorage.setItem('myDrafts', JSON.stringify(updatedDrafts))
+    }
   }
 
   // Show delete confirmation modal
@@ -387,10 +398,12 @@ export default function DraftsPage() {
       updatedAt: new Date().toISOString()
     }
     
-    // Save to localStorage
-    const existingDrafts = JSON.parse(localStorage.getItem('myDrafts') || '[]')
+    // Save to localStorage (client-side only)
+    const existingDrafts = JSON.parse(safeLocalStorage.getItem('myDrafts') || '[]')
     const updatedDrafts = [...existingDrafts, newDraft]
-    localStorage.setItem('myDrafts', JSON.stringify(updatedDrafts))
+    if (isClient) {
+      safeLocalStorage.setItem('myDrafts', JSON.stringify(updatedDrafts))
+    }
     
     // Update state
     setDrafts(updatedDrafts)

@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Card, IFactionPride, apiService } from '@/lib/api'
-import CardDesktop from '@/components/CardDesktop'
+import CardDesktopFactionPride from '@/components/CardDesktopFactionPride'
 import CardMobile from '@/components/CardMobile'
 import Card3DViewer from '@/components/Card3DViewer'
 
@@ -232,7 +232,7 @@ function CardDetailContent() {
         <div className="w-full flex-1 flex items-center justify-center">
           {viewMode === '2d' ? (
             isDesktop ? (
-              <CardDesktop
+              <CardDesktopFactionPride
                 selectedCard={card}
                 isFlipped={isFlipped}
                 getFactionLogo={getFactionLogo}

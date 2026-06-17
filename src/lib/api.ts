@@ -1,5 +1,7 @@
-// Wargame API Service - Direct API calls for static export
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+// Wargame API Service - Routes through Next.js proxy to avoid CORS
+const API_BASE_URL = typeof window === 'undefined'
+  ? process.env.NEXT_PUBLIC_API_BASE_URL
+  : '/api/proxy';
 
 export interface ColorMeaning {
   id: string;
@@ -101,8 +103,8 @@ export interface Draft {
 export interface Card {
   id: string; // Format: EXPANSION-TYPE-NUMBER (e.g., AOD-F-001)
   name: string;
-  type: "F" | "P" | "G" | "S" | "C"; // F=Faction Pride, P=Pilot, G=Gear, S=Special, C=Command
-  typeName: "Faction Pride" | "Pilot" | "Gear" | "Special" | "Command";
+  type: "F" | "P" | "G" | "S" | "C" | "MC"; // F=Faction Pride, P=Pilot, G=Gear, S=Special, C=Command, MC=Mercenary Contract
+  typeName: "Faction Pride" | "Pilot" | "Gear" | "Special" | "Command" | "Mercenary Contract";
   cost: string | number; // Can be string like "10/150" or number
   alternativeCost?: string | number; // Optional alternative cost
   haveAlternativeCost?: boolean; // Optional flag for alternative cost
@@ -120,6 +122,10 @@ export interface Card {
   requirements?: string[];
   effects?: CardEffect[];
   isUnique: boolean;
+  cardModel?: string; // e.g. 'single', 'double'
+  frontImage?: string; // override card front image path
+  backImage?: string;  // override card back image path
+  contractText?: string; // mercenary contract text
   variant?: string;
   // Back side properties
   backImageUrl?: string;
@@ -165,6 +171,45 @@ export interface FactionPridesFilters {
   logoVariant?: string;
   haveSeeText?: boolean;
   haveLogo?: boolean;
+  search?: string;
+}
+
+
+export interface IMercenaryContract {
+  id: string;
+  cardId: string;
+  type: string;
+  faction: string;
+  expansion: string;
+  collectionNumber: string;
+  description: string;
+  flavorText?: string | null;
+  cost: string;
+  alternativeCost?: string | null;
+  haveAlternativeCost?: boolean;
+  haveSeeText?: boolean;
+  haveLogo?: boolean;
+  logoVariant?: string;
+  cardModel: string;
+  contractText?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MercenaryContractsResponse {
+  mercenaryContracts: IMercenaryContract[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface MercenaryContractsFilters {
+  page?: number;
+  limit?: number;
+  faction?: string;
+  expansion?: string;
+  cardModel?: string;
   search?: string;
 }
 
@@ -313,6 +358,32 @@ class ApiService {
   async getFactionPrideById(id: string): Promise<IFactionPride | null> {
     try {
       return await this.request<IFactionPride>(`/faction-prides/${id}`);
+    } catch {
+      return null;
+    }
+  }
+
+  // Get mercenary contracts with filters and pagination
+  async getMercenaryContracts(filters: MercenaryContractsFilters = {}): Promise<MercenaryContractsResponse> {
+    const params = new URLSearchParams();
+    if (filters.page) params.set('page', String(filters.page));
+    if (filters.limit) params.set('limit', String(filters.limit));
+    if (filters.faction) params.set('faction', filters.faction);
+    if (filters.expansion) params.set('expansion', filters.expansion);
+    if (filters.cardModel) params.set('cardModel', filters.cardModel);
+    if (filters.search) params.set('search', filters.search);
+    const qs = params.toString();
+    const raw = await this.request<MercenaryContractsResponse | IMercenaryContract[]>(`/mercenary-contracts${qs ? `?${qs}` : ''}`);
+    if (Array.isArray(raw)) {
+      return { mercenaryContracts: raw, total: raw.length, page: 1, limit: raw.length, totalPages: 1 };
+    }
+    return raw;
+  }
+
+  // Get mercenary contract by id
+  async getMercenaryContractById(id: string): Promise<IMercenaryContract | null> {
+    try {
+      return await this.request<IMercenaryContract>(`/mercenary-contracts/${id}`);
     } catch {
       return null;
     }

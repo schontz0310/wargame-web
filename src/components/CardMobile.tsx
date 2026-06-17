@@ -26,19 +26,30 @@ export default function CardMobile({ selectedCard, isFlipped, isSmallMobile, get
           <div className={`bg-transparent rounded-lg h-full ${padding}`}>
             <div className="w-full h-full rounded-lg overflow-hidden relative">
               <img 
-                src="/images/cards/faction-pride-front.png" 
+                src={selectedCard.frontImage ?? "/images/cards/faction-pride-front.png"} 
                 alt={`${selectedCard.name} - Frente`}
                 className="w-full h-full object-contain rounded"
               />
               {/* Faction Logo Overlay */}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                <img 
-                  key={`${selectedCard.id}-${selectedCard.faction}-${selectedCard.factionLogoVersion}`}
-                  src={`/images/factions/${getFactionLogo(selectedCard.faction, selectedCard.factionLogoVersion || 'standard')}`}
-                  alt={`${selectedCard.faction} Logo`}
-                  className={`w-auto object-contain ${logoHeight}`}
-                />
-              </div>
+              {selectedCard.cardModel === 'single' ? (
+                <div className="absolute inset-y-0 flex items-center justify-end pointer-events-none z-10" style={{left: 0, right: '-10px'}}>
+                  <img 
+                    key={`${selectedCard.id}-${selectedCard.faction}-${selectedCard.factionLogoVersion}`}
+                    src={`/images/factions/${getFactionLogo(selectedCard.faction, selectedCard.factionLogoVersion || 'standard')}`}
+                    alt={`${selectedCard.faction} Logo`}
+                    className="w-auto object-contain h-[70%]"
+                  />
+                </div>
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                  <img 
+                    key={`${selectedCard.id}-${selectedCard.faction}-${selectedCard.factionLogoVersion}`}
+                    src={`/images/factions/${getFactionLogo(selectedCard.faction, selectedCard.factionLogoVersion || 'standard')}`}
+                    alt={`${selectedCard.faction} Logo`}
+                    className={`w-auto object-contain ${logoHeight}`}
+                  />
+                </div>
+              )}
               {/* Text Overlay - Left */}
               <div className="absolute pointer-events-none z-20" style={{
                 top: isSmallMobile ? '8%' : '8%', 
@@ -48,7 +59,7 @@ export default function CardMobile({ selectedCard, isFlipped, isSmallMobile, get
               }}>
                 <div className="w-full h-full flex items-center justify-start">
                   <h2 className={`font-ocr text-red-custom drop-shadow-custom font-bold ${textSize}`}>
-                    FACTION PRIDE
+                    {selectedCard.typeName.toUpperCase()}
                   </h2>
                 </div>
               </div>
@@ -78,7 +89,7 @@ export default function CardMobile({ selectedCard, isFlipped, isSmallMobile, get
           <div className={`bg-transparent rounded-lg h-full ${padding}`}>
             <div className="w-full h-full rounded-lg overflow-hidden relative">
               <img 
-                src="/images/cards/faction-pride-back.png" 
+                src={selectedCard.backImage ?? "/images/cards/faction-pride-back.png"} 
                 alt={`${selectedCard.name} - Verso`}
                 className="w-full h-full object-contain rounded"
               />

@@ -129,7 +129,6 @@ export default function CardDesktop({ selectedCard, isFlipped, getFactionLogo }:
                         { name: "vtol", file: "vtol.png" },
                       ];
                       const escaped = knownFactions.map(f => f.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-                      const pattern = new RegExp(`(${escaped.join('|')})`, 'gi');
 
                       const paragraphs = selectedCard.description.split(/\\\\n|\\n|\n/).filter(p => p.trim() !== '');
                       return paragraphs.map((para, pi) => {

@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Environment, Center, useGLTF, Html, useTexture } from '@react-three/drei'
+import { OrbitControls, Environment, Center, useGLTF, Html } from '@react-three/drei'
 import { Unit } from '@/lib/api'
 import * as THREE from 'three'
 
@@ -21,31 +21,14 @@ function Model({ url, unitId }: { url: string; unitId: string }) {
     const gltf = useGLTF(url)
     scene = gltf.scene
     
-    // Apply custom materials/textures if available
+    // Enhance material properties
     scene.traverse((child: THREE.Object3D) => {
-      if (child instanceof THREE.Mesh) {
-        // Check if there's a custom texture for this unit
-        const texturePath = `/models/units/textures/${unitId}_color.png`
-        try {
-          const texture = useTexture(texturePath)
-          if (child.material) {
-            const material = child.material as THREE.MeshStandardMaterial
-            material.map = texture
-            material.needsUpdate = true
-          }
-        } catch (e) {
-          // No custom texture found, use default
-          console.log(`No custom texture found for ${unitId}`)
-        }
-        
-        // Enhance material properties
-        if (child.material) {
-          const material = child.material as THREE.MeshStandardMaterial
-          material.metalness = 0.3
-          material.roughness = 0.7
-          material.envMapIntensity = 1.0
-          material.needsUpdate = true
-        }
+      if (child instanceof THREE.Mesh && child.material) {
+        const material = child.material as THREE.MeshStandardMaterial
+        material.metalness = 0.3
+        material.roughness = 0.7
+        material.envMapIntensity = 1.0
+        material.needsUpdate = true
       }
     })
   } catch (err) {

@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Environment, Center, useGLTF, Html } from '@react-three/drei'
 import { Card } from '@/lib/api'
@@ -55,8 +55,6 @@ function Model({ url, cardName }: { url: string; cardName: string }) {
 }
 
 export default function Card3DViewer({ card, modelPath, className = "" }: Card3DViewerProps) {
-  const [isLoading, setIsLoading] = useState(true)
-  
   // Default path if not provided
   const defaultModelPath = `/models/cards/${card.id}.glb`
   const finalModelPath = modelPath || defaultModelPath

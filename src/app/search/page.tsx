@@ -7,7 +7,7 @@ import { Unit, Draft } from '@/lib/api'
 import { safeLocalStorage } from '@/lib/storage'
 
 function SearchPageContent() {
-  const { units, loading, error } = useUnits();
+  const { units, loading } = useUnits();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isClient, setIsClient] = useState(false);

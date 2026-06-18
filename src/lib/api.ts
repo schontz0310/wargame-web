@@ -242,7 +242,7 @@ class ApiService {
     try {
       const response = await this.request<ApiResponse>(`/units?page=${page}&limit=${limit}`);
       return response.units;
-    } catch (error) {
+    } catch {
       return []; // Return empty array on error
     }
   }

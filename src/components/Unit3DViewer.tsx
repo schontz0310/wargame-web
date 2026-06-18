@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Environment, Center, useGLTF, Html } from '@react-three/drei'
 import { Unit } from '@/lib/api'

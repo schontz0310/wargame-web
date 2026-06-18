@@ -1,17 +1,25 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-## Getting Started
+## Configuração do Ambiente
 
-First, run the development server:
+Crie um arquivo `.env.local` na raiz do projeto com a URL da API:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+NEXT_PUBLIC_API_BASE_URL=http://104.131.26.32:4000
+```
+
+## Getting Started
+
+Instale as dependências:
+
+```bash
+npm install
+```
+
+Rode o servidor de desenvolvimento na porta 3000:
+
+```bash
+npm run dev:next -- -p 3000
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.

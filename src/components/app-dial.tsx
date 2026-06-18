@@ -111,7 +111,7 @@ export function AppDial(dialParams: DialParams) {
   const { unitId, dialSide } = dialParams;
   
   // Use dynamic color mapping from API
-  const { getColorById, getTextColorForColor, hasColorMeaningId, loading: colorLoading, colorMapping } = useColorMeanings();
+  const { getColorById, getTextColorForColor, loading: colorLoading, colorMapping } = useColorMeanings();
 
   const getPrimaryDamageColor = useCallback((step: CombatDialStep) => {
     if (step.primaryEquipColorMeaningId) {

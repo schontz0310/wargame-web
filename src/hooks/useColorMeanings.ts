@@ -50,7 +50,7 @@ export function useColorMeanings() {
           console.log('useColorMeanings: API returned empty, using fallback');
           setError('API returned empty, using fallback colors');
         }
-      } catch (err) {
+      } catch {
         if (mounted) {
           console.log('useColorMeanings: API error, using fallback');
           setError('Failed to load from API, using fallback colors');

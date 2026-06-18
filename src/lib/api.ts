@@ -50,6 +50,17 @@ export interface CombatDialStep {
   attackEquipUsageType?: "standard" | "single-use" | "unknown";
 }
 
+export interface HeatDialStep {
+  unitId: string;
+  step: number;
+  primaryHeatValue: number;
+  primaryHeatColorMeaningId?: string;
+  secondaryHeatValue: number;
+  secondaryHeatColorMeaningId?: string;
+  movementHeatValue: number;
+  movementHeatColorMeaningId?: string;
+}
+
 export interface DraftUnit {
   id: string;
   name: string;
@@ -200,7 +211,7 @@ export interface Unit {
   collectionNumber: number;
   attackStats?: AttackStat[];
   combatDial?: CombatDialStep[];
-  heatDial?: unknown[];
+  heatDial?: HeatDialStep[];
 }
 
 export interface ApiResponse {

@@ -1,7 +1,8 @@
 'use client'
 
-import { AppDial } from '@/components/app-dial';
+import { AppDial, HeatModifiersTable } from '@/components/app-dial';
 import { useSelectedUnit } from '@/hooks/useSelectedUnit';
+import { useColorMeanings } from '@/hooks/useColorMeanings';
 import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Unit3DModal from '@/components/Unit3DModal';
@@ -14,8 +15,15 @@ function ListContent() {
   const {
     selectedUnit,
     loading,
-    error
+    error,
+    heatClicks,
+    damageClicks,
+    handleHeat,
+    handleCooldown,
+    handleDamage,
+    handleRepair,
   } = useSelectedUnit(unitId);
+  const { colorMapping } = useColorMeanings();
 
   if (loading) {
     return (
@@ -160,36 +168,16 @@ function ListContent() {
           </div>
         </div>
 
-        {/* Attack Information */}
-        {selectedUnit.attackStats && selectedUnit.attackStats.length > 0 && (
+        {/* Heat Modifiers Table */}
+        {selectedUnit.heatDial && selectedUnit.heatDial.length > 0 && (
           <div className="bg-gray-50 p-2 sm:p-3 rounded-lg border">
-            <div className="space-y-2">
-              {selectedUnit.attackStats.map((attack, index) => (
-                <div key={`${attack.unitId}-${attack.attackType}-${index}`} className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-center ${index > 0 ? 'pt-2 border-t border-gray-200' : ''}`}>
-                  <div className="flex items-center justify-center sm:border-0 border-b border-gray-200 pb-2 sm:pb-0">
-                    <div className="text-gray-500 text-xs font-medium">
-                      {attack.attackType === 'primary' ? 'Ataque Primário' : 'Ataque Secundário'}
-                    </div>
-                  </div>
-                  <div className="sm:border-l border-gray-200 sm:pl-2 sm:border-0 border-b border-gray-200 pb-2 sm:pb-0">
-                    <div className="text-gray-500 text-xs">Tipo</div>
-                    <div className="font-bold text-xs bg-white px-1 py-0.5 rounded capitalize">
-                      {attack.damageType === 'ballistic' ? 'Balístico' : 
-                       attack.damageType === 'energetic' ? 'Energético' : 
-                       attack.damageType === 'melee' ? 'Corpo a Corpo' : 'N/A'}
-                    </div>
-                  </div>
-                  <div className="sm:border-l border-gray-200 sm:pl-2 sm:border-0 border-b border-gray-200 pb-2 sm:pb-0 lg:border-b-0">
-                    <div className="text-gray-500 text-xs">Alvos</div>
-                    <div className="font-bold text-xs bg-white px-1 py-0.5 rounded">{attack.targetCount}</div>
-                  </div>
-                  <div className="sm:border-l border-gray-200 sm:pl-2">
-                    <div className="text-gray-500 text-xs">Alcance</div>
-                    <div className="font-bold text-xs bg-white px-1 py-0.5 rounded">{attack.minRange}-{attack.maxRange}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <HeatModifiersTable
+              heatDial={selectedUnit.heatDial}
+              heatClicks={heatClicks}
+              damageClicks={damageClicks}
+              combatDial={selectedUnit.combatDial}
+              colorMapping={colorMapping}
+            />
           </div>
         )}
       </div>
@@ -204,6 +192,10 @@ function ListContent() {
               <AppDial
                 unitId={unitId || ''}
                 dialSide="stats"
+                externalHeatClicks={heatClicks}
+                externalDamageClicks={damageClicks}
+                onHeatChange={(clicks) => clicks > heatClicks ? handleHeat((selectedUnit?.heatDial?.length ?? 0) + 1) : handleCooldown()}
+                onDamageChange={(clicks) => clicks > damageClicks ? handleDamage() : handleRepair()}
               />
             </div>
           </div>

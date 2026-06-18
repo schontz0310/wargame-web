@@ -8,6 +8,7 @@ export function useSelectedUnit(unitId: string | null) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [damageClicks, setDamageClicks] = useState(0);
+  const [heatClicks, setHeatClicks] = useState(0);
 
   useEffect(() => {
     if (unitId) {
@@ -15,6 +16,7 @@ export function useSelectedUnit(unitId: string | null) {
     } else {
       setSelectedUnit(null);
       setDamageClicks(0);
+      setHeatClicks(0);
     }
   }, [unitId]);
 
@@ -26,7 +28,8 @@ export function useSelectedUnit(unitId: string | null) {
       const foundUnit = await apiService.getUnit(id);
       if (foundUnit) {
         setSelectedUnit(foundUnit);
-        setDamageClicks(0); // Reset damage when loading new unit
+        setDamageClicks(0);
+        setHeatClicks(0);
       } else {
         throw new Error('Unit not found');
       }
@@ -49,6 +52,18 @@ export function useSelectedUnit(unitId: string | null) {
     }
   };
 
+  const handleHeat = (maxHeatSteps: number) => {
+    if (heatClicks < maxHeatSteps - 1) {
+      setHeatClicks(prev => prev + 1);
+    }
+  };
+
+  const handleCooldown = () => {
+    if (heatClicks > 0) {
+      setHeatClicks(prev => prev - 1);
+    }
+  };
+
   return {
     selectedUnit,
     loading,
@@ -56,6 +71,9 @@ export function useSelectedUnit(unitId: string | null) {
     damageClicks,
     handleDamage,
     handleRepair,
+    heatClicks,
+    handleHeat,
+    handleCooldown,
     refetch: () => unitId && fetchUnitDetails(unitId)
   };
 }

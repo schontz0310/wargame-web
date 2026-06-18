@@ -1,6 +1,7 @@
 /* eslint-disable jsx-a11y/alt-text */
 'use client'
 
+import { HeatDialStep } from '@/lib/api';
 import { Stage, Layer, Circle, TextPath, Arc, Line, Image, Text, Rect, RegularPolygon, Group } from 'react-konva';
 import elite from '@/images/patent-tree.png';
 import veteran from '@/images/patent-two.png'
@@ -15,7 +16,7 @@ import { CombatDialStep } from '@/lib/api';
 import useImage from 'use-image'
 import { useSelectedUnit } from '@/hooks/useSelectedUnit'
 import { useColorMeanings } from '@/hooks/useColorMeanings'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 
 const ANGLE_PER_CHARACTER = 4.5;
 const UNIQUE_STAR_CHARACTER = "★ ";
@@ -104,11 +105,14 @@ const MELEE_PADDING = -15;
 interface DialParams {
   unitId: string;
   dialSide?: 'name' | 'stats';
+  externalHeatClicks?: number;
+  externalDamageClicks?: number;
+  onHeatChange?: (clicks: number) => void;
+  onDamageChange?: (clicks: number) => void;
 }
 
 export function AppDial(dialParams: DialParams) {
-  // Extract dialSide from dialParams
-  const { unitId, dialSide } = dialParams;
+  const { unitId, dialSide, externalHeatClicks, externalDamageClicks, onHeatChange, onDamageChange } = dialParams;
   
   // Use dynamic color mapping from API
   const { getColorById, getTextColorForColor, loading: colorLoading, colorMapping } = useColorMeanings();
@@ -163,7 +167,14 @@ export function AppDial(dialParams: DialParams) {
     return { color: '#ffffff', textColor: '#000000', hasColor: false };
   }, [getColorById, getTextColorForColor]);
 
-  const { selectedUnit, loading, error, damageClicks, handleDamage, handleRepair } = useSelectedUnit(unitId);
+  const { selectedUnit, loading, error, damageClicks: internalDamageClicks, handleDamage: internalHandleDamage, handleRepair: internalHandleRepair, heatClicks: internalHeatClicks, handleHeat: internalHandleHeat, handleCooldown: internalHandleCooldown } = useSelectedUnit(unitId);
+
+  const damageClicks = externalDamageClicks ?? internalDamageClicks;
+  const heatClicks = externalHeatClicks ?? internalHeatClicks;
+  const handleDamage = onDamageChange ? () => onDamageChange(damageClicks + 1) : internalHandleDamage;
+  const handleRepair = onDamageChange ? () => onDamageChange(Math.max(0, damageClicks - 1)) : internalHandleRepair;
+  const handleHeat = (max: number) => { if (onHeatChange) onHeatChange(Math.min(heatClicks + 1, max - 1)); else internalHandleHeat(max); };
+  const handleCooldown = () => { if (onHeatChange) onHeatChange(Math.max(0, heatClicks - 1)); else internalHandleCooldown(); };
   
   // Helper function to adjust color intensity based on damage level
   const adjustColorIntensity = (hexColor: string, intensity: number): string => {
@@ -214,6 +225,12 @@ export function AppDial(dialParams: DialParams) {
     attack: { hasCollor: false, collorHex: '#ffffff', singleUse: false },
     defense: { hasCollor: false, collorHex: '#ffffff', singleUse: false }
   });
+
+  // Heat dial animation states
+  const [ventSpinning, setVentSpinning] = useState(false);
+  const [heatSlideX, setHeatSlideX] = useState(0);
+  const [heatSlideOpacity, setHeatSlideOpacity] = useState(1);
+  const prevHeatClicksRef = useRef(0);
 
   // Fade animation states
   const [fadeState, setFadeState] = useState({
@@ -376,6 +393,27 @@ export function AppDial(dialParams: DialParams) {
     }, 150);
   }, [damageClicks, selectedUnit, calculateDialValues, error, getAttackColor, getDefenseColor, getMovementColor, getPrimaryDamageColor, getSecondaryDamageColor, loading, colorLoading, colorMapping]);
 
+  useEffect(() => {
+    const delta = heatClicks - prevHeatClicksRef.current;
+    prevHeatClicksRef.current = heatClicks;
+    if (delta === 0) return;
+    const startX = delta > 0 ? -40 : 40;
+    setHeatSlideX(startX);
+    setHeatSlideOpacity(0);
+    const startTime = performance.now();
+    const duration = 280;
+    const animate = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setHeatSlideX(startX * (1 - eased));
+      const opacity = progress > 0.7 ? (progress - 0.7) / 0.3 : 0;
+      setHeatSlideOpacity(opacity);
+      if (progress < 1) requestAnimationFrame(animate);
+    };
+    requestAnimationFrame(animate);
+  }, [heatClicks]);
+
   if (loading || colorLoading) return <div>Carregando...</div>;
   if (error || !selectedUnit) return <div>Erro ao carregar unidade</div>;
   
@@ -477,10 +515,55 @@ export function AppDial(dialParams: DialParams) {
     })()
   };
   
+  const maxHeatSteps = selectedUnit?.heatDial ? selectedUnit.heatDial.length + 1 : 0;
+
+  const calculateHeatValues = (heatClicks: number) => {
+    if (!selectedUnit?.heatDial || selectedUnit.heatDial.length === 0) return null;
+    const stepIndex = Math.min(heatClicks, selectedUnit.heatDial.length - 1);
+    const step = selectedUnit.heatDial[stepIndex];
+    if (!step) return null;
+    return {
+      primaryHeatValue: step.primaryHeatValue,
+      secondaryHeatValue: step.secondaryHeatValue,
+      movementHeatValue: step.movementHeatValue,
+      primaryHeatColorMeaningId: step.primaryHeatColorMeaningId,
+      secondaryHeatColorMeaningId: step.secondaryHeatColorMeaningId,
+      movementHeatColorMeaningId: step.movementHeatColorMeaningId,
+    };
+  };
+
+  const isShutdown = maxHeatSteps > 0 && heatClicks === maxHeatSteps - 1;
+  const safeHeatClicks = isShutdown ? (selectedUnit?.heatDial?.length ?? 1) - 1 : heatClicks;
+
+  const handleCooldownWithSpin = () => {
+    handleCooldown();
+    setVentSpinning(true);
+    setTimeout(() => setVentSpinning(false), 600);
+  };
+  const heatValues = calculateHeatValues(safeHeatClicks);
+
   const heatClick = {
-    primaryDamage: { value: 0, collor: { hasColor: false, hexValue: '#ffffff' } },
-    secondaryDamage: { value: 0, collor: { hasColor: false, hexValue: '#ffffff' } },
-    movement: { value: 0, collor: { hasColor: false, hexValue: '#ffffff' } }
+    primaryDamage: {
+      value: heatValues?.primaryHeatValue ?? 0,
+      collor: {
+        hasColor: !!heatValues?.primaryHeatColorMeaningId,
+        hexValue: heatValues?.primaryHeatColorMeaningId ? getColorById(heatValues.primaryHeatColorMeaningId) : '#ffffff'
+      }
+    },
+    secondaryDamage: {
+      value: heatValues?.secondaryHeatValue ?? 0,
+      collor: {
+        hasColor: !!heatValues?.secondaryHeatColorMeaningId,
+        hexValue: heatValues?.secondaryHeatColorMeaningId ? getColorById(heatValues.secondaryHeatColorMeaningId) : '#ffffff'
+      }
+    },
+    movement: {
+      value: heatValues?.movementHeatValue ?? 0,
+      collor: {
+        hasColor: !!heatValues?.movementHeatColorMeaningId,
+        hexValue: heatValues?.movementHeatColorMeaningId ? getColorById(heatValues.movementHeatColorMeaningId) : '#ffffff'
+      }
+    }
   };
   
   // Map API data to component expected format
@@ -731,7 +814,7 @@ export function AppDial(dialParams: DialParams) {
         DANO
       </span>
     </div>
-    
+
     <Stage width={500} height={500} rotation={dialSide === 'name' ? 0 : 180} x={dialSide === 'name' ? 0 : DIAL_WIDTH} y={dialSide === 'name' ? 0 : DIAL_HEIGHT}>
       {/* Main dial layer - STATIC (no rotation) */}
       <Layer>
@@ -1020,28 +1103,29 @@ export function AppDial(dialParams: DialParams) {
             height={82}
             fill="#ffffff"
           />
+          {/* Values - animated group */}
+          <Group offsetX={-heatSlideX} opacity={heatSlideOpacity}>
           {/* Movement heat stats */}
           <Rect
             x={281}
             y={124}
             width={23}
             height={22}
-            visible={heatClick.movement.collor.hasColor}
-            fill={heatClick.movement.collor.hexValue}
+            visible={isShutdown ? true : heatClick.movement.collor.hasColor}
+            fill={isShutdown ? '#000000' : heatClick.movement.collor.hexValue}
           />
           <Text
             x={250}
             y={250}
-            text={heatClick.movement.value <= 0
+            text={isShutdown ? '☢' : (heatClick.movement.value <= 0
               ? String(heatClick.movement.value)
-              : `+${String(heatClick.movement.value)}`
-            }
-            fontSize={16}
+              : `+${String(heatClick.movement.value)}`)}
+            fontSize={isShutdown ? 18 : 16}
             fontStyle='bold'
-            fill={heatClick.movement.collor.hasColor && heatClick.movement.collor.hexValue === "#000000" ? "#FFFFFF" : "#000000"}
+            fill={isShutdown ? '#ffffff' : (heatClick.movement.collor.hasColor && heatClick.movement.collor.hexValue === "#000000" ? "#FFFFFF" : "#000000")}
             rotation={180}
-            offsetY={-108}
-            offsetX={heatClick.movement.value === 0 ? 47.5 : 51} 
+            offsetY={-107}
+            offsetX={isShutdown ? 47 : (heatClick.movement.value === 0 ? 47.5 : 51)}
           />
           {/* secondaryDamage heat stats */}
           <Rect
@@ -1049,22 +1133,21 @@ export function AppDial(dialParams: DialParams) {
             y={148}
             width={23}
             height={22}
-            visible={heatClick.secondaryDamage.collor.hasColor}
-            fill={heatClick.secondaryDamage.collor.hexValue}
+            visible={isShutdown ? true : heatClick.secondaryDamage.collor.hasColor}
+            fill={isShutdown ? '#000000' : heatClick.secondaryDamage.collor.hexValue}
           />
           <Text
             x={250}
             y={250}
-            text={heatClick.secondaryDamage.value <= 0
+            text={isShutdown ? '☢' : (heatClick.secondaryDamage.value <= 0
               ? String(heatClick.secondaryDamage.value)
-              : `+${String(heatClick.secondaryDamage.value)}`
-            }
-            fontSize={16}
+              : `+${String(heatClick.secondaryDamage.value)}`)}
+            fontSize={isShutdown ? 18 : 16}
             fontStyle='bold'
-            fill={heatClick.secondaryDamage.collor.hasColor && heatClick.secondaryDamage.collor.hexValue === "#000000" ? "#FFFFFF" : "#000000"}
+            fill={isShutdown ? '#ffffff' : (heatClick.secondaryDamage.collor.hasColor && heatClick.secondaryDamage.collor.hexValue === "#000000" ? "#FFFFFF" : "#000000")}
             rotation={180}
-            offsetY={-85}
-            offsetX={heatClick.secondaryDamage.value === 0 ? 47.5 : 51} 
+            offsetY={-82.5}
+            offsetX={isShutdown ? 47 : (heatClick.secondaryDamage.value === 0 ? 47.5 : 51)}
           />
           {/* primaryDamage heat stats */}
           <Rect
@@ -1072,24 +1155,24 @@ export function AppDial(dialParams: DialParams) {
             y={172}
             width={23}
             height={22}
-            visible={heatClick.primaryDamage.collor.hasColor}
-            fill={heatClick.primaryDamage.collor.hexValue}
+            visible={isShutdown ? true : heatClick.primaryDamage.collor.hasColor}
+            fill={isShutdown ? '#000000' : heatClick.primaryDamage.collor.hexValue}
             cornerRadius={[0, 0, 0, 0]}
           />
           <Text
             x={250}
             y={250}
-            text={heatClick.primaryDamage.value <= 0
+            text={isShutdown ? '☢' : (heatClick.primaryDamage.value <= 0
               ? String(heatClick.primaryDamage.value)
-              : `+${String(heatClick.primaryDamage.value)}`
-            }
-            fontSize={16}
+              : `+${String(heatClick.primaryDamage.value)}`)}
+            fontSize={isShutdown ? 18 : 16}
             fontStyle='bold'
-            fill={heatClick.primaryDamage.collor.hasColor && heatClick.primaryDamage.collor.hexValue === "#000000" ? "#FFFFFF" : "#000000"}
+            fill={isShutdown ? '#ffffff' : (heatClick.primaryDamage.collor.hasColor && heatClick.primaryDamage.collor.hexValue === "#000000" ? "#FFFFFF" : "#000000")}
             rotation={180}
-            offsetY={-60}
-            offsetX={heatClick.primaryDamage.value === 0 ? 47.5 : 51} 
+            offsetY={-59.5}
+            offsetX={isShutdown ? 47 : (heatClick.primaryDamage.value === 0 ? 47.5 : 51)}
           />
+          </Group>
         </Group>
       </Layer>
       {/* L-shaped stats window - STATIC */}
@@ -1375,7 +1458,138 @@ export function AppDial(dialParams: DialParams) {
         />
       </Layer>
     </Stage>
-    
+
+    {/* Heat Dial Controls - only shown if unit has heatDial */}
+    {maxHeatSteps > 0 && (
+      <>
+        <div className="flex justify-center items-center gap-8 mt-4">
+          {/* Cooldown button - ventilador */}
+          <div className="flex flex-col items-center gap-1">
+            <button
+              onClick={handleCooldownWithSpin}
+              disabled={heatClicks <= 0}
+              className="flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 shadow-lg hover:shadow-blue-400/50 hover:scale-105 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-200 disabled:shadow-none"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                className={`w-8 h-8 text-white transition-transform ${ventSpinning ? 'animate-spin' : ''}`}
+                style={{ animationDuration: '0.6s' }}
+              >
+                <path d="M12 2a1 1 0 0 1 1 1c0 1.5 1.5 2.5 3 2a1 1 0 0 1 .87 1.5C15.5 8 16 10 17.5 10.5a1 1 0 0 1 0 1.93C16 13 15.5 15 16.87 16.5A1 1 0 0 1 16 18c-1.5-.5-3 .5-3 2a1 1 0 0 1-2 0c0-1.5-1.5-2.5-3-2a1 1 0 0 1-.87-1.5C8.5 15 8 13 6.5 12.43a1 1 0 0 1 0-1.93C8 10 8.5 8 7.13 6.5A1 1 0 0 1 8 5c1.5.5 3-.5 3-2a1 1 0 0 1 1-1zm0 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/>
+              </svg>
+            </button>
+            <span className="text-xs font-semibold text-blue-500">VENTILAÇÃO</span>
+          </div>
+
+          {/* Heat position indicator */}
+          <div className="px-4 py-2 bg-gradient-to-r from-orange-100 to-orange-200 border border-orange-300 rounded-xl text-sm font-semibold text-orange-700 shadow-md">
+            <span className="flex items-center gap-1">
+              🔥 {heatClicks + 1}/{maxHeatSteps}
+            </span>
+          </div>
+
+          {/* Heat button */}
+          <div className="flex flex-col items-center gap-1">
+            <button
+              onClick={() => handleHeat(maxHeatSteps)}
+              disabled={heatClicks >= maxHeatSteps - 1}
+              className="flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-orange-400 to-red-600 shadow-lg hover:shadow-orange-400/50 hover:scale-105 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-200 disabled:shadow-none"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-white">
+                <path fillRule="evenodd" d="M12.963 2.286a.75.75 0 0 0-1.071-.136 9.742 9.742 0 0 0-3.539 6.176 7.547 7.547 0 0 1-1.705-1.715.75.75 0 0 0-1.152-.082A9 9 0 1 0 15.68 4.534a7.46 7.46 0 0 1-2.717-2.248ZM15.75 14.25a3.75 3.75 0 1 1-7.313-1.172c.628.465 1.35.81 2.133 1a5.99 5.99 0 0 1 1.925-3.546 3.75 3.75 0 0 1 3.255 3.718Z" clipRule="evenodd" />
+              </svg>
+            </button>
+            <span className="text-xs font-semibold text-orange-500">CALOR</span>
+          </div>
+        </div>
+
+      </>
+    )}
+
     </>
   );
 };
+
+interface HeatModifiersTableProps {
+  heatDial: HeatDialStep[] | undefined;
+  heatClicks: number;
+  damageClicks: number;
+  combatDial: { movementValue?: number; attackValue?: number; defenseValue?: number; primaryValue?: number; secondaryValue?: number }[] | undefined;
+  colorMapping: Record<string, string>;
+}
+
+export function HeatModifiersTable({ heatDial, heatClicks, damageClicks, combatDial, colorMapping }: HeatModifiersTableProps) {
+  const maxHeatSteps = heatDial ? heatDial.length + 1 : 0;
+  if (maxHeatSteps === 0) return null;
+
+  const isShutdown = heatClicks === maxHeatSteps - 1;
+  const safeHeatClicks = isShutdown ? (heatDial?.length ?? 1) - 1 : heatClicks;
+  const heatStep = heatDial?.[Math.min(safeHeatClicks, (heatDial?.length ?? 1) - 1)];
+
+  const getColor = (id: string | null | undefined) => id ? (colorMapping[id] ?? '#ffffff') : '#ffffff';
+  const priColor = getColor(heatStep?.primaryHeatColorMeaningId);
+  const secColor = getColor(heatStep?.secondaryHeatColorMeaningId);
+  const priAmmoJam = !!heatStep?.primaryHeatColorMeaningId && priColor === '#000000';
+  const secAmmoJam = !!heatStep?.secondaryHeatColorMeaningId && secColor === '#000000';
+
+  const stepIndex = combatDial ? Math.min(damageClicks, combatDial.length - 1) : 0;
+  const base = combatDial?.[stepIndex];
+  if (!base) return null;
+
+  const heatMov = heatStep?.movementHeatValue ?? 0;
+  const heatPri = heatStep?.primaryHeatValue ?? 0;
+  const heatSec = heatStep?.secondaryHeatValue ?? 0;
+
+  const rows = [
+    { label: 'Movimento',       base: base.movementValue ?? 0, mod: heatMov, final: (base.movementValue ?? 0) + heatMov, jam: false,      shutdown: isShutdown },
+    { label: 'Ataque',          base: base.attackValue ?? 0,   mod: 0,       final: base.attackValue ?? 0,               jam: false,      shutdown: isShutdown },
+    { label: 'Defesa',          base: base.defenseValue ?? 0,  mod: 0,       final: base.defenseValue ?? 0,              jam: false,      shutdown: isShutdown },
+    { label: 'Dano Primário',   base: base.primaryValue ?? 0,  mod: heatPri, final: (base.primaryValue ?? 0) + heatPri,  jam: priAmmoJam, shutdown: isShutdown },
+    { label: 'Dano Secundário', base: base.secondaryValue ?? 0,mod: heatSec, final: (base.secondaryValue ?? 0) + heatSec,jam: secAmmoJam, shutdown: isShutdown },
+  ];
+
+  return (
+    <div className="w-full">
+      {isShutdown && (
+        <div className="flex items-center justify-center gap-1.5 mb-2 py-1 px-2 bg-black rounded">
+          <span className="text-white text-sm">☢</span>
+          <span className="text-[10px] font-black text-white uppercase tracking-widest">Shutdown — Unidade Desligada</span>
+          <span className="text-white text-sm">☢</span>
+        </div>
+      )}
+      <div className={`text-[10px] font-bold uppercase tracking-widest mb-1 text-center ${isShutdown ? 'text-black' : 'text-slate-400'}`}>Modificadores de Calor</div>
+      <div className="grid grid-cols-5 gap-x-1 text-[10px] text-slate-400 font-semibold uppercase mb-0.5 px-1">
+        <span className="col-span-2">Stat</span>
+        <span className="text-center">Base</span>
+        <span className="text-center">🔥</span>
+        <span className="text-center">Final</span>
+      </div>
+      {rows.map((row) => (
+        <div key={row.label} className={`border-t py-0.5 px-1 ${row.shutdown ? 'border-slate-700 bg-black/5' : row.jam ? 'border-slate-100 bg-slate-50' : 'border-slate-100'}`}>
+          <div className="grid grid-cols-5 gap-x-1 items-center">
+            <span className={`col-span-2 text-[11px] truncate ${row.shutdown ? 'text-slate-500 line-through' : 'text-slate-600'}`}>{row.label}</span>
+            <span className="text-center text-[11px] text-slate-400">{row.base}</span>
+            <span className={`text-center text-[11px] font-bold ${row.mod > 0 ? 'text-orange-500' : row.mod < 0 ? 'text-blue-500' : 'text-slate-300'}`}>
+              {row.mod > 0 ? `+${row.mod}` : row.mod === 0 ? '—' : row.mod}
+            </span>
+            <span className={`text-center text-[12px] font-bold ${row.mod !== 0 ? 'text-slate-800' : 'text-slate-400'}`}>{row.final}</span>
+          </div>
+          {row.shutdown && (
+            <div className="flex items-center gap-1 mt-0.5">
+              <span className="text-[9px]">☢</span>
+              <span className="text-[8px] font-black text-black uppercase tracking-tight">Shutdown</span>
+            </div>
+          )}
+          {!row.shutdown && row.jam && (
+            <div className="flex items-center gap-1 mt-0.5">
+              <span className="inline-flex items-center justify-center w-3 h-3 bg-black text-white text-[7px] font-black rounded-sm flex-shrink-0">✕</span>
+              <span className="text-[8px] font-black text-black uppercase tracking-tight">Ammunition Jam</span>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}

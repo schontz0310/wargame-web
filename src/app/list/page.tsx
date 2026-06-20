@@ -1,6 +1,7 @@
 'use client'
 
 import { AppDial, HeatModifiersTable } from '@/components/app-dial';
+import { InfantryDial } from '@/components/infantry-dial';
 import { useSelectedUnit } from '@/hooks/useSelectedUnit';
 import { useColorMeanings } from '@/hooks/useColorMeanings';
 import { Suspense, useState } from 'react';
@@ -184,7 +185,18 @@ function ListContent() {
 
       {/* Right Column - Dial and Controls */}
       <div className="w-full lg:flex-1 flex flex-col items-center justify-center min-h-0 mt-4 lg:mt-0">
-        {selectedUnit.type.toLowerCase() === 'mech' && 
+        {selectedUnit.type.toLowerCase() === 'infantry' ? (
+          <div className="w-full flex justify-center">
+            <div className="scale-75 sm:scale-75 lg:scale-100 origin-center">
+              <InfantryDial
+                unitId={unitId || ''}
+                dialSide="stats"
+                externalDamageClicks={damageClicks}
+                onDamageChange={(clicks) => clicks > damageClicks ? handleDamage() : handleRepair()}
+              />
+            </div>
+          </div>
+        ) : selectedUnit.type.toLowerCase() === 'mech' && 
          selectedUnit.speedMode.toLowerCase() === 'mech' && 
          selectedUnit.class.toLowerCase() !== 'colossal' ? (
           <div className="w-full flex justify-center">

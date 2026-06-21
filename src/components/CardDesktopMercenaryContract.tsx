@@ -174,6 +174,7 @@ export default function CardDesktop({ selectedCard, isFlipped, getFactionLogo }:
                         { name: "two chevrons", file: "two-chevrons-black.png" },
                         { name: "one chevron", file: "one-chevron-black.png" },
                         { name: "ballistic", file: "balistic.png" },
+                        { name: "Clan Wolf", file: "clan-wolf-black.png" },
                         { name: "VTOL", file: "vtol.png" },
                         { name: "vtol", file: "vtol.png" },
                       ];

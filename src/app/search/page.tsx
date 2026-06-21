@@ -340,22 +340,23 @@ function SearchPageContent() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Carregando unidades...</div>
+      <div className="flex items-center justify-center min-h-screen" style={{background:'#0d1208'}}>
+        <div className="font-mono text-[#7a9a5a] tracking-widest animate-pulse">[ CARREGANDO BANCO DE DADOS... ]</div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen" style={{background:'linear-gradient(160deg,#080c05 0%,#0d1208 60%,#0a0f06 100%)'}}>
       {/* Filter Sidebar */}
-      <div className={`${sidebarOpen ? 'w-72' : 'w-0'} transition-all duration-300 ease-in-out overflow-hidden bg-white border-r border-gray-200 shadow-sm lg:relative absolute lg:z-auto z-50 h-full`}>
+      <div className={`${sidebarOpen ? 'w-72' : 'w-0'} transition-all duration-300 ease-in-out overflow-hidden lg:relative absolute lg:z-auto z-50 h-full`} style={{background:'#0d1208',borderRight:'1px solid #3a4a2a'}}>
         <div className="p-4 h-full overflow-y-auto overflow-x-hidden">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold text-gray-900">Filtros</h2>
+            <h2 className="text-sm font-mono font-semibold tracking-widest uppercase" style={{color:'#c9a84c'}}>Filtros</h2>
             <button
               onClick={() => setSidebarOpen(false)}
-              className="p-1 rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-700 flex-shrink-0"
+              className="p-1 transition-colors"
+              style={{color:'#4a5e3a'}}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -364,24 +365,26 @@ function SearchPageContent() {
           </div>
 
           {/* Search Input */}
-          <div className="mb-4">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Buscar</label>
+          <div className="mb-3">
+            <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>BUSCAR</label>
             <input
               type="text"
               placeholder="Nome ou variante..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-2 py-1.5 text-xs font-mono"
+              style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c',outline:'none'}}
             />
           </div>
 
           {/* Sort By */}
-          <div className="mb-4">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Ordenar por</label>
+          <div className="mb-3">
+            <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>ORDENAR</label>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-2 py-1.5 text-xs font-mono"
+              style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c'}}
             >
               <option value="name">Nome</option>
               <option value="points">Pontos</option>
@@ -393,12 +396,13 @@ function SearchPageContent() {
           </div>
             
           {/* Draft Selection */}
-          <div className="mb-4">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Draft</label>
+          <div className="mb-3">
+            <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>DRAFT</label>
             <select
               value={selectedDraftId}
               onChange={(e) => setSelectedDraftId(e.target.value)}
-              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-2 py-1.5 text-xs font-mono"
+              style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c'}}
             >
                 <option value="">Selecionar Draft</option>
                 {drafts.map(draft => (
@@ -410,157 +414,75 @@ function SearchPageContent() {
             </div>
 
           {/* Type Filter */}
-          <div className="mb-4">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Tipo</label>
-            <select
-              value={selectedType}
-              onChange={(e) => setSelectedType(e.target.value)}
-              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-            >
+          <div className="mb-3">
+            <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>TIPO</label>
+            <select value={selectedType} onChange={(e) => setSelectedType(e.target.value)} className="w-full px-2 py-1.5 text-xs font-mono" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c'}}>
               <option value="">Todos os tipos</option>
-              {uniqueTypes.map(type => (
-                <option key={type} value={type} className="capitalize">{type}</option>
-              ))}
+              {uniqueTypes.map(type => <option key={type} value={type}>{type}</option>)}
             </select>
           </div>
 
-          {/* Expansion Filter */}
-          <div className="mb-4">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Expansão</label>
-            <select
-              value={selectedExpansion}
-              onChange={(e) => setSelectedExpansion(e.target.value)}
-              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">Todas as expansões</option>
-              {uniqueExpansions.map(expansion => (
-                <option key={expansion} value={expansion}>{expansion}</option>
-              ))}
+          <div className="mb-3">
+            <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>EXPANSÃO</label>
+            <select value={selectedExpansion} onChange={(e) => setSelectedExpansion(e.target.value)} className="w-full px-2 py-1.5 text-xs font-mono" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c'}}>
+              <option value="">Todas</option>
+              {uniqueExpansions.map(e => <option key={e} value={e}>{e}</option>)}
             </select>
           </div>
 
-          {/* Faction Filter */}
-          <div className="mb-4">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Facção</label>
-            <select
-              value={selectedFaction}
-              onChange={(e) => setSelectedFaction(e.target.value)}
-              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">Todas as facções</option>
-              {uniqueFactions.map(faction => (
-                <option key={faction} value={faction}>{faction}</option>
-              ))}
+          <div className="mb-3">
+            <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>FACÇÃO</label>
+            <select value={selectedFaction} onChange={(e) => setSelectedFaction(e.target.value)} className="w-full px-2 py-1.5 text-xs font-mono" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c'}}>
+              <option value="">Todas</option>
+              {uniqueFactions.map(f => <option key={f} value={f}>{f}</option>)}
             </select>
           </div>
 
-          {/* Rank Filter */}
-          <div className="mb-4">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Rank</label>
-            <select
-              value={selectedRank}
-              onChange={(e) => setSelectedRank(e.target.value)}
-              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">Todos os ranks</option>
-              {uniqueRanks.map(rank => (
-                <option key={rank} value={rank}>{rank}</option>
-              ))}
+          <div className="mb-3">
+            <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>RANK</label>
+            <select value={selectedRank} onChange={(e) => setSelectedRank(e.target.value)} className="w-full px-2 py-1.5 text-xs font-mono" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c'}}>
+              <option value="">Todos</option>
+              {uniqueRanks.map(r => <option key={r} value={r}>{r}</option>)}
             </select>
           </div>
 
-          {/* Class Filter */}
-          <div className="mb-4">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Classe</label>
-            <select
-              value={selectedClass}
-              onChange={(e) => setSelectedClass(e.target.value)}
-              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">Todas as classes</option>
-              {uniqueClasses.map(unitClass => (
-                <option key={unitClass} value={unitClass}>{unitClass}</option>
-              ))}
+          <div className="mb-3">
+            <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>CLASSE</label>
+            <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} className="w-full px-2 py-1.5 text-xs font-mono" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c'}}>
+              <option value="">Todas</option>
+              {uniqueClasses.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
 
-          {/* Points Range */}
-          <div className="mb-4">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Pontos Mínimos</label>
-            <input
-              type="number"
-              placeholder="0"
-              value={pointsRange.min}
-              onChange={(e) => setPointsRange(prev => ({ ...prev, min: e.target.value }))}
-              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-
-          {/* Points Max */}
-          <div className="mb-4">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Pontos Máximos</label>
-            <input
-              type="number"
-              placeholder="999"
-              value={pointsRange.max}
-              onChange={(e) => setPointsRange(prev => ({ ...prev, max: e.target.value }))}
-              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-
-          {/* Unique Units Checkbox */}
-          <div className="mb-4">
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="uniqueOnly"
-                checked={showUniqueOnly}
-                onChange={(e) => setShowUniqueOnly(e.target.checked)}
-                className="h-3 w-3 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <label htmlFor="uniqueOnly" className="ml-2 text-xs font-medium text-gray-700">
-                Apenas únicos ★
-              </label>
+          <div className="mb-3 flex gap-2">
+            <div className="flex-1">
+              <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>PTS MIN</label>
+              <input type="number" placeholder="0" value={pointsRange.min} onChange={(e) => setPointsRange(prev => ({ ...prev, min: e.target.value }))} className="w-full px-2 py-1.5 text-xs font-mono" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c',outline:'none'}} />
+            </div>
+            <div className="flex-1">
+              <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>PTS MAX</label>
+              <input type="number" placeholder="999" value={pointsRange.max} onChange={(e) => setPointsRange(prev => ({ ...prev, max: e.target.value }))} className="w-full px-2 py-1.5 text-xs font-mono" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c',outline:'none'}} />
             </div>
           </div>
 
-          {/* Collection Filters */}
-          <div className="mb-4">
-            <label className="block text-xs font-medium text-gray-700 mb-2">Coleção</label>
-            <div className="space-y-2">
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="haveOnly"
-                  checked={showHaveOnly}
-                  onChange={(e) => setShowHaveOnly(e.target.checked)}
-                  className="h-3 w-3 text-green-600 focus:ring-green-500 border-gray-300 rounded"
-                />
-                <label htmlFor="haveOnly" className="ml-2 text-xs text-gray-700">
-                  Tenho na coleção
-                </label>
-              </div>
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="wantOnly"
-                  checked={showWantOnly}
-                  onChange={(e) => setShowWantOnly(e.target.checked)}
-                  className="h-3 w-3 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <label htmlFor="wantOnly" className="ml-2 text-xs text-gray-700">
-                  Procuro / Quero
-                </label>
-              </div>
-            </div>
+          <div className="mb-3 space-y-2">
+            <label className="block text-xs font-mono" style={{color:'#5a7a4a'}}>COLEÇÃO</label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="uniqueOnly" checked={showUniqueOnly} onChange={(e) => setShowUniqueOnly(e.target.checked)} className="h-3 w-3" style={{accentColor:'#c9a84c'}} />
+              <span className="text-xs font-mono" style={{color:'#7a9a5a'}}>Apenas únicos ★</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="haveOnly" checked={showHaveOnly} onChange={(e) => setShowHaveOnly(e.target.checked)} className="h-3 w-3" style={{accentColor:'#7a9a5a'}} />
+              <span className="text-xs font-mono" style={{color:'#7a9a5a'}}>Tenho na coleção</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="wantOnly" checked={showWantOnly} onChange={(e) => setShowWantOnly(e.target.checked)} className="h-3 w-3" style={{accentColor:'#7a9a5a'}} />
+              <span className="text-xs font-mono" style={{color:'#7a9a5a'}}>Procuro / Quero</span>
+            </label>
           </div>
 
-          {/* Clear Filters Button */}
-          <button
-            onClick={clearFilters}
-            className="w-full px-3 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors text-xs"
-          >
-            Limpar Filtros
+          <button onClick={clearFilters} className="w-full px-3 py-2 font-mono text-xs corner-clip-sm transition-colors" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>
+            LIMPAR FILTROS
           </button>
         </div>
       </div>
@@ -568,315 +490,111 @@ function SearchPageContent() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="px-6 py-3" style={{background:'rgba(0,0,0,0.5)',borderBottom:'1px solid #3a4a2a'}}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               {!sidebarOpen && (
-                <button
-                  onClick={() => setSidebarOpen(true)}
-                  className="p-2 rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-700"
-                >
+                <button onClick={() => setSidebarOpen(true)} className="p-1 transition-colors" style={{color:'#4a5e3a'}}>
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                   </svg>
                 </button>
               )}
-              <h1 className="text-2xl font-bold text-gray-900">Buscar Unidades</h1>
+              <h1 className="text-lg font-bold font-mono tracking-widest uppercase" style={{color:'#e8d5a0'}}>Buscar Unidades</h1>
             </div>
-            <div className="text-sm text-gray-600">
-              {filteredUnits.length} de {displayUnits.length} unidade(s)
+            <div className="text-xs font-mono" style={{color:'#4a5e3a'}}>
+              {filteredUnits.length} / {displayUnits.length}
             </div>
           </div>
 
-          {/* Active Filters Display */}
+          {/* Active Filters */}
           {(selectedType || selectedExpansion || selectedFaction || selectedRank || selectedClass || showUniqueOnly || pointsRange.min || pointsRange.max) && (
-            <div className="flex flex-wrap gap-2 mt-4">
-              {selectedType && (
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                  Tipo: {selectedType}
-                  <button
-                    onClick={() => setSelectedType('')}
-                    className="ml-1 text-blue-600 hover:text-blue-800"
-                  >
-                    ×
-                  </button>
-                </span>
-              )}
-              {selectedExpansion && (
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  Expansão: {selectedExpansion}
-                  <button
-                    onClick={() => setSelectedExpansion('')}
-                    className="ml-1 text-green-600 hover:text-green-800"
-                  >
-                    ×
-                  </button>
-                </span>
-              )}
-              {selectedFaction && (
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                  Facção: {selectedFaction}
-                  <button
-                    onClick={() => setSelectedFaction('')}
-                    className="ml-1 text-purple-600 hover:text-purple-800"
-                  >
-                    ×
-                  </button>
-                </span>
-              )}
-              {selectedRank && (
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                  Rank: {selectedRank}
-                  <button
-                    onClick={() => setSelectedRank('')}
-                    className="ml-1 text-yellow-600 hover:text-yellow-800"
-                  >
-                    ×
-                  </button>
-                </span>
-              )}
-              {selectedClass && (
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                  Classe: {selectedClass}
-                  <button
-                    onClick={() => setSelectedClass('')}
-                    className="ml-1 text-indigo-600 hover:text-indigo-800"
-                  >
-                    ×
-                  </button>
-                </span>
-              )}
-              {showUniqueOnly && (
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-pink-100 text-pink-800">
-                  Apenas únicos ★
-                  <button
-                    onClick={() => setShowUniqueOnly(false)}
-                    className="ml-1 text-pink-600 hover:text-pink-800"
-                  >
-                    ×
-                  </button>
-                </span>
-              )}
-              {(pointsRange.min || pointsRange.max) && (
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                  Pontos: {pointsRange.min || '0'}-{pointsRange.max || '∞'}
-                  <button
-                    onClick={() => setPointsRange({ min: '', max: '' })}
-                    className="ml-1 text-orange-600 hover:text-orange-800"
-                  >
-                    ×
-                  </button>
-                </span>
-              )}
+            <div className="flex flex-wrap gap-1 mt-2">
+              {selectedType && <span className="inline-flex items-center px-2 py-0.5 text-xs font-mono" style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>TIPO:{selectedType} <button onClick={() => setSelectedType('')} className="ml-1" style={{color:'#c9a84c'}}>×</button></span>}
+              {selectedExpansion && <span className="inline-flex items-center px-2 py-0.5 text-xs font-mono" style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>EXP:{selectedExpansion} <button onClick={() => setSelectedExpansion('')} className="ml-1" style={{color:'#c9a84c'}}>×</button></span>}
+              {selectedFaction && <span className="inline-flex items-center px-2 py-0.5 text-xs font-mono" style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>FAC:{selectedFaction} <button onClick={() => setSelectedFaction('')} className="ml-1" style={{color:'#c9a84c'}}>×</button></span>}
+              {selectedRank && <span className="inline-flex items-center px-2 py-0.5 text-xs font-mono" style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>RANK:{selectedRank} <button onClick={() => setSelectedRank('')} className="ml-1" style={{color:'#c9a84c'}}>×</button></span>}
+              {selectedClass && <span className="inline-flex items-center px-2 py-0.5 text-xs font-mono" style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>CLASS:{selectedClass} <button onClick={() => setSelectedClass('')} className="ml-1" style={{color:'#c9a84c'}}>×</button></span>}
+              {showUniqueOnly && <span className="inline-flex items-center px-2 py-0.5 text-xs font-mono" style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>ÚNICOS★ <button onClick={() => setShowUniqueOnly(false)} className="ml-1" style={{color:'#c9a84c'}}>×</button></span>}
+              {(pointsRange.min || pointsRange.max) && <span className="inline-flex items-center px-2 py-0.5 text-xs font-mono" style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>PTS:{pointsRange.min||'0'}-{pointsRange.max||'∞'} <button onClick={() => setPointsRange({min:'',max:''})} className="ml-1" style={{color:'#c9a84c'}}>×</button></span>}
             </div>
           )}
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-auto p-6">
+        <div className="flex-1 overflow-auto p-3">
           {/* Units Table - Desktop */}
           <div className="hidden lg:block w-full overflow-hidden">
-            <div className="bg-white rounded-lg shadow-lg border border-gray-200">
-              {/* Table Header Section with Enhanced Styling */}
-              <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 border-b border-blue-800 rounded-t-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                  </svg>
-                  Lista de Unidades
-                </h2>
-                <p className="text-blue-100 text-sm mt-1">
-                  {filteredUnits.length} unidade(s) encontrada(s)
-                </p>
-              </div>
-              <div className="flex items-center gap-4 text-blue-100">
-                <button
-                  onClick={exportToCSV}
-                  className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center gap-2 backdrop-blur-sm"
-                  title="Exportar lista como CSV"
-                >
-                  ⬇️ Exportar CSV
-                </button>
-                <button
-                  onClick={() => router.push('/drafts')}
-                  className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center gap-2 backdrop-blur-sm"
-                  title="Ver Meus Drafts"
-                >
-                  📝 Drafts
-                </button>
-                <button
-                  onClick={() => router.push('/my-collection')}
-                  className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center gap-2 backdrop-blur-sm"
-                  title="Ver Minha Coleção"
-                >
-                  📋 Minha Coleção
-                </button>
-                <button
-                  onClick={() => router.push('/cards')}
-                  className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center gap-2 backdrop-blur-sm"
-                  title="Ver Cartas"
-                >
-                  🃏 Cartas
-                </button>
-                <div className="flex items-center gap-2 text-sm">
-                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                  <span>Dados atualizados</span>
+            <div style={{background:'#0d1208',border:'1px solid #3a4a2a'}}>
+              {/* Table toolbar */}
+              <div className="px-4 py-2 flex items-center justify-between" style={{background:'rgba(0,0,0,0.4)',borderBottom:'1px solid #3a4a2a'}}>
+                <span className="font-mono text-xs tracking-widest uppercase" style={{color:'#c9a84c'}}>Lista de Unidades — {filteredUnits.length} encontradas</span>
+                <div className="flex gap-2">
+                  <button onClick={exportToCSV} className="px-3 py-1 font-mono text-xs corner-clip-sm transition-colors" style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>CSV</button>
+                  <button onClick={() => router.push('/drafts')} className="px-3 py-1 font-mono text-xs corner-clip-sm transition-colors" style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>DRAFTS</button>
+                  <button onClick={() => router.push('/my-collection')} className="px-3 py-1 font-mono text-xs corner-clip-sm transition-colors" style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>COLEÇÃO</button>
+                  <button onClick={() => router.push('/cards')} className="px-3 py-1 font-mono text-xs corner-clip-sm transition-colors" style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>CARTAS</button>
+                  <div className="flex items-center gap-1">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#7a9a5a] animate-pulse"></div>
+                    <span className="font-mono text-xs" style={{color:'#3a5a2a'}}>ONLINE</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
 
-              <div className="bg-white max-h-[calc(100vh-300px)] overflow-y-auto">
-                <table className="w-full bg-white table-fixed divide-y divide-gray-200">
-                  <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-blue-200 sticky top-0 z-10">
-                  <tr>
-                <th scope="col" className="px-1 py-2 text-left text-xs font-bold text-gray-700 uppercase tracking-wider w-24 border-r border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
-                  <div className="flex items-center gap-1">
-                    <span className="truncate text-xs">Nome</span>
-                  </div>
-                </th>
-                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-8 border-r border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
-                  <span className="text-xs">Exp</span>
-                </th>
-                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-6 border-r border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
-                  <span className="text-xs">#</span>
-                </th>
-                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-8 border-r border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
-                  <span className="text-xs">Tipo</span>
-                </th>
-                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-8 border-r border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
-                  <span className="text-xs">Modo</span>
-                </th>
-                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-12 border-r border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
-                  <span className="text-xs">Classe</span>
-                </th>
-                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-8 border-r border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
-                  <span className="text-xs">Pts</span>
-                </th>
-                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-6 border-r border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
-                  <span className="text-xs">HP</span>
-                </th>
-                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-6 border-r border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
-                  <span className="text-xs">Vent</span>
-                </th>
-                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-16 border-r border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
-                  <span className="text-xs">Facção</span>
-                </th>
-                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-6 border-r border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
-                  <span className="text-xs">ATK</span>
-                </th>
-                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-6 border-r border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
-                  <span className="text-xs">SPD</span>
-                </th>
-                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-6 border-r border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
-                  <span className="text-xs">DEF</span>
-                </th>
-                <th scope="col" className="px-1 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-20 border-r border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
-                  <span className="text-xs">Ações</span>
-                </th>
+              <div className="max-h-[calc(100vh-200px)] overflow-y-auto">
+                <table className="w-full table-fixed">
+                  <thead className="sticky top-0 z-10" style={{background:'rgba(10,15,6,0.97)'}}>
+                  <tr style={{borderBottom:'1px solid #2a3a1a'}}>
+                    <th className="px-1 py-2 text-left text-xs font-mono w-24" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>NOME</th>
+                    <th className="px-1 py-2 text-center text-xs font-mono w-8" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>EXP</th>
+                    <th className="px-1 py-2 text-center text-xs font-mono w-6" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>#</th>
+                    <th className="px-1 py-2 text-center text-xs font-mono w-8" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>TIPO</th>
+                    <th className="px-1 py-2 text-center text-xs font-mono w-8" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>MODO</th>
+                    <th className="px-1 py-2 text-center text-xs font-mono w-12" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>CLASSE</th>
+                    <th className="px-1 py-2 text-center text-xs font-mono w-8" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>PTS</th>
+                    <th className="px-1 py-2 text-center text-xs font-mono w-6" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>HP</th>
+                    <th className="px-1 py-2 text-center text-xs font-mono w-6" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>VENT</th>
+                    <th className="px-1 py-2 text-center text-xs font-mono w-16" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>FAC</th>
+                    <th className="px-1 py-2 text-center text-xs font-mono w-6" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>ATK</th>
+                    <th className="px-1 py-2 text-center text-xs font-mono w-6" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>SPD</th>
+                    <th className="px-1 py-2 text-center text-xs font-mono w-6" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>DEF</th>
+                    <th className="px-1 py-2 text-center text-xs font-mono w-20" style={{color:'#5a7a4a'}}>AÇÕES</th>
                   </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody>
                 {filteredUnits.map((unit) => (
-                  <tr key={unit.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleUnitClick(unit.id)}>
-                    <td className="px-1 py-2">
-                      <div className="text-xs font-medium text-gray-900 truncate">
-                        {unit.name} {unit.isUnique && "★"}
-                      </div>
-                    </td>
-                    <td className="px-1 py-2 text-xs text-gray-900 text-center">
-                      {unit.expansion}
-                    </td>
-                    <td className="px-1 py-2 text-xs text-gray-900 font-mono text-center">
-                      {unit.collectionNumber}
-                    </td>
-                    <td className="px-1 py-2 text-xs text-gray-900 capitalize text-center">
-                      {unit.type}
-                    </td>
-                    <td className="px-1 py-2 text-xs text-gray-900 text-center">
-                      {unit.speedMode}
-                    </td>
-                    <td className="px-1 py-2 text-xs text-gray-900 text-center">
-                      {unit.class}
-                    </td>
-                    <td className="px-1 py-2 text-xs text-gray-900 font-medium text-center">
-                      {unit.points}
-                    </td>
-                    <td className="px-1 py-2 text-xs text-gray-900 text-center">
-                      {unit.health}
-                    </td>
-                    <td className="px-1 py-2 text-xs text-gray-900 text-center">
-                      {unit.ventCapacity}
-                    </td>
-                    <td className="px-1 py-2 text-xs text-gray-900 truncate">
-                      {unit.faction}
-                    </td>
-                    <td className="px-1 py-2 text-xs text-gray-900 text-center">
-                      {unit.maxAttack}
-                    </td>
-                    <td className="px-1 py-2 text-xs text-gray-900 text-center">
-                      {unit.maxSpeed}
-                    </td>
-                    <td className="px-1 py-2 text-xs text-gray-900 text-center">
-                      {unit.maxDefense}
-                    </td>
-                    <td className="px-1 py-2 text-center">
-                      <div className="flex gap-1 justify-center flex-wrap">
+                  <tr key={unit.id} className="cursor-pointer transition-colors" style={{borderBottom:'1px solid #1a2a10'}} onClick={() => handleUnitClick(unit.id)} onMouseEnter={e=>(e.currentTarget.style.background='rgba(122,154,90,0.06)')} onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>
+                    <td className="px-1 py-1.5 text-xs font-mono truncate" style={{color:'#e8d5a0',borderRight:'1px solid #1a2a10'}}>{unit.name} {unit.isUnique && "★"}</td>
+                    <td className="px-1 py-1.5 text-xs font-mono text-center" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>{unit.expansion}</td>
+                    <td className="px-1 py-1.5 text-xs font-mono text-center" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>{unit.collectionNumber}</td>
+                    <td className="px-1 py-1.5 text-xs font-mono text-center capitalize" style={{color:'#7a9a5a',borderRight:'1px solid #1a2a10'}}>{unit.type}</td>
+                    <td className="px-1 py-1.5 text-xs font-mono text-center" style={{color:'#7a9a5a',borderRight:'1px solid #1a2a10'}}>{unit.speedMode}</td>
+                    <td className="px-1 py-1.5 text-xs font-mono text-center" style={{color:'#7a9a5a',borderRight:'1px solid #1a2a10'}}>{unit.class}</td>
+                    <td className="px-1 py-1.5 text-xs font-mono font-bold text-center" style={{color:'#c9a84c',borderRight:'1px solid #1a2a10'}}>{unit.points}</td>
+                    <td className="px-1 py-1.5 text-xs font-mono text-center" style={{color:'#e8d5a0',borderRight:'1px solid #1a2a10'}}>{unit.health}</td>
+                    <td className="px-1 py-1.5 text-xs font-mono text-center" style={{color:'#e8d5a0',borderRight:'1px solid #1a2a10'}}>{unit.ventCapacity}</td>
+                    <td className="px-1 py-1.5 text-xs font-mono truncate" style={{color:'#7a9a5a',borderRight:'1px solid #1a2a10'}}>{unit.faction}</td>
+                    <td className="px-1 py-1.5 text-xs font-mono text-center" style={{color:'#e8d5a0',borderRight:'1px solid #1a2a10'}}>{unit.maxAttack}</td>
+                    <td className="px-1 py-1.5 text-xs font-mono text-center" style={{color:'#e8d5a0',borderRight:'1px solid #1a2a10'}}>{unit.maxSpeed}</td>
+                    <td className="px-1 py-1.5 text-xs font-mono text-center" style={{color:'#e8d5a0',borderRight:'1px solid #1a2a10'}}>{unit.maxDefense}</td>
+                    <td className="px-1 py-1.5 text-center">
+                      <div className="flex gap-1 justify-center">
                         {(() => {
                           const { haveCount, wantCount } = getUnitCounts(unit.id);
                           const isHaveLoading = loadingUnits.has(`${unit.id}-have`);
                           const isWantLoading = loadingUnits.has(`${unit.id}-want`);
                           const isDraftLoading = loadingUnits.has(`${unit.id}-draft`);
-                          
                           return (
                             <>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  addToCollection(unit, 'have');
-                                }}
-                                disabled={isHaveLoading}
-                                className="bg-green-500 hover:bg-green-600 text-white text-xs px-1 py-1 rounded transition-all duration-200 disabled:opacity-50 min-w-[28px] flex items-center justify-center"
-                                title="Adicionar à lista Tenho"
-                              >
-                                {isHaveLoading ? (
-                                  <div className="animate-spin w-2 h-2 border border-white border-t-transparent rounded-full"></div>
-                                ) : (
-                                  `📦${haveCount}`
-                                )}
+                              <button onClick={(e) => { e.stopPropagation(); addToCollection(unit, 'have'); }} disabled={isHaveLoading} className="text-xs font-mono px-1 py-0.5 transition-colors disabled:opacity-50" style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}} title="Tenho">
+                                {isHaveLoading ? '...' : `T${haveCount}`}
                               </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  addToCollection(unit, 'want');
-                                }}
-                                disabled={isWantLoading}
-                                className="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-1 py-1 rounded transition-all duration-200 disabled:opacity-50 min-w-[28px] flex items-center justify-center"
-                                title="Adicionar à lista Procuro"
-                              >
-                                {isWantLoading ? (
-                                  <div className="animate-spin w-2 h-2 border border-white border-t-transparent rounded-full"></div>
-                                ) : (
-                                  `🔍${wantCount}`
-                                )}
+                              <button onClick={(e) => { e.stopPropagation(); addToCollection(unit, 'want'); }} disabled={isWantLoading} className="text-xs font-mono px-1 py-0.5 transition-colors disabled:opacity-50" style={{background:'rgba(201,168,76,0.1)',border:'1px solid #c9a84c44',color:'#c9a84c'}} title="Procuro">
+                                {isWantLoading ? '...' : `P${wantCount}`}
                               </button>
                               {selectedDraftId && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    addToDraft(unit, selectedDraftId);
-                                  }}
-                                  disabled={isDraftLoading}
-                                  className="bg-purple-500 hover:bg-purple-600 text-white text-xs px-1 py-1 rounded transition-all duration-200 disabled:opacity-50 min-w-[28px] flex items-center justify-center"
-                                  title="Adicionar ao Draft"
-                                >
-                                  {isDraftLoading ? (
-                                    <div className="animate-spin w-2 h-2 border border-white border-t-transparent rounded-full"></div>
-                                  ) : (
-                                    '📝'
-                                  )}
+                                <button onClick={(e) => { e.stopPropagation(); addToDraft(unit, selectedDraftId); }} disabled={isDraftLoading} className="text-xs font-mono px-1 py-0.5 transition-colors disabled:opacity-50" style={{background:'rgba(100,80,150,0.15)',border:'1px solid #5a4a8a44',color:'#a08ad4'}} title="Draft">
+                                  {isDraftLoading ? '...' : 'D'}
                                 </button>
                               )}
                             </>
@@ -890,90 +608,41 @@ function SearchPageContent() {
                 </table>
               </div>
               
-              {/* Footer with unit count */}
-              <div className="bg-gray-50 px-6 py-3 border-t border-gray-200 rounded-b-lg">
-                <p className="text-sm text-gray-600 text-center">
-                  Mostrando {filteredUnits.length} de {displayUnits.length} unidades
-                </p>
+              <div className="px-4 py-2" style={{borderTop:'1px solid #2a3a1a',background:'rgba(0,0,0,0.3)'}}>
+                <p className="text-xs font-mono text-center" style={{color:'#3a5a2a'}}>{filteredUnits.length} / {displayUnits.length} UNIDADES</p>
               </div>
             </div>
           </div>
 
-          {/* Units Cards - Mobile/Tablet */}
+          {/* Units Cards - Mobile */}
           <div className="w-full lg:hidden">
-            <div className="space-y-3">
+            <div className="space-y-2">
               {filteredUnits.map((unit) => (
-                <div key={unit.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleUnitClick(unit.id)}>
-              <div className="flex justify-between items-start mb-3">
-                <div className="flex items-start gap-3 flex-1">
-                  <div className="w-16 h-16 rounded border border-gray-200 bg-gray-100 flex items-center justify-center">
-                    <span className="text-xs text-gray-500">IMG</span>
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        {unit.name} {unit.isUnique && "★"}
-                      </h3>
-                      <span className="text-sm font-mono text-gray-500">#{unit.collectionNumber}</span>
+                <div key={unit.id} className="p-3 cursor-pointer corner-clip-sm" style={{background:'#0d1208',border:'1px solid #3a4a2a'}} onClick={() => handleUnitClick(unit.id)}>
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex-1">
+                      <h3 className="text-sm font-mono font-bold" style={{color:'#e8d5a0'}}>{unit.name} {unit.isUnique && "★"}</h3>
+                      <p className="text-xs font-mono capitalize" style={{color:'#5a7a4a'}}>{unit.type} / {unit.speedMode} / {unit.faction}</p>
+                      <p className="text-xs font-mono" style={{color:'#3a5a2a'}}>{unit.expansion} #{unit.collectionNumber}</p>
                     </div>
-                    <p className="text-sm text-gray-500 capitalize">
-                      {unit.type} • {unit.speedMode}
-                    </p>
-                    <p className="text-sm text-gray-600">{unit.faction}</p>
-                    <p className="text-xs text-gray-500 mt-1">{unit.expansion}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-lg font-bold text-gray-900">{unit.points} pts</div>
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full mt-1 ${
-                    unit.rank === 'Elite' ? 'bg-purple-100 text-purple-800' :
-                    unit.rank === 'Veteran' ? 'bg-blue-100 text-blue-800' :
-                    'bg-green-100 text-green-800'
-                  }`}>
-                    {unit.rank}
-                  </span>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Vida:</span>
-                    <span className="font-medium">{unit.health}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Ataque:</span>
-                    <span className="font-medium">{unit.maxAttack}</span>
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Defesa:</span>
-                    <span className="font-medium">{unit.maxDefense}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Velocidade:</span>
-                    <span className="font-medium">{unit.maxSpeed}</span>
-                  </div>
-                </div>
-              </div>
-              
-                  <div className="mt-3 pt-3 border-t border-gray-100">
-                    <div className="flex justify-between text-sm text-gray-500">
-                      <span>Arco Frontal: {unit.frontArc}°</span>
-                      <span>Arco Traseiro: {unit.rearArc}°</span>
+                    <div className="text-right">
+                      <div className="font-bold font-mono text-sm" style={{color:'#c9a84c'}}>{unit.points} pts</div>
+                      <span className="text-xs font-mono" style={{color:'#5a7a4a'}}>{unit.rank}</span>
                     </div>
+                  </div>
+                  <div className="grid grid-cols-4 gap-1 text-xs font-mono" style={{color:'#5a7a4a'}}>
+                    <div>HP:<span style={{color:'#e8d5a0'}}>{unit.health}</span></div>
+                    <div>ATK:<span style={{color:'#e8d5a0'}}>{unit.maxAttack}</span></div>
+                    <div>DEF:<span style={{color:'#e8d5a0'}}>{unit.maxDefense}</span></div>
+                    <div>SPD:<span style={{color:'#e8d5a0'}}>{unit.maxSpeed}</span></div>
                   </div>
                 </div>
               ))}
             </div>
           </div>
           
-          {/* No results message */}
           {filteredUnits.length === 0 && displayUnits.length > 0 && (
-            <div className="text-center text-gray-500 mt-8">
-              Nenhuma unidade encontrada com os filtros aplicados
-            </div>
+            <div className="text-center mt-8 font-mono text-xs" style={{color:'#3a5a2a'}}>[ NENHUMA UNIDADE COM OS FILTROS APLICADOS ]</div>
           )}
         </div>
       </div>
@@ -984,8 +653,8 @@ function SearchPageContent() {
 export default function SearchPage() {
   return (
     <Suspense fallback={
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Carregando página de busca...</div>
+      <div className="flex items-center justify-center min-h-screen" style={{background:'#0d1208'}}>
+        <div className="font-mono text-[#7a9a5a] tracking-widest animate-pulse">[ INICIALIZANDO... ]</div>
       </div>
     }>
       <SearchPageContent />

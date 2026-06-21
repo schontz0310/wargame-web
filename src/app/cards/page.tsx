@@ -1,231 +1,84 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
-import { IFactionPride, FactionPridesFilters, apiService } from '@/lib/api'
 
-const EXPANSIONS = ['AOD', 'DA', 'FI', 'CW', 'RotS'];
-
-function CardsListContent() {
+export default function CardsPage() {
   const router = useRouter();
 
-  const [cards, setCards] = useState<IFactionPride[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
-
-  const [filters, setFilters] = useState<FactionPridesFilters>({ page: 1, limit: 20 });
-  const [search, setSearch] = useState('');
-  const [selectedFaction, setSelectedFaction] = useState('');
-  const [selectedExpansion, setSelectedExpansion] = useState('');
-
-  const [factions, setFactions] = useState<string[]>([]);
-
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-    const f: FactionPridesFilters = {
-      ...filters,
-      search: search || undefined,
-      faction: selectedFaction || undefined,
-      expansion: selectedExpansion || undefined,
-    };
-    apiService.getFactionPrides(f)
-      .then(res => {
-        setCards(res.factionPrides);
-        setTotal(res.total);
-        setTotalPages(res.totalPages);
-        const uniqueFactions = [...new Set(res.factionPrides.map(c => c.faction))].sort();
-        setFactions(prev => {
-          const merged = [...new Set([...prev, ...uniqueFactions])].sort();
-          return merged;
-        });
-      })
-      .catch(err => setError(err.message))
-      .finally(() => setLoading(false));
-  }, [filters, search, selectedFaction, selectedExpansion]);
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setFilters(f => ({ ...f, page: 1 }));
-  };
-
-  const clearFilters = () => {
-    setSearch('');
-    setSelectedFaction('');
-    setSelectedExpansion('');
-    setFilters({ page: 1, limit: 20 });
-  };
-
-  const goToPage = (page: number) => setFilters(f => ({ ...f, page }));
+  const cardTypes = [
+    {
+      id: 'faction-pride',
+      label: 'FACTION PRIDE',
+      description: 'Cartas de orgulho de facção que concedem bônus baseados na afiliação.',
+      route: '/cards/faction-pride',
+    },
+    {
+      id: 'mercenary-contract',
+      label: 'MERCENARY CONTRACT',
+      description: 'Contratos mercenários que permitem recrutar unidades de outras facções.',
+      route: '/cards/mercenary-contract',
+    },
+  ];
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Sidebar Filtros */}
-      <div className="w-64 bg-white border-r border-gray-200 shadow-sm flex flex-col h-full overflow-y-auto flex-shrink-0">
-        <div className="p-4">
-          <h2 className="text-base font-semibold text-gray-900 mb-4">Filtros</h2>
-
-          <form onSubmit={handleSearch} className="mb-4">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Buscar descrição</label>
-            <input
-              type="text"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Palavra-chave..."
-              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-            />
-          </form>
-
-          <div className="mb-4">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Facção</label>
-            <select
-              value={selectedFaction}
-              onChange={e => { setSelectedFaction(e.target.value); setFilters(f => ({ ...f, page: 1 })); }}
-              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="">Todas as facções</option>
-              {factions.map(fac => <option key={fac} value={fac}>{fac}</option>)}
-            </select>
-          </div>
-
-          <div className="mb-4">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Expansão</label>
-            <select
-              value={selectedExpansion}
-              onChange={e => { setSelectedExpansion(e.target.value); setFilters(f => ({ ...f, page: 1 })); }}
-              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="">Todas as expansões</option>
-              {EXPANSIONS.map(exp => <option key={exp} value={exp}>{exp}</option>)}
-            </select>
-          </div>
-
+    <div className="min-h-screen flex flex-col" style={{background:'linear-gradient(160deg,#080c05 0%,#0d1208 60%,#0a0f06 100%)'}}>
+      {/* Header */}
+      <div className="px-6 py-4 flex items-center justify-between" style={{background:'rgba(0,0,0,0.5)',borderBottom:'1px solid #3a4a2a'}}>
+        <div>
+          <h1 className="font-mono text-sm font-bold tracking-widest uppercase" style={{color:'#c9a84c'}}>
+            MÓDULO — CARTAS
+          </h1>
+          <p className="font-mono text-xs mt-0.5" style={{color:'#4a5e3a'}}>
+            Selecione o tipo de carta
+          </p>
+        </div>
+        <div className="flex items-center gap-4">
           <button
-            onClick={clearFilters}
-            className="w-full px-3 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors text-xs"
+            onClick={() => router.push('/')}
+            className="font-mono text-xs px-3 py-1.5 transition-colors"
+            style={{color:'#5a7a4a',border:'1px solid #2a3a1a',background:'rgba(0,0,0,0.3)'}}
           >
-            Limpar Filtros
+            ← INÍCIO
           </button>
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{background:'#7a9a5a'}}></div>
+            <span className="font-mono text-xs" style={{color:'#3a5a2a'}}>ONLINE</span>
+          </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-bold text-white flex items-center gap-2">
-                🃏 Cartas — Faction Pride
-              </h1>
-              <p className="text-blue-100 text-sm mt-1">{total} carta(s) encontrada(s)</p>
-            </div>
+      {/* Card type grid */}
+      <div className="flex-1 flex items-center justify-center p-8">
+        <div className="w-full max-w-2xl grid grid-cols-1 md:grid-cols-2 gap-6">
+          {cardTypes.map(ct => (
             <button
-              onClick={() => router.push('/search')}
-              className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+              key={ct.id}
+              onClick={() => router.push(ct.route)}
+              className="text-left p-6 transition-all duration-200"
+              style={{
+                background: 'rgba(122,154,90,0.06)',
+                border: '1px solid #3a4a2a',
+                clipPath: 'polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px))',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(122,154,90,0.14)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(122,154,90,0.06)'; }}
             >
-              🔍 Buscar Unidades
-            </button>
-          </div>
-        </div>
-
-        {/* Table */}
-        <div className="flex-1 overflow-auto p-4">
-          {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="text-gray-500">Carregando cartas...</div>
-            </div>
-          ) : error ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="text-red-500">Erro: {error}</div>
-            </div>
-          ) : cards.length === 0 ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="text-gray-500">Nenhuma carta encontrada</div>
-            </div>
-          ) : (
-            <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
-              <table className="w-full text-sm divide-y divide-gray-200">
-                <thead className="bg-gray-50 sticky top-0 z-10">
-                  <tr>
-                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase">Card ID</th>
-                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase">#</th>
-                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase">Facção</th>
-                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase">Expansão</th>
-                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase">Custo</th>
-                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase">Logo</th>
-                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase">Descrição</th>
-                    <th className="px-3 py-2 text-center text-xs font-bold text-gray-700 uppercase">Ver</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {cards.map(card => (
-                    <tr
-                      key={card.id}
-                      className="hover:bg-blue-50 cursor-pointer transition-colors"
-                      onClick={() => router.push(`/cards/detail?id=${card.id}`)}
-                    >
-                      <td className="px-3 py-2 text-xs font-mono text-gray-700">{card.cardId}</td>
-                      <td className="px-3 py-2 text-xs text-gray-600">{card.collectionNumber}</td>
-                      <td className="px-3 py-2 text-xs text-gray-800 font-medium">{card.faction}</td>
-                      <td className="px-3 py-2 text-xs text-gray-600">{card.expansion}</td>
-                      <td className="px-3 py-2 text-xs text-gray-700">
-                        <span className="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-medium">{card.cost}</span>
-                        {card.alternativeCost && (
-                          <span className="ml-1 bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded text-[10px]">{card.alternativeCost}</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2 text-xs text-gray-600 capitalize">{card.logoVariant}</td>
-                      <td className="px-3 py-2 text-xs text-gray-600 max-w-xs truncate">{card.description}</td>
-                      <td className="px-3 py-2 text-center">
-                        <button
-                          onClick={e => { e.stopPropagation(); router.push(`/cards/detail?id=${card.id}`); }}
-                          className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded transition-colors"
-                        >
-                          Ver
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              {/* Pagination */}
-              <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 flex items-center justify-between">
-                <span className="text-xs text-gray-600">
-                  Página {filters.page} de {totalPages} — {total} total
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    disabled={(filters.page ?? 1) <= 1}
-                    onClick={() => goToPage((filters.page ?? 1) - 1)}
-                    className="px-3 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    ← Anterior
-                  </button>
-                  <button
-                    disabled={(filters.page ?? 1) >= totalPages}
-                    onClick={() => goToPage((filters.page ?? 1) + 1)}
-                    className="px-3 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    Próxima →
-                  </button>
-                </div>
+              <div className="font-mono text-xs tracking-widest mb-1" style={{color:'#4a5e3a'}}>
+                // DISPONÍVEL
               </div>
-            </div>
-          )}
+              <div className="font-mono font-bold text-base mb-3" style={{color:'#c9a84c'}}>
+                {ct.label}
+              </div>
+              <p className="font-mono text-xs leading-relaxed" style={{color:'#5a7a4a'}}>
+                {ct.description}
+              </p>
+              <div className="mt-4 font-mono text-xs" style={{color:'#7a9a5a'}}>
+                ACESSAR →
+              </div>
+            </button>
+          ))}
         </div>
       </div>
     </div>
-  );
-}
-
-export default function CardsPage() {
-  return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="text-lg">Carregando...</div></div>}>
-      <CardsListContent />
-    </Suspense>
   );
 }

@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Card, IFactionPride, apiService } from '@/lib/api'
-import CardDesktop from '@/components/CardDesktop'
+import CardDesktopFactionPride from '@/components/CardDesktopFactionPride'
 import CardMobile from '@/components/CardMobile'
 import Card3DViewer from '@/components/Card3DViewer'
 
@@ -68,53 +68,56 @@ function CardDetailContent() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Carregando carta...</div>
+      <div className="flex items-center justify-center min-h-screen" style={{background:'#0d1208'}}>
+        <div className="font-mono text-xs animate-pulse" style={{color:'#7a9a5a'}}>[ CARREGANDO CARTA... ]</div>
       </div>
     );
   }
 
   if (!card) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-        <div className="text-lg text-gray-600">Nenhuma carta encontrada</div>
-        <button onClick={() => router.push('/cards')} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-          Voltar para listagem
+      <div className="flex flex-col items-center justify-center min-h-screen gap-4" style={{background:'#0d1208'}}>
+        <div className="font-mono text-xs" style={{color:'#4a5e3a'}}>// Nenhuma carta encontrada</div>
+        <button onClick={() => router.push('/cards')} className="px-4 py-2 font-mono text-xs corner-clip-sm" style={{background:'rgba(201,168,76,0.15)',border:'1px solid #c9a84c',color:'#c9a84c'}}>
+          ← VOLTAR
         </button>
       </div>
     );
   }
 
   return (
-    <div className={`min-h-screen flex overflow-hidden ${isSmallMobile ? 'p-1' : 'p-2 md:p-4 lg:p-8'} ${isSmallMobile ? 'gap-1' : 'gap-2 md:gap-4 lg:gap-8'} ${isDesktop ? 'flex-row items-stretch' : 'flex-col'}`}>
+    <div className={`min-h-screen flex overflow-hidden ${isSmallMobile ? 'p-1' : 'p-2 md:p-4 lg:p-8'} ${isSmallMobile ? 'gap-1' : 'gap-2 md:gap-4 lg:gap-8'} ${isDesktop ? 'flex-row items-stretch' : 'flex-col'}`}
+      style={{background:'linear-gradient(160deg,#080c05 0%,#0d1208 60%,#0a0f06 100%)'}}>
       {/* Left Column - Card Details */}
-      <div className={`bg-white shadow-lg ${isSmallMobile ? 'p-2' : 'p-3 md:p-4'} flex flex-col overflow-hidden ${isDesktop ? 'w-[40%]' : 'w-full'}`}>
+      <div className={`flex flex-col overflow-hidden ${isDesktop ? 'w-[40%]' : 'w-full'} ${isSmallMobile ? 'p-2' : 'p-3 md:p-4'}`}
+        style={{background:'#111608',border:'1px solid #3a4a2a',boxShadow:'inset 0 1px 0 rgba(180,150,60,0.1),0 4px 20px rgba(0,0,0,0.6)'}}>
         {/* Back button */}
         <button
-          onClick={() => router.push('/cards')}
-          className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm mb-4 w-fit"
+          onClick={() => router.push('/cards/faction-pride')}
+          className="flex items-center gap-2 font-mono text-xs mb-4 w-fit transition-colors"
+          style={{color:'#5a7a4a'}}
         >
-          ← Voltar para listagem
+          ← VOLTAR PARA LISTAGEM
         </button>
 
         {/* Card Header */}
-        <div className="border-b pb-3 mb-3 flex-shrink-0">
+        <div className="pb-3 mb-3 flex-shrink-0" style={{borderBottom:'1px solid #2a3a1a'}}>
           <div className="flex flex-col md:flex-row gap-3">
-            <div className={`bg-gradient-to-br from-blue-100 to-purple-100 rounded-lg flex items-center justify-center flex-shrink-0 p-2 border-2 border-blue-200 ${
+            <div className={`flex items-center justify-center flex-shrink-0 p-2 corner-clip-sm ${
               isDesktop ? 'w-24 lg:w-32 h-24 md:h-28' : isSmallMobile ? 'w-12 h-12' : 'w-16 h-16'
-            }`}>
+            }`} style={{background:'rgba(122,154,90,0.1)',border:'1px solid #3a4a2a'}}>
               <div className="text-center">
-                <div className={`mb-1 ${isDesktop ? 'text-2xl' : isSmallMobile ? 'text-sm' : 'text-lg'}`}>🃏</div>
-                <div className={`font-bold text-blue-600 ${isDesktop ? 'text-xs' : isSmallMobile ? 'text-[8px]' : 'text-[10px]'}`}>{card.type}</div>
+                <div className={`mb-1 font-mono ${isDesktop ? 'text-2xl' : isSmallMobile ? 'text-sm' : 'text-lg'}`} style={{color:'#c9a84c'}}>🃏</div>
+                <div className={`font-mono font-bold ${isDesktop ? 'text-xs' : isSmallMobile ? 'text-[8px]' : 'text-[10px]'}`} style={{color:'#7a9a5a'}}>{card.type}</div>
               </div>
             </div>
             <div className="flex-1 flex flex-col justify-center space-y-1">
-              <div className={`font-semibold text-gray-800 ${isDesktop ? 'text-base' : 'text-sm'}`}>{card.name}</div>
-              <div className={`text-gray-600 ${isDesktop ? 'text-xs' : isSmallMobile ? 'text-[8px]' : 'text-[10px]'}`}>{card.typeName}</div>
-              <div className={`text-gray-600 ${isDesktop ? 'text-xs' : isSmallMobile ? 'text-[8px]' : 'text-[10px]'}`}>#{card.collectionNumber}</div>
-              <div className={`font-bold bg-blue-100 text-blue-800 px-2 py-1 rounded inline-block w-fit ${
+              <div className={`font-bold font-mono ${isDesktop ? 'text-base' : 'text-sm'}`} style={{color:'#e8d5a0'}}>{card.name}</div>
+              <div className={`font-mono ${isDesktop ? 'text-xs' : isSmallMobile ? 'text-[8px]' : 'text-[10px]'}`} style={{color:'#5a7a4a'}}>{card.typeName}</div>
+              <div className={`font-mono ${isDesktop ? 'text-xs' : isSmallMobile ? 'text-[8px]' : 'text-[10px]'}`} style={{color:'#3a5a2a'}}>#{card.collectionNumber}</div>
+              <div className={`font-bold font-mono px-2 py-1 inline-block w-fit corner-clip-sm ${
                 isDesktop ? 'text-sm' : isSmallMobile ? 'text-[10px]' : 'text-xs'
-              }`}>
+              }`} style={{background:'rgba(201,168,76,0.15)',border:'1px solid #c9a84c',color:'#c9a84c'}}>
                 {card.cost} ⚡
               </div>
             </div>
@@ -123,67 +126,67 @@ function CardDetailContent() {
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-          <div className={`bg-gray-50 rounded-lg border ${isDesktop ? 'p-2' : 'p-1'}`}>
+          <div className={`${isDesktop ? 'p-2' : 'p-1'}`} style={{background:'rgba(0,0,0,0.3)',border:'1px solid #2a3a1a'}}>
             <div className="grid grid-cols-3 gap-2 text-center">
               <div>
-                <div className={`text-gray-500 ${isDesktop ? 'text-xs' : 'text-[10px]'}`}>Tipo</div>
-                <div className={`font-bold bg-white px-1 py-0.5 rounded ${isDesktop ? 'text-xs' : 'text-[10px]'}`}>{card.typeName}</div>
+                <div className={`font-mono ${isDesktop ? 'text-xs' : 'text-[10px]'}`} style={{color:'#4a5e3a'}}>TIPO</div>
+                <div className={`font-bold font-mono px-1 py-0.5 ${isDesktop ? 'text-xs' : 'text-[10px]'}`} style={{color:'#7a9a5a'}}>{card.typeName}</div>
               </div>
               <div>
-                <div className={`text-gray-500 ${isDesktop ? 'text-xs' : 'text-[10px]'}`}>Custo</div>
-                <div className={`font-bold bg-white px-1 py-0.5 rounded ${isDesktop ? 'text-xs' : 'text-[10px]'}`}>{card.cost} ⚡</div>
+                <div className={`font-mono ${isDesktop ? 'text-xs' : 'text-[10px]'}`} style={{color:'#4a5e3a'}}>CUSTO</div>
+                <div className={`font-bold font-mono px-1 py-0.5 ${isDesktop ? 'text-xs' : 'text-[10px]'}`} style={{color:'#c9a84c'}}>{card.cost} ⚡</div>
               </div>
               {card.alternativeCost && (
                 <div>
-                  <div className={`text-gray-500 ${isDesktop ? 'text-xs' : 'text-[10px]'}`}>Custo Alt.</div>
-                  <div className={`font-bold bg-white px-1 py-0.5 rounded ${isDesktop ? 'text-xs' : 'text-[10px]'}`}>{card.alternativeCost} ⚡</div>
+                  <div className={`font-mono ${isDesktop ? 'text-xs' : 'text-[10px]'}`} style={{color:'#4a5e3a'}}>CUSTO ALT.</div>
+                  <div className={`font-bold font-mono px-1 py-0.5 ${isDesktop ? 'text-xs' : 'text-[10px]'}`} style={{color:'#c9a84c'}}>{card.alternativeCost} ⚡</div>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="bg-gray-50 p-2 rounded-lg border">
+          <div className="p-2" style={{background:'rgba(0,0,0,0.3)',border:'1px solid #2a3a1a'}}>
             <div className="grid grid-cols-2 gap-2 text-center">
               <div>
-                <div className="text-gray-500 text-xs">Facção</div>
-                <div className="font-bold text-xs bg-white px-1 py-0.5 rounded">{card.faction}</div>
+                <div className="font-mono text-xs" style={{color:'#4a5e3a'}}>FACÇÃO</div>
+                <div className="font-bold font-mono text-xs" style={{color:'#e8d5a0'}}>{card.faction}</div>
               </div>
               <div>
-                <div className="text-gray-500 text-xs">Expansão</div>
-                <div className="font-bold text-xs bg-white px-1 py-0.5 rounded">{card.expansion}</div>
+                <div className="font-mono text-xs" style={{color:'#4a5e3a'}}>EXPANSÃO</div>
+                <div className="font-bold font-mono text-xs" style={{color:'#7a9a5a'}}>{card.expansion}</div>
               </div>
             </div>
           </div>
 
-          <div className="bg-gray-50 p-2 rounded-lg border">
-            <div className="text-gray-500 text-xs mb-1">Descrição</div>
-            <p className="text-gray-700 text-xs leading-relaxed">
+          <div className="p-2" style={{background:'rgba(0,0,0,0.3)',border:'1px solid #2a3a1a'}}>
+            <div className="font-mono text-xs mb-1" style={{color:'#4a5e3a'}}>DESCRIÇÃO</div>
+            <p className="font-mono text-xs leading-relaxed" style={{color:'#7a9a5a'}}>
               {card.description}
             </p>
           </div>
 
           {card.flavorText && (
-            <div className="bg-gray-50 p-2 rounded-lg border">
-              <div className="text-gray-500 text-xs mb-1">Texto de Sabor</div>
-              <p className="text-xs italic text-gray-600 leading-relaxed">
+            <div className="p-2" style={{background:'rgba(0,0,0,0.3)',border:'1px solid #2a3a1a'}}>
+              <div className="font-mono text-xs mb-1" style={{color:'#4a5e3a'}}>TEXTO DE SABOR</div>
+              <p className="font-mono text-xs italic leading-relaxed" style={{color:'#5a7a4a'}}>
                 {card.flavorText}
               </p>
             </div>
           )}
 
           {card.backDescription && (
-            <div className="bg-gray-50 p-2 rounded-lg border">
-              <div className="text-gray-500 text-xs mb-1">Descrição (Verso)</div>
-              <p className="text-gray-700 text-xs leading-relaxed">
+            <div className="p-2" style={{background:'rgba(0,0,0,0.3)',border:'1px solid #2a3a1a'}}>
+              <div className="font-mono text-xs mb-1" style={{color:'#4a5e3a'}}>DESCRIÇÃO (VERSO)</div>
+              <p className="font-mono text-xs leading-relaxed" style={{color:'#7a9a5a'}}>
                 {card.backDescription}
               </p>
             </div>
           )}
 
           {card.backFlavorText && (
-            <div className="bg-gray-50 p-2 rounded-lg border">
-              <div className="text-gray-500 text-xs mb-1">Texto de Sabor (Verso)</div>
-              <p className="text-xs italic text-gray-600 leading-relaxed">
+            <div className="p-2" style={{background:'rgba(0,0,0,0.3)',border:'1px solid #2a3a1a'}}>
+              <div className="font-mono text-xs mb-1" style={{color:'#4a5e3a'}}>TEXTO DE SABOR (VERSO)</div>
+              <p className="font-mono text-xs italic leading-relaxed" style={{color:'#5a7a4a'}}>
                 {card.backFlavorText}
               </p>
             </div>
@@ -197,23 +200,25 @@ function CardDetailContent() {
         <div className="flex gap-2 flex-shrink-0 mb-4">
           <button
             onClick={() => setViewMode('2d')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              viewMode === '2d' 
-                ? 'bg-blue-500 text-white' 
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            } ${isSmallMobile ? 'px-2 py-1 text-xs' : isDesktop ? 'px-6 py-3 text-base' : 'px-4 py-2 text-sm'}`}
+            className={`font-mono corner-clip-sm transition-colors ${isSmallMobile ? 'px-2 py-1 text-xs' : isDesktop ? 'px-6 py-2 text-xs' : 'px-4 py-2 text-xs'}`}
+            style={{
+              background: viewMode === '2d' ? 'rgba(201,168,76,0.2)' : 'rgba(0,0,0,0.4)',
+              border: viewMode === '2d' ? '1px solid #c9a84c' : '1px solid #3a4a2a',
+              color: viewMode === '2d' ? '#c9a84c' : '#5a7a4a',
+            }}
           >
-            📄 2D
+            2D
           </button>
           <button
             onClick={() => setViewMode('3d')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              viewMode === '3d' 
-                ? 'bg-blue-500 text-white' 
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            } ${isSmallMobile ? 'px-2 py-1 text-xs' : isDesktop ? 'px-6 py-3 text-base' : 'px-4 py-2 text-sm'}`}
+            className={`font-mono corner-clip-sm transition-colors ${isSmallMobile ? 'px-2 py-1 text-xs' : isDesktop ? 'px-6 py-2 text-xs' : 'px-4 py-2 text-xs'}`}
+            style={{
+              background: viewMode === '3d' ? 'rgba(201,168,76,0.2)' : 'rgba(0,0,0,0.4)',
+              border: viewMode === '3d' ? '1px solid #c9a84c' : '1px solid #3a4a2a',
+              color: viewMode === '3d' ? '#c9a84c' : '#5a7a4a',
+            }}
           >
-            🎮 3D
+            3D
           </button>
         </div>
 
@@ -221,18 +226,19 @@ function CardDetailContent() {
         {viewMode === '2d' && (
           <button
             onClick={() => setIsFlipped(!isFlipped)}
-            className={`bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors shadow-lg flex-shrink-0 mb-4 ${
-              isDesktop ? 'px-6 py-3 text-base' : isSmallMobile ? 'px-2 py-1 text-xs' : 'px-4 py-2 text-sm'
+            className={`font-mono corner-clip-sm transition-colors flex-shrink-0 mb-4 ${
+              isDesktop ? 'px-6 py-2 text-xs' : isSmallMobile ? 'px-2 py-1 text-xs' : 'px-4 py-2 text-xs'
             }`}
+            style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}
           >
-            {isFlipped ? '🔄 Ver Frente' : '🔄 Ver Verso'}
+            {isFlipped ? '↺ VER FRENTE' : '↺ VER VERSO'}
           </button>
         )}
 
         <div className="w-full flex-1 flex items-center justify-center">
           {viewMode === '2d' ? (
             isDesktop ? (
-              <CardDesktop
+              <CardDesktopFactionPride
                 selectedCard={card}
                 isFlipped={isFlipped}
                 getFactionLogo={getFactionLogo}
@@ -259,7 +265,7 @@ function CardDetailContent() {
 
 export default function CardDetailPage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="text-lg">Carregando...</div></div>}>
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen" style={{background:'#0d1208'}}><div className="font-mono text-xs animate-pulse" style={{color:'#7a9a5a'}}>[ CARREGANDO... ]</div></div>}>
       <CardDetailContent />
     </Suspense>
   );

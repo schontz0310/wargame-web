@@ -451,7 +451,7 @@ export function InfantryDial({ unitId, dialSide, externalDamageClicks, onDamageC
               offsetY={-50}
             />
           ))}
-          {damageType && (damageType.minRange > 0 || damageType.maxRange > 0 || damageType.damageType === 'melee') && (
+          {damageType && (
             <Text
               x={DIAL_CENTER_X} y={DIAL_CENTER_Y}
               text={`${damageType.minRange}/${damageType.maxRange}`}

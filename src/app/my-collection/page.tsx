@@ -310,15 +310,16 @@ export default function MyCollection() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen" style={{background:'linear-gradient(160deg,#080c05 0%,#0d1208 60%,#0a0f06 100%)'}}>
       {/* Sidebar */}
-      <div className={`${sidebarOpen ? 'w-72' : 'w-0'} transition-all duration-300 ease-in-out overflow-hidden bg-white border-r border-gray-200 shadow-sm lg:relative absolute lg:z-auto z-50 h-full`}>
+      <div className={`${sidebarOpen ? 'w-72' : 'w-0'} transition-all duration-300 ease-in-out overflow-hidden lg:relative absolute lg:z-auto z-50 h-full`} style={{background:'#0d1208',borderRight:'1px solid #3a4a2a'}}>
         <div className="p-4 h-full overflow-y-auto overflow-x-hidden">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold text-gray-900">Minha Coleção</h2>
+            <h2 className="text-sm font-mono font-semibold tracking-widest uppercase" style={{color:'#c9a84c'}}>Minha Coleção</h2>
             <button
               onClick={() => setSidebarOpen(false)}
-              className="p-1 rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-700 flex-shrink-0"
+              className="p-1 transition-colors"
+              style={{color:'#4a5e3a'}}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -327,47 +328,48 @@ export default function MyCollection() {
           </div>
 
           {/* Collection Stats */}
-          <div className="mb-6 space-y-3">
-            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+          <div className="mb-6 space-y-2">
+            <div className="p-3 corner-clip-sm" style={{background:'rgba(122,154,90,0.1)',border:'1px solid #3a4a2a'}}>
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-green-800">📦 Tenho</span>
-                <span className="text-lg font-bold text-green-900">{haveUnits.length}</span>
+                <span className="text-xs font-mono" style={{color:'#7a9a5a'}}>TENHO</span>
+                <span className="text-lg font-bold font-mono" style={{color:'#c9a84c'}}>{haveUnits.length}</span>
               </div>
-              <div className="text-xs text-green-600 mt-1">
-                {haveUnits.reduce((sum, unit) => sum + (unit.points * unit.quantity), 0)} pontos
+              <div className="text-xs font-mono mt-1" style={{color:'#4a5e3a'}}>
+                {haveUnits.reduce((sum, unit) => sum + (unit.points * unit.quantity), 0)} pts
               </div>
             </div>
-            
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+            <div className="p-3 corner-clip-sm" style={{background:'rgba(201,168,76,0.08)',border:'1px solid #3a4a2a'}}>
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-orange-800">🔍 Procuro</span>
-                <span className="text-lg font-bold text-orange-900">{wantUnits.length}</span>
+                <span className="text-xs font-mono" style={{color:'#7a9a5a'}}>PROCURO</span>
+                <span className="text-lg font-bold font-mono" style={{color:'#c9a84c'}}>{wantUnits.length}</span>
               </div>
-              <div className="text-xs text-orange-600 mt-1">
-                {wantUnits.reduce((sum, unit) => sum + (unit.points * unit.quantity), 0)} pontos
+              <div className="text-xs font-mono mt-1" style={{color:'#4a5e3a'}}>
+                {wantUnits.reduce((sum, unit) => sum + (unit.points * unit.quantity), 0)} pts
               </div>
             </div>
           </div>
 
           {/* Search Input */}
-          <div className="mb-4">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Buscar</label>
+          <div className="mb-3">
+            <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>BUSCAR</label>
             <input
               type="text"
               placeholder="Nome da unidade..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-2 py-1.5 text-xs font-mono"
+              style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c',outline:'none'}}
             />
           </div>
 
           {/* Sort By */}
-          <div className="mb-4">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Ordenar por</label>
+          <div className="mb-3">
+            <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>ORDENAR</label>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-2 py-1.5 text-xs font-mono"
+              style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c'}}
             >
               <option value="name">Nome (A-Z)</option>
               <option value="points">Pontos (menor)</option>
@@ -378,12 +380,13 @@ export default function MyCollection() {
           </div>
 
           {/* Type Filter */}
-          <div className="mb-4">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Tipo</label>
+          <div className="mb-3">
+            <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>TIPO</label>
             <select
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value)}
-              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-2 py-1.5 text-xs font-mono"
+              style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c'}}
             >
               <option value="">Todos os tipos</option>
               {uniqueTypes.map(type => (
@@ -393,12 +396,13 @@ export default function MyCollection() {
           </div>
 
           {/* Faction Filter */}
-          <div className="mb-4">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Facção</label>
+          <div className="mb-3">
+            <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>FACÇÃO</label>
             <select
               value={selectedFaction}
               onChange={(e) => setSelectedFaction(e.target.value)}
-              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-2 py-1.5 text-xs font-mono"
+              style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c'}}
             >
               <option value="">Todas as facções</option>
               {uniqueFactions.map(faction => (
@@ -410,25 +414,27 @@ export default function MyCollection() {
           {/* Clear Filters Button */}
           <button
             onClick={clearFilters}
-            className="w-full px-3 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors text-xs mb-4"
+            className="w-full px-3 py-2 font-mono text-xs mb-3 corner-clip-sm transition-colors"
+            style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}
           >
-            Limpar Filtros
+            LIMPAR FILTROS
           </button>
 
           {/* Import/Export Controls */}
-          <div className="border-t pt-4">
-            <h3 className="text-xs font-medium text-gray-700 mb-2">Gerenciar</h3>
+          <div className="pt-3" style={{borderTop:'1px solid #2a3a1a'}}>
+            <h3 className="text-xs font-mono mb-2" style={{color:'#4a5e3a'}}>GERENCIAR</h3>
             <div className="space-y-2">
               <button
                 onClick={exportCollection}
                 disabled={haveUnits.length === 0 && wantUnits.length === 0}
-                className="w-full bg-green-600 text-white px-3 py-2 rounded text-xs hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                className="w-full px-3 py-2 font-mono text-xs corner-clip-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}
               >
-                📤 Exportar JSON
+                EXPORTAR JSON
               </button>
               
-              <label className="w-full bg-blue-600 text-white px-3 py-2 rounded text-xs hover:bg-blue-700 transition-colors cursor-pointer block text-center">
-                📥 Importar JSON
+              <label className="w-full px-3 py-2 font-mono text-xs corner-clip-sm transition-colors cursor-pointer block text-center" style={{background:'rgba(201,168,76,0.1)',border:'1px solid #c9a84c55',color:'#c9a84c'}}>
+                IMPORTAR JSON
                 <input
                   type="file"
                   accept=".json"
@@ -444,138 +450,129 @@ export default function MyCollection() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              {!sidebarOpen && (
-                <button
-                  onClick={() => setSidebarOpen(true)}
-                  className="p-2 rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-700"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
-                </button>
-              )}
-              <h1 className="text-2xl font-bold text-gray-900">Minha Coleção</h1>
-            </div>
-            <div className="text-sm text-gray-600">
-              {filteredUnits.length} de {allUnits.length} unidade(s)
-            </div>
+        <div className="px-6 py-3 flex items-center justify-between" style={{background:'rgba(0,0,0,0.5)',borderBottom:'1px solid #3a4a2a'}}>
+          <div className="flex items-center gap-4">
+            {!sidebarOpen && (
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="p-1 transition-colors"
+                style={{color:'#4a5e3a'}}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+            )}
+            <h1 className="text-lg font-bold font-mono tracking-widest uppercase" style={{color:'#e8d5a0'}}>Minha Coleção</h1>
+          </div>
+          <div className="text-xs font-mono" style={{color:'#4a5e3a'}}>
+            {filteredUnits.length} / {allUnits.length} UNIDADES
           </div>
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-auto p-6">
+        <div className="flex-1 overflow-auto p-4">
           {/* Units Table - Desktop */}
           <div className="hidden lg:block w-full overflow-hidden">
-            <div className="bg-white rounded-lg shadow-lg border border-gray-200">
+            <div style={{background:'#0d1208',border:'1px solid #3a4a2a'}}>
               {/* Table Header */}
-              <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 border-b border-blue-800 rounded-t-lg">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                      </svg>
-                      Minha Coleção
-                    </h2>
-                    <p className="text-blue-100 text-sm mt-1">
-                      {filteredUnits.length} unidade(s) na coleção
-                    </p>
-                  </div>
-                </div>
+              <div className="px-4 py-3 flex items-center justify-between" style={{background:'rgba(0,0,0,0.4)',borderBottom:'1px solid #3a4a2a'}}>
+                <span className="font-mono text-sm tracking-widest uppercase" style={{color:'#c9a84c'}}>Minha Coleção</span>
+                <span className="font-mono text-xs" style={{color:'#4a5e3a'}}>{filteredUnits.length} unidade(s)</span>
               </div>
 
-              <div className="bg-white">
-                <table className="w-full bg-white table-fixed divide-y divide-gray-200">
-                  <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-blue-200">
-                    <tr>
-                      <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                        Nome
+              <div>
+                <table className="w-full table-fixed">
+                  <thead>
+                    <tr style={{borderBottom:'1px solid #2a3a1a',background:'rgba(0,0,0,0.3)'}}>
+                      <th scope="col" className="px-4 py-2 text-left text-xs font-mono tracking-widest" style={{color:'#5a7a4a'}}>
+                        NOME
                       </th>
-                      <th scope="col" className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-                        Coleção
+                      <th scope="col" className="px-4 py-2 text-center text-xs font-mono tracking-widest" style={{color:'#5a7a4a'}}>
+                        COLEÇÃO
                       </th>
-                      <th scope="col" className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-                        Número
+                      <th scope="col" className="px-4 py-2 text-center text-xs font-mono tracking-widest" style={{color:'#5a7a4a'}}>
+                        #
                       </th>
-                      <th scope="col" className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-                        Tipo
+                      <th scope="col" className="px-4 py-2 text-center text-xs font-mono tracking-widest" style={{color:'#5a7a4a'}}>
+                        TIPO
                       </th>
-                      <th scope="col" className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-                        Facção
+                      <th scope="col" className="px-4 py-2 text-center text-xs font-mono tracking-widest" style={{color:'#5a7a4a'}}>
+                        FACÇÃO
                       </th>
-                      <th scope="col" className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-                        Pontos
+                      <th scope="col" className="px-4 py-2 text-center text-xs font-mono tracking-widest" style={{color:'#5a7a4a'}}>
+                        PTS
                       </th>
-                      <th scope="col" className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-                        📦 Tenho
+                      <th scope="col" className="px-4 py-2 text-center text-xs font-mono tracking-widest" style={{color:'#5a7a4a'}}>
+                        TENHO
                       </th>
-                      <th scope="col" className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-                        🔍 Procuro
+                      <th scope="col" className="px-4 py-2 text-center text-xs font-mono tracking-widest" style={{color:'#5a7a4a'}}>
+                        PROCURO
                       </th>
-                      <th scope="col" className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-                        Ações
+                      <th scope="col" className="px-4 py-2 text-center text-xs font-mono tracking-widest" style={{color:'#5a7a4a'}}>
+                        AÇÕES
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody>
                     {filteredUnits.map((unit) => {
                       return (
-                        <tr key={unit.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3">
-                            <div className="text-sm font-medium text-gray-900">
+                        <tr key={unit.id} className="transition-colors" style={{borderBottom:'1px solid #1a2a10'}} onMouseEnter={e=>(e.currentTarget.style.background='rgba(122,154,90,0.06)')} onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>
+                          <td className="px-4 py-2">
+                            <div className="text-xs font-mono" style={{color:'#e8d5a0'}}>
                               {unit.name}
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-900 text-center">
-                            {unit.expansion || 'N/A'}
+                          <td className="px-4 py-2 text-xs font-mono text-center" style={{color:'#7a9a5a'}}>
+                            {unit.expansion || '-'}
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-900 text-center font-mono">
-                            {unit.collectionNumber || 'N/A'}
+                          <td className="px-4 py-2 text-xs font-mono text-center" style={{color:'#7a9a5a'}}>
+                            {unit.collectionNumber || '-'}
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-900 text-center capitalize">
+                          <td className="px-4 py-2 text-xs font-mono text-center capitalize" style={{color:'#7a9a5a'}}>
                             {unit.type}
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-900 text-center">
+                          <td className="px-4 py-2 text-xs font-mono text-center" style={{color:'#7a9a5a'}}>
                             {unit.faction}
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-900 font-medium text-center">
+                          <td className="px-4 py-2 text-xs font-mono font-bold text-center" style={{color:'#c9a84c'}}>
                             {unit.points}
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-900 text-center font-medium">
+                          <td className="px-4 py-2 text-xs font-mono font-bold text-center" style={{color:'#7a9a5a'}}>
                             {unit.haveQuantity}
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-900 text-center font-medium">
+                          <td className="px-4 py-2 text-xs font-mono font-bold text-center" style={{color:'#7a9a5a'}}>
                             {unit.wantQuantity}
                           </td>
-                          <td className="px-4 py-3 text-center">
-                            <div className="flex justify-center gap-2">
+                          <td className="px-4 py-2 text-center">
+                            <div className="flex justify-center gap-1">
                               {unit.haveQuantity > 0 && (
                                 <button
                                   onClick={() => removeFromCollection(unit.id, "have")}
-                                  className="bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1 rounded text-xs font-medium transition-colors"
+                                  className="px-2 py-0.5 text-xs font-mono transition-colors"
+                                  style={{background:'rgba(150,50,50,0.2)',border:'1px solid #5a2a2a',color:'#c06060'}}
                                   title="Remover da lista Tenho"
                                 >
-                                  📦❌
+                                  -T
                                 </button>
                               )}
                               {unit.wantQuantity > 0 && (
                                 <button
                                   onClick={() => removeFromCollection(unit.id, "want")}
-                                  className="bg-orange-100 hover:bg-orange-200 text-orange-700 px-2 py-1 rounded text-xs font-medium transition-colors"
+                                  className="px-2 py-0.5 text-xs font-mono transition-colors"
+                                  style={{background:'rgba(150,100,50,0.2)',border:'1px solid #5a3a1a',color:'#c09060'}}
                                   title="Remover da lista Procuro"
                                 >
-                                  🔍❌
+                                  -P
                                 </button>
                               )}
                               <button
                                 onClick={() => removeFromAllLists(unit.id)}
-                                className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded text-xs font-medium transition-colors"
+                                className="px-2 py-0.5 text-xs font-mono transition-colors"
+                                style={{background:'rgba(100,50,50,0.2)',border:'1px solid #4a1a1a',color:'#a05050'}}
                                 title="Remover de todas as listas"
                               >
-                                🗑️
+                                DEL
                               </button>
                             </div>
                           </td>
@@ -587,9 +584,9 @@ export default function MyCollection() {
               </div>
               
               {/* Footer */}
-              <div className="bg-gray-50 px-6 py-3 border-t border-gray-200 rounded-b-lg">
-                <p className="text-sm text-gray-600 text-center">
-                  Mostrando {filteredUnits.length} de {allUnits.length} unidades
+              <div className="px-4 py-2" style={{borderTop:'1px solid #2a3a1a',background:'rgba(0,0,0,0.3)'}}>
+                <p className="text-xs font-mono text-center" style={{color:'#3a5a2a'}}>
+                  {filteredUnits.length} / {allUnits.length} UNIDADES
                 </p>
               </div>
             </div>
@@ -597,67 +594,36 @@ export default function MyCollection() {
 
           {/* Units Cards - Mobile */}
           <div className="w-full lg:hidden">
-            <div className="space-y-3">
+            <div className="space-y-2">
               {filteredUnits.map((unit) => {
                 return (
-                  <div key={unit.id} className="bg-white rounded-lg shadow border border-gray-200 p-4">
-                    <div className="flex justify-between items-start mb-3">
+                  <div key={unit.id} className="p-3 corner-clip-sm" style={{background:'#0d1208',border:'1px solid #3a4a2a'}}>
+                    <div className="flex justify-between items-start mb-2">
                       <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                        <h3 className="text-sm font-mono font-bold mb-0.5" style={{color:'#e8d5a0'}}>
                           {unit.name}
                         </h3>
-                        <p className="text-sm text-gray-500 capitalize">
-                          {unit.type} • {unit.faction}
+                        <p className="text-xs font-mono capitalize" style={{color:'#5a7a4a'}}>
+                          {unit.type} / {unit.faction}
                         </p>
                       </div>
                       <div className="text-right">
-                        <div className="text-lg font-bold text-gray-900">{unit.points} pts</div>
-                        <div className="text-sm text-gray-500">
-                          📦 {unit.haveQuantity} • 🔍 {unit.wantQuantity}
+                        <div className="text-sm font-bold font-mono" style={{color:'#c9a84c'}}>{unit.points} pts</div>
+                        <div className="text-xs font-mono" style={{color:'#4a5e3a'}}>
+                          T:{unit.haveQuantity} P:{unit.wantQuantity}
                         </div>
                       </div>
                     </div>
                     
                     <div className="flex justify-between items-center">
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap">
                         {unit.haveQuantity > 0 && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            📦 {unit.haveQuantity}
-                          </span>
+                          <button onClick={() => removeFromCollection(unit.id, 'have')} className="px-2 py-0.5 text-xs font-mono" style={{background:'rgba(150,50,50,0.2)',border:'1px solid #5a2a2a',color:'#c06060'}}>-TENHO</button>
                         )}
                         {unit.wantQuantity > 0 && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                            🔍 {unit.wantQuantity}
-                          </span>
+                          <button onClick={() => removeFromCollection(unit.id, 'want')} className="px-2 py-0.5 text-xs font-mono" style={{background:'rgba(150,100,50,0.2)',border:'1px solid #5a3a1a',color:'#c09060'}}>-PROCURO</button>
                         )}
-                      </div>
-                      
-                      <div className="flex gap-2">
-                        {unit.haveQuantity > 0 && (
-                          <button
-                            onClick={() => removeFromCollection(unit.id, "have")}
-                            className="bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1 rounded text-xs font-medium transition-colors"
-                            title="Remover da lista Tenho"
-                          >
-                            📦❌
-                          </button>
-                        )}
-                        {unit.wantQuantity > 0 && (
-                          <button
-                            onClick={() => removeFromCollection(unit.id, "want")}
-                            className="bg-orange-100 hover:bg-orange-200 text-orange-700 px-2 py-1 rounded text-xs font-medium transition-colors"
-                            title="Remover da lista Procuro"
-                          >
-                            🔍❌
-                          </button>
-                        )}
-                        <button
-                          onClick={() => removeFromAllLists(unit.id)}
-                          className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded text-xs font-medium transition-colors"
-                          title="Remover de todas as listas"
-                        >
-                          🗑️
-                        </button>
+                        <button onClick={() => removeFromAllLists(unit.id)} className="px-2 py-0.5 text-xs font-mono" style={{background:'rgba(100,50,50,0.2)',border:'1px solid #4a1a1a',color:'#a05050'}}>DEL</button>
                       </div>
                     </div>
                   </div>
@@ -666,18 +632,13 @@ export default function MyCollection() {
             </div>
           </div>
           
-          {/* No results message */}
           {filteredUnits.length === 0 && allUnits.length > 0 && (
-            <div className="text-center text-gray-500 mt-8">
-              Nenhuma unidade encontrada com os filtros aplicados
-            </div>
+            <div className="text-center mt-8 font-mono text-xs" style={{color:'#3a5a2a'}}>[ NENHUMA UNIDADE COM OS FILTROS APLICADOS ]</div>
           )}
-          
-          {/* Empty state */}
           {allUnits.length === 0 && (
-            <div className="text-center text-gray-500 mt-8">
-              <p className="text-lg mb-2">Sua coleção está vazia</p>
-              <p className="text-sm">Importe um arquivo JSON ou adicione unidades pela página de busca</p>
+            <div className="text-center mt-8">
+              <p className="font-mono text-sm mb-2" style={{color:'#c9a84c'}}>// COLEÇÃO VAZIA</p>
+              <p className="font-mono text-xs" style={{color:'#3a5a2a'}}>Importe um JSON ou adicione unidades pela busca</p>
             </div>
           )}
         </div>

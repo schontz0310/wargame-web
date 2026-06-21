@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, IMercenaryContract, apiService } from '@/lib/api'
 import CardDesktopMercenaryContract from '@/components/CardDesktopMercenaryContract'
@@ -40,9 +40,9 @@ function mercenaryContractToCard(mc: IMercenaryContract): Card {
   };
 }
 
-export default function MercenaryContractDetailPage({ params }: { params: { id: string } }) {
+export default function MercenaryContractDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
-  const { id } = params;
+  const { id } = use(params);
 
   const [card, setCard] = useState<Card | null>(null);
   const [loading, setLoading] = useState(true);

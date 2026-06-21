@@ -58,163 +58,135 @@ function MercenaryContractListContent() {
   const goToPage = (page: number) => setFilters(f => ({ ...f, page }));
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Sidebar Filtros */}
-      <div className="w-64 bg-white border-r border-gray-200 shadow-sm flex flex-col h-full overflow-y-auto flex-shrink-0">
-        <div className="p-4">
-          <button
-            onClick={() => router.push('/cards')}
-            className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 mb-4 transition-colors"
-          >
-            ← Voltar
-          </button>
-          <h2 className="text-base font-semibold text-gray-900 mb-4">Filtros</h2>
-
-          <form onSubmit={handleSearch} className="mb-4">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Buscar descrição</label>
+    <div className="flex h-screen" style={{background:'linear-gradient(160deg,#080c05 0%,#0d1208 60%,#0a0f06 100%)'}}>
+      {/* Sidebar */}
+      <div className="w-56 flex flex-col h-full overflow-y-auto flex-shrink-0" style={{background:'#0a0f06',borderRight:'1px solid #2a3a1a'}}>
+        <div className="px-3 py-3" style={{borderBottom:'1px solid #2a3a1a',background:'rgba(0,0,0,0.4)'}}>
+          <div className="font-mono text-xs tracking-widest uppercase" style={{color:'#c9a84c'}}>// FILTROS</div>
+        </div>
+        <div className="p-3 space-y-4 flex-1">
+          <form onSubmit={handleSearch}>
+            <label className="block font-mono text-xs mb-1" style={{color:'#5a7a4a'}}>BUSCAR DESCRIÇÃO</label>
             <input
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Palavra-chave..."
-              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-amber-500 focus:border-transparent"
+              className="w-full px-2 py-1.5 text-xs font-mono"
+              style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c',outline:'none'}}
             />
           </form>
-
-          <div className="mb-4">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Facção</label>
+          <div>
+            <label className="block font-mono text-xs mb-1" style={{color:'#5a7a4a'}}>FACÇÃO</label>
             <select
               value={selectedFaction}
               onChange={e => { setSelectedFaction(e.target.value); setFilters(f => ({ ...f, page: 1 })); }}
-              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-amber-500"
+              className="w-full px-2 py-1.5 text-xs font-mono"
+              style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c'}}
             >
-              <option value="">Todas as facções</option>
+              <option value="">Todas</option>
               {factions.map(fac => <option key={fac} value={fac}>{fac}</option>)}
             </select>
           </div>
-
-          <div className="mb-4">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Expansão</label>
+          <div>
+            <label className="block font-mono text-xs mb-1" style={{color:'#5a7a4a'}}>EXPANSÃO</label>
             <select
               value={selectedExpansion}
               onChange={e => { setSelectedExpansion(e.target.value); setFilters(f => ({ ...f, page: 1 })); }}
-              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-amber-500"
+              className="w-full px-2 py-1.5 text-xs font-mono"
+              style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c'}}
             >
-              <option value="">Todas as expansões</option>
+              <option value="">Todas</option>
               {EXPANSIONS.map(exp => <option key={exp} value={exp}>{exp}</option>)}
             </select>
           </div>
-
-          <button
-            onClick={clearFilters}
-            className="w-full px-3 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors text-xs"
-          >
-            Limpar Filtros
-          </button>
+          <button onClick={clearFilters} className="w-full px-3 py-1.5 font-mono text-xs corner-clip-sm" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#5a7a4a'}}>LIMPAR FILTROS</button>
+        </div>
+        <div className="p-3 space-y-1" style={{borderTop:'1px solid #2a3a1a'}}>
+          <button onClick={() => router.push('/cards')} className="w-full px-3 py-1.5 font-mono text-xs corner-clip-sm text-left" style={{background:'rgba(201,168,76,0.1)',border:'1px solid #c9a84c44',color:'#c9a84c'}}>← TIPOS DE CARTA</button>
+          <button onClick={() => router.push('/search')} className="w-full px-3 py-1.5 font-mono text-xs corner-clip-sm text-left" style={{background:'rgba(122,154,90,0.1)',border:'1px solid #2a3a1a',color:'#7a9a5a'}}>BUSCAR UNIDADES</button>
         </div>
       </div>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-amber-600 to-amber-700 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-bold text-white flex items-center gap-2">
-                📜 Mercenary Contract
-              </h1>
-              <p className="text-amber-100 text-sm mt-1">{total} carta(s) encontrada(s)</p>
-            </div>
-            <button
-              onClick={() => router.push('/search')}
-              className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-            >
-              🔍 Buscar Unidades
-            </button>
+        <div className="px-4 py-3 flex items-center justify-between" style={{background:'rgba(0,0,0,0.5)',borderBottom:'1px solid #3a4a2a'}}>
+          <div>
+            <h1 className="font-mono text-sm font-bold tracking-widest uppercase" style={{color:'#c9a84c'}}>CARTAS — MERCENARY CONTRACT</h1>
+            <p className="font-mono text-xs mt-0.5" style={{color:'#4a5e3a'}}>{total} carta(s) encontrada(s)</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{background:'#7a9a5a'}}></div>
+            <span className="font-mono text-xs" style={{color:'#3a5a2a'}}>ONLINE</span>
           </div>
         </div>
 
-        {/* Table */}
-        <div className="flex-1 overflow-auto p-4">
+        <div className="flex-1 overflow-auto p-3">
           {loading ? (
             <div className="flex items-center justify-center h-64">
-              <div className="text-gray-500">Carregando cartas...</div>
+              <div className="font-mono text-xs animate-pulse" style={{color:'#7a9a5a'}}>[ CARREGANDO CARTAS... ]</div>
             </div>
           ) : error ? (
             <div className="flex items-center justify-center h-64">
-              <div className="text-red-500">Erro: {error}</div>
+              <div className="font-mono text-xs" style={{color:'#c06060',border:'1px solid #5a2a2a',padding:'8px 16px'}}>ERRO: {error}</div>
             </div>
           ) : cards.length === 0 ? (
             <div className="flex items-center justify-center h-64">
-              <div className="text-gray-500">Nenhuma carta encontrada</div>
+              <div className="font-mono text-xs" style={{color:'#3a5a2a'}}>// Nenhuma carta encontrada</div>
             </div>
           ) : (
-            <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
-              <table className="w-full text-sm divide-y divide-gray-200">
-                <thead className="bg-gray-50 sticky top-0 z-10">
+            <div style={{border:'1px solid #2a3a1a',overflow:'hidden'}}>
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 z-10" style={{background:'rgba(10,15,6,0.97)',borderBottom:'1px solid #2a3a1a'}}>
                   <tr>
-                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase">Card ID</th>
-                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase">#</th>
-                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase">Nome</th>
-                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase">Facção</th>
-                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase">Expansão</th>
-                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase">Custo</th>
-                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase">Descrição</th>
-                    <th className="px-3 py-2 text-center text-xs font-bold text-gray-700 uppercase">Ver</th>
+                    <th className="px-3 py-2 text-left text-xs font-mono" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>CARD ID</th>
+                    <th className="px-3 py-2 text-left text-xs font-mono" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>#</th>
+                    <th className="px-3 py-2 text-left text-xs font-mono" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>FACÇÃO</th>
+                    <th className="px-3 py-2 text-left text-xs font-mono" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>EXPANSÃO</th>
+                    <th className="px-3 py-2 text-left text-xs font-mono" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>CUSTO</th>
+                    <th className="px-3 py-2 text-left text-xs font-mono" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>DESCRIÇÃO</th>
+                    <th className="px-3 py-2 text-center text-xs font-mono" style={{color:'#5a7a4a'}}>VER</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody>
                   {cards.map(card => (
                     <tr
                       key={card.id}
-                      className="hover:bg-amber-50 cursor-pointer transition-colors"
+                      className="cursor-pointer transition-colors"
+                      style={{borderBottom:'1px solid #1a2a10'}}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(122,154,90,0.06)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                       onClick={() => router.push(`/cards/mercenary-contract/${card.id}`)}
                     >
-                      <td className="px-3 py-2 text-xs font-mono text-gray-700">{card.cardId}</td>
-                      <td className="px-3 py-2 text-xs text-gray-600">{card.collectionNumber}</td>
-                      <td className="px-3 py-2 text-xs text-gray-800 font-medium">{card.name}</td>
-                      <td className="px-3 py-2 text-xs text-gray-600">{card.faction}</td>
-                      <td className="px-3 py-2 text-xs text-gray-600">{card.expansion}</td>
-                      <td className="px-3 py-2 text-xs text-gray-700">
-                        <span className="bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-medium">{card.cost}</span>
+                      <td className="px-3 py-2 text-xs font-mono" style={{color:'#7a9a5a',borderRight:'1px solid #1a2a10'}}>{card.cardId}</td>
+                      <td className="px-3 py-2 text-xs font-mono" style={{color:'#4a5e3a',borderRight:'1px solid #1a2a10'}}>{card.collectionNumber}</td>
+                      <td className="px-3 py-2 text-xs font-mono font-medium" style={{color:'#e8d5a0',borderRight:'1px solid #1a2a10'}}>{card.faction}</td>
+                      <td className="px-3 py-2 text-xs font-mono" style={{color:'#7a9a5a',borderRight:'1px solid #1a2a10'}}>{card.expansion}</td>
+                      <td className="px-3 py-2 text-xs font-mono" style={{borderRight:'1px solid #1a2a10'}}>
+                        <span className="px-1.5 py-0.5 font-bold" style={{background:'rgba(201,168,76,0.15)',border:'1px solid #c9a84c55',color:'#c9a84c'}}>{card.cost}</span>
                         {card.alternativeCost && (
-                          <span className="ml-1 bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded text-[10px]">{card.alternativeCost}</span>
+                          <span className="ml-1 px-1.5 py-0.5 text-[10px] font-mono" style={{background:'rgba(0,0,0,0.3)',border:'1px solid #2a3a1a',color:'#5a7a4a'}}>{card.alternativeCost}</span>
                         )}
                       </td>
-                      <td className="px-3 py-2 text-xs text-gray-600 max-w-xs truncate">{card.description}</td>
+                      <td className="px-3 py-2 text-xs font-mono max-w-xs truncate" style={{color:'#6a8a4a',borderRight:'1px solid #1a2a10'}}>{card.description}</td>
                       <td className="px-3 py-2 text-center">
                         <button
                           onClick={e => { e.stopPropagation(); router.push(`/cards/mercenary-contract/${card.id}`); }}
-                          className="bg-amber-500 hover:bg-amber-600 text-white text-xs px-2 py-1 rounded transition-colors"
+                          className="px-2 py-1 font-mono text-xs corner-clip-sm"
+                          style={{background:'rgba(201,168,76,0.15)',border:'1px solid #c9a84c',color:'#c9a84c'}}
                         >
-                          Ver
+                          VER
                         </button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-
-              {/* Pagination */}
-              <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 flex items-center justify-between">
-                <span className="text-xs text-gray-600">
-                  Página {filters.page} de {totalPages} — {total} total
-                </span>
+              <div className="px-4 py-2 flex items-center justify-between" style={{borderTop:'1px solid #2a3a1a',background:'rgba(0,0,0,0.3)'}}>
+                <span className="font-mono text-xs" style={{color:'#4a5e3a'}}>PÁG. {filters.page}/{totalPages} — {total} total</span>
                 <div className="flex gap-2">
-                  <button
-                    disabled={(filters.page ?? 1) <= 1}
-                    onClick={() => goToPage((filters.page ?? 1) - 1)}
-                    className="px-3 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    ← Anterior
-                  </button>
-                  <button
-                    disabled={(filters.page ?? 1) >= totalPages}
-                    onClick={() => goToPage((filters.page ?? 1) + 1)}
-                    className="px-3 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    Próxima →
-                  </button>
+                  <button disabled={(filters.page ?? 1) <= 1} onClick={() => goToPage((filters.page ?? 1) - 1)} className="px-3 py-1 font-mono text-xs corner-clip-sm disabled:opacity-40" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>← ANTERIOR</button>
+                  <button disabled={(filters.page ?? 1) >= totalPages} onClick={() => goToPage((filters.page ?? 1) + 1)} className="px-3 py-1 font-mono text-xs corner-clip-sm disabled:opacity-40" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>PRÓXIMA →</button>
                 </div>
               </div>
             </div>
@@ -227,7 +199,7 @@ function MercenaryContractListContent() {
 
 export default function MercenaryContractPage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="text-lg">Carregando...</div></div>}>
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen" style={{background:'#0d1208'}}><div className="font-mono text-xs animate-pulse" style={{color:'#7a9a5a'}}>[ CARREGANDO... ]</div></div>}>
       <MercenaryContractListContent />
     </Suspense>
   );

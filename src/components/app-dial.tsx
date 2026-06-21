@@ -1390,7 +1390,7 @@ export function AppDial(dialParams: DialParams) {
             offsetY={-84}
           />  
         ))}
-        {damageTypes.primaryDamage && (damageTypes.primaryDamage.range.minimum > 0 || damageTypes.primaryDamage.range.maximum > 0 || damageTypes.primaryDamage.type === 'melee') && (
+        {damageTypes.primaryDamage && (
           <Text
             x={DIAL_CENTER_X}
             y={DIAL_CENTER_Y}

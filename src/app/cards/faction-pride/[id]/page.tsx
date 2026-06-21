@@ -258,10 +258,11 @@ function FactionPrideDetailContent({ id }: { id: string }) {
   );
 }
 
-export default function FactionPrideDetailPage({ params }: { params: { id: string } }) {
+export default async function FactionPrideDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   return (
     <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="text-lg">Carregando...</div></div>}>
-      <FactionPrideDetailContent id={params.id} />
+      <FactionPrideDetailContent id={id} />
     </Suspense>
   );
 }

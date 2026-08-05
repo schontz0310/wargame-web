@@ -174,11 +174,11 @@ export default function CardDesktop({ selectedCard, isFlipped, getFactionLogo }:
                         { name: "two chevrons", file: "two-chevrons-black.png" },
                         { name: "one chevron", file: "one-chevron-black.png" },
                         { name: "ballistic", file: "balistic.png" },
+                        { name: "Clan Wolf", file: "clan-wolf-black.png" },
                         { name: "VTOL", file: "vtol.png" },
                         { name: "vtol", file: "vtol.png" },
                       ];
                       const escaped = knownFactions.map(f => f.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-                      const pattern = new RegExp(`(${escaped.join('|')})`, 'gi');
 
                       const paragraphs = selectedCard.description.split(/\\\\n|\\n|\n/).filter(p => p.trim() !== '');
                       return paragraphs.map((para, pi) => {

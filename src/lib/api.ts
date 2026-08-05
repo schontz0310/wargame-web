@@ -72,11 +72,14 @@ export interface DraftUnit {
   quantity: number;
   expansion?: string;
   collectionNumber?: string;
+  isCard?: boolean; // Flag to distinguish cards from units
+  cardType?: string; // Card type if it's a card
 }
 
 export interface DraftBoosterConfig {
-  unitType: string; // 'Infantry', 'Vehicle', 'Mech', etc.
+  unitType: string; // 'Infantry', 'Vehicle', 'Mech', 'Card', etc.
   quantity: number;
+  cardType?: string; // Optional card type filter: 'F', 'P', 'G', 'S', 'C', 'MC'
 }
 
 export interface DraftSettings {
@@ -90,12 +93,20 @@ export interface DraftSettings {
 export interface DraftResult {
   playerId: number;
   playerName: string;
-  units: DraftUnit[];
+  units: DraftUnit[]; // Units drafted
+  armyUnits: DraftUnit[]; // Units actually in the army (can be modified)
+  secretCards: DraftUnit[]; // Cards added manually (only value shown, revealed in game)
   totalPoints: number;
+  armyPoints: number; // Points of army units
 }
 
 export interface DraftUnitWithQuantity {
   unit: Unit;
+  quantity: number;
+}
+
+export interface DraftCardWithQuantity {
+  card: Card;
   quantity: number;
 }
 
@@ -105,6 +116,7 @@ export interface Draft {
   description?: string;
   settings: DraftSettings;
   availableUnits: DraftUnitWithQuantity[]; // Units that can be drafted with quantities
+  availableCards?: DraftCardWithQuantity[]; // Cards that can be drafted with quantities
   results: DraftResult[];
   sourceFilters?: Record<string, unknown>; // Store the filters used when generating
   createdAt: string;

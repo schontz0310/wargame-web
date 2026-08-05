@@ -77,7 +77,7 @@ function CardDetailContent() {
   if (!card) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4" style={{background:'#0d1208'}}>
-        <div className="font-mono text-xs" style={{color:'#4a5e3a'}}>// Nenhuma carta encontrada</div>
+        <div className="font-mono text-xs" style={{color:'#4a5e3a'}}>Nenhuma carta encontrada</div>
         <button onClick={() => router.push('/cards')} className="px-4 py-2 font-mono text-xs corner-clip-sm" style={{background:'rgba(201,168,76,0.15)',border:'1px solid #c9a84c',color:'#c9a84c'}}>
           ← VOLTAR
         </button>

@@ -4,7 +4,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Unit, Draft, DraftSettings, DraftUnitWithQuantity, DraftResult, apiService } from '@/lib/api'
+import { Unit, Draft, DraftSettings, DraftUnitWithQuantity, DraftCardWithQuantity, DraftResult, DraftUnit, apiService, Card } from '@/lib/api'
 import { safeLocalStorage } from '@/lib/storage'
 
 export default function DraftsPage() {
@@ -23,6 +23,7 @@ export default function DraftsPage() {
   const [showUnitSelector, setShowUnitSelector] = useState(false)
   const [collectionUnits, setCollectionUnits] = useState<Unit[]>([])
   const [useCollectionAsSource, setUseCollectionAsSource] = useState(false)
+  const [availableCards, setAvailableCards] = useState<Card[]>([])
   const [showImportModal, setShowImportModal] = useState(false)
   const [importMessage, setImportMessage] = useState('')
   const [importSuccess, setImportSuccess] = useState(false)
@@ -41,13 +42,18 @@ export default function DraftsPage() {
     maxPoints: '',
     search: ''
   })
+  const [editingPlayerId, setEditingPlayerId] = useState<number | null>(null)
+  const [showArmyUnitSelector, setShowArmyUnitSelector] = useState(false)
+  const [showSecretCardModal, setShowSecretCardModal] = useState(false)
+  const [secretCardValue, setSecretCardValue] = useState('')
   const [draftSettings, setDraftSettings] = useState<DraftSettings>({
     numberOfPlayers: 2,
     boostersPerPlayer: 3,
     boosterConfigs: [
       { unitType: 'Infantry', quantity: 3 },
       { unitType: 'Vehicle', quantity: 1 },
-      { unitType: 'Mech', quantity: 1 }
+      { unitType: 'Mech', quantity: 1 },
+      { unitType: 'Card', quantity: 1 }
     ],
     useCollection: false,
     respectFilters: false
@@ -67,10 +73,16 @@ export default function DraftsPage() {
       const savedDrafts = safeLocalStorage.getItem('myDrafts')
       if (savedDrafts) {
         const parsedDrafts = JSON.parse(savedDrafts)
-        // Migrate old drafts without availableUnits
+        // Migrate old drafts without availableUnits and new army fields
         const migratedDrafts = parsedDrafts.map((draft: any) => ({
           ...draft,
-          availableUnits: draft.availableUnits || []
+          availableUnits: draft.availableUnits || [],
+          results: draft.results.map((result: any) => ({
+            ...result,
+            armyUnits: result.armyUnits || [],
+            secretCards: result.secretCards || [],
+            armyPoints: result.armyPoints || 0
+          }))
         }))
         setDrafts(migratedDrafts)
         
@@ -133,6 +145,80 @@ export default function DraftsPage() {
       }
     }
     loadAllUnits()
+  }, [])
+
+  // Load all cards from API
+  useEffect(() => {
+    const loadAllCards = async () => {
+      try {
+        console.log('Loading cards from API...')
+        const factionPrides = await apiService.getFactionPrides({ limit: 1000 })
+        const mercenaryContracts = await apiService.getMercenaryContracts({ limit: 1000 })
+        
+        const allCards: Card[] = []
+        
+        // Convert Faction Prides to Cards
+        factionPrides.factionPrides.forEach(fp => {
+          allCards.push({
+            id: fp.cardId,
+            name: fp.faction,
+            type: 'F',
+            typeName: 'Faction Pride',
+            cost: fp.cost,
+            alternativeCost: fp.alternativeCost ?? undefined,
+            haveAlternativeCost: fp.haveAlternativeCost,
+            haveLogo: fp.haveLogo,
+            haveSeeText: fp.haveSeeText,
+            faction: fp.faction,
+            factionLogoVersion: fp.logoVariant as Card['factionLogoVersion'],
+            rarity: 'Common',
+            expansion: fp.expansion,
+            collectionNumber: fp.collectionNumber,
+            imageUrl: '',
+            description: fp.description,
+            flavorText: fp.flavorText ?? undefined,
+            isUnique: false,
+            cardModel: 'single',
+            frontImage: '/images/cards/faction-pride-front.png',
+            backImage: '/images/cards/faction-pride-back.png',
+          })
+        })
+        
+        // Convert Mercenary Contracts to Cards
+        mercenaryContracts.mercenaryContracts.forEach(mc => {
+          allCards.push({
+            id: mc.cardId,
+            name: mc.faction,
+            type: 'MC',
+            typeName: 'Mercenary Contract',
+            cost: mc.cost,
+            alternativeCost: mc.alternativeCost ?? undefined,
+            haveAlternativeCost: mc.haveAlternativeCost ?? false,
+            haveLogo: mc.haveLogo ?? false,
+            haveSeeText: mc.haveSeeText ?? false,
+            faction: mc.faction,
+            factionLogoVersion: mc.logoVariant as Card['factionLogoVersion'],
+            rarity: 'Common',
+            expansion: mc.expansion,
+            collectionNumber: mc.collectionNumber,
+            imageUrl: '',
+            description: mc.description,
+            flavorText: mc.flavorText ?? undefined,
+            isUnique: false,
+            cardModel: mc.cardModel,
+            contractText: mc.contractText ?? undefined,
+            frontImage: mc.cardModel === 'double' ? '/images/cards/mercenary-contract-front-double.png' : '/images/cards/mercenary-contract-front-single.png',
+            backImage: '/images/cards/mercenary-contract-back.png',
+          })
+        })
+        
+        console.log('Total cards loaded:', allCards.length)
+        setAvailableCards(allCards)
+      } catch (error) {
+        console.error('Error loading cards:', error)
+      }
+    }
+    loadAllCards()
   }, [])
 
   // Filter units based on filters
@@ -284,6 +370,9 @@ export default function DraftsPage() {
       Array(selectedUnit.quantity).fill(selectedUnit.unit)
     )
     
+    // Use ALL available cards automatically (not just selected)
+    const allCards = availableCards
+    
     // Pre-shuffle the entire pool multiple times for maximum randomness
     let shuffledUnits = shuffleArray(allUnits)
     for (let i = 0; i < 3; i++) {
@@ -298,85 +387,146 @@ export default function DraftsPage() {
         playerId: i + 1,
         playerName: `Jogador ${i + 1}`,
         units: [],
-        totalPoints: 0
+        armyUnits: [],
+        secretCards: [],
+        totalPoints: 0,
+        armyPoints: 0
       })
     }
     
     // Create available units pool with pre-shuffled units
     const availableUnitsPool = [...shuffledUnits]
+    const availableCardsPool = shuffleArray(allCards)
     const totalBoosters = settings.numberOfPlayers * settings.boostersPerPlayer
     
-    // Track unit distribution to avoid clustering
+    // Track unit and card distribution to avoid clustering
     const unitDistribution = new Map<string, number>()
+    const cardDistribution = new Map<string, number>()
     
     // Animate draft process with improved randomization
     for (let boosterIndex = 0; boosterIndex < totalBoosters; boosterIndex++) {
-      // Randomize player order occasionally to avoid patterns
-      const shouldRandomizeOrder = boosterIndex % (settings.numberOfPlayers * 2) === 0
-      const currentPlayerIndex = shouldRandomizeOrder 
-        ? playerOrder[boosterIndex % settings.numberOfPlayers]
-        : boosterIndex % settings.numberOfPlayers
+      // Round-robin distribution: players are indexed 0-based in array but displayed as 1-based
+      const currentPlayerIndex = boosterIndex % settings.numberOfPlayers
       
       const currentPlayer = players[currentPlayerIndex]
       
-      // Update UI state
+      // Update UI state (display 1-based player number)
       setCurrentBooster(boosterIndex + 1)
-      setCurrentPlayer(currentPlayerIndex + 1)
+      setCurrentPlayer(currentPlayer.playerId)
       
       // Wait for animation
       await new Promise(resolve => setTimeout(resolve, 1000))
       
       // For each unit type in booster config
       for (const config of settings.boosterConfigs) {
-        const availableUnits = availableUnitsPool.filter((unit: any) => 
-          unit.type.toLowerCase() === config.unitType.toLowerCase()
-        )
-        
-        // Shuffle available units of this type
-        const shuffledTypeUnits = shuffleArray(availableUnits)
-        
-        // Select random units for this config with anti-clustering
-        for (let j = 0; j < config.quantity; j++) {
-          if (shuffledTypeUnits.length > 0) {
-            // Calculate weights to reduce clustering (favor less distributed units)
-            const weights = shuffledTypeUnits.map(unit => {
-              const distributionCount = unitDistribution.get(unit.id) || 0
-              return Math.max(1, 10 - distributionCount) // Higher weight for less distributed units
-            })
-            
-            const selectedUnit = selectRandomWithWeights(shuffledTypeUnits, weights)
-            
-            // Show animation of unit being drawn
-            setDraftAnimation({ unit: selectedUnit, player: currentPlayerIndex + 1 })
-            await new Promise(resolve => setTimeout(resolve, 800))
-            
-            // Add to player
-            currentPlayer.units.push({
-              id: selectedUnit.id,
-              name: selectedUnit.name,
-              type: selectedUnit.type,
-              points: selectedUnit.points,
-              faction: selectedUnit.faction,
-              expansion: selectedUnit.expansion,
-              collectionNumber: selectedUnit.collectionNumber,
-              quantity: 1
-            })
-            
-            currentPlayer.totalPoints += selectedUnit.points
-            
-            // Update distribution tracking
-            unitDistribution.set(selectedUnit.id, (unitDistribution.get(selectedUnit.id) || 0) + 1)
-            
-            // Remove from available pool
-            const poolIndex = availableUnitsPool.indexOf(selectedUnit)
-            if (poolIndex > -1) {
-              availableUnitsPool.splice(poolIndex, 1)
+        // Handle cards
+        if (config.unitType === 'Card') {
+          const availableCards = availableCardsPool.filter((card: Card) => 
+            !config.cardType || card.type === config.cardType
+          )
+          
+          const shuffledCards = shuffleArray(availableCards)
+          
+          for (let j = 0; j < config.quantity; j++) {
+            if (shuffledCards.length > 0) {
+              const weights = shuffledCards.map(card => {
+                const distributionCount = cardDistribution.get(card.id) || 0
+                return Math.max(1, 10 - distributionCount)
+              })
+              
+              const selectedCard = selectRandomWithWeights(shuffledCards, weights)
+              
+              // Show animation of card being drawn
+              setDraftAnimation({ unit: selectedCard as any, player: currentPlayerIndex + 1 })
+              await new Promise(resolve => setTimeout(resolve, 800))
+              
+              // Add card to player
+              const cardPoints = typeof selectedCard.cost === 'string' 
+                ? parseInt(selectedCard.cost.split('/')[0]) 
+                : selectedCard.cost
+              
+              currentPlayer.units.push({
+                id: selectedCard.id,
+                name: selectedCard.name,
+                type: selectedCard.type,
+                points: cardPoints,
+                faction: selectedCard.faction,
+                expansion: selectedCard.expansion,
+                collectionNumber: selectedCard.collectionNumber,
+                quantity: 1,
+                isCard: true,
+                cardType: selectedCard.type
+              })
+              
+              currentPlayer.totalPoints += cardPoints
+              
+              // Update distribution tracking
+              cardDistribution.set(selectedCard.id, (cardDistribution.get(selectedCard.id) || 0) + 1)
+              
+              // Remove from available pool
+              const poolIndex = availableCardsPool.indexOf(selectedCard)
+              if (poolIndex > -1) {
+                availableCardsPool.splice(poolIndex, 1)
+              }
+              
+              const cardIndex = shuffledCards.indexOf(selectedCard)
+              if (cardIndex > -1) {
+                shuffledCards.splice(cardIndex, 1)
+              }
             }
-            
-            // Remove from shuffled type units
-            const typeIndex = shuffledTypeUnits.indexOf(selectedUnit)
-            if (typeIndex > -1) {
-              shuffledTypeUnits.splice(typeIndex, 1)
+          }
+        } else {
+          // Handle units
+          const availableUnits = availableUnitsPool.filter((unit: any) => 
+            unit.type.toLowerCase() === config.unitType.toLowerCase()
+          )
+          
+          // Shuffle available units of this type
+          const shuffledTypeUnits = shuffleArray(availableUnits)
+          
+          // Select random units for this config with anti-clustering
+          for (let j = 0; j < config.quantity; j++) {
+            if (shuffledTypeUnits.length > 0) {
+              // Calculate weights to reduce clustering (favor less distributed units)
+              const weights = shuffledTypeUnits.map(unit => {
+                const distributionCount = unitDistribution.get(unit.id) || 0
+                return Math.max(1, 10 - distributionCount) // Higher weight for less distributed units
+              })
+              
+              const selectedUnit = selectRandomWithWeights(shuffledTypeUnits, weights)
+              
+              // Show animation of unit being drawn
+              setDraftAnimation({ unit: selectedUnit, player: currentPlayerIndex + 1 })
+              await new Promise(resolve => setTimeout(resolve, 800))
+              
+              // Add to player
+              currentPlayer.units.push({
+                id: selectedUnit.id,
+                name: selectedUnit.name,
+                type: selectedUnit.type,
+                points: selectedUnit.points,
+                faction: selectedUnit.faction,
+                expansion: selectedUnit.expansion,
+                collectionNumber: selectedUnit.collectionNumber,
+                quantity: 1
+              })
+              
+              currentPlayer.totalPoints += selectedUnit.points
+              
+              // Update distribution tracking
+              unitDistribution.set(selectedUnit.id, (unitDistribution.get(selectedUnit.id) || 0) + 1)
+              
+              // Remove from available pool
+              const poolIndex = availableUnitsPool.indexOf(selectedUnit)
+              if (poolIndex > -1) {
+                availableUnitsPool.splice(poolIndex, 1)
+              }
+              
+              // Remove from shuffled type units
+              const typeIndex = shuffledTypeUnits.indexOf(selectedUnit)
+              if (typeIndex > -1) {
+                shuffledTypeUnits.splice(typeIndex, 1)
+              }
             }
           }
         }
@@ -727,6 +877,268 @@ export default function DraftsPage() {
     }
   }
 
+  // Army management functions
+  const moveUnitToArmy = (playerId: number, unit: DraftUnit) => {
+    if (!selectedDraft) return
+    
+    const updatedDraft = {
+      ...selectedDraft,
+      results: selectedDraft.results.map(result => {
+        if (result.playerId === playerId) {
+          // Remove from draft units
+          const newDraftUnits = result.units.filter(u => u.id !== unit.id)
+          // Add to army units
+          const newArmyUnits = [...(result.armyUnits || []), unit]
+          const secretCards = result.secretCards || []
+          const newArmyPoints = newArmyUnits.reduce((sum, u) => sum + u.points, 0) + 
+                               secretCards.reduce((sum, c) => sum + c.points, 0)
+          const newDraftPoints = newDraftUnits.reduce((sum, u) => sum + u.points, 0)
+          
+          return {
+            ...result,
+            units: newDraftUnits,
+            armyUnits: newArmyUnits,
+            totalPoints: newDraftPoints,
+            armyPoints: newArmyPoints
+          }
+        }
+        return result
+      }),
+      updatedAt: new Date().toISOString()
+    }
+    
+    const updatedDrafts = drafts.map(d => d.id === selectedDraft.id ? updatedDraft : d)
+    setDrafts(updatedDrafts)
+    setSelectedDraft(updatedDraft)
+    
+    if (isClient) {
+      safeLocalStorage.setItem('myDrafts', JSON.stringify(updatedDrafts))
+    }
+  }
+
+  const moveUnitToDraft = (playerId: number, unit: DraftUnit) => {
+    if (!selectedDraft) return
+    
+    const updatedDraft = {
+      ...selectedDraft,
+      results: selectedDraft.results.map(result => {
+        if (result.playerId === playerId) {
+          // Remove from army units
+          const newArmyUnits = (result.armyUnits || []).filter(u => u.id !== unit.id)
+          // Add to draft units
+          const newDraftUnits = [...result.units, unit]
+          const secretCards = result.secretCards || []
+          const newArmyPoints = newArmyUnits.reduce((sum, u) => sum + u.points, 0) + 
+                               secretCards.reduce((sum, c) => sum + c.points, 0)
+          const newDraftPoints = newDraftUnits.reduce((sum, u) => sum + u.points, 0)
+          
+          return {
+            ...result,
+            units: newDraftUnits,
+            armyUnits: newArmyUnits,
+            totalPoints: newDraftPoints,
+            armyPoints: newArmyPoints
+          }
+        }
+        return result
+      }),
+      updatedAt: new Date().toISOString()
+    }
+    
+    const updatedDrafts = drafts.map(d => d.id === selectedDraft.id ? updatedDraft : d)
+    setDrafts(updatedDrafts)
+    setSelectedDraft(updatedDraft)
+    
+    if (isClient) {
+      safeLocalStorage.setItem('myDrafts', JSON.stringify(updatedDrafts))
+    }
+  }
+
+  const moveAllUnitsToDraft = (playerId: number) => {
+    if (!selectedDraft) return
+    
+    const updatedDraft = {
+      ...selectedDraft,
+      results: selectedDraft.results.map(result => {
+        if (result.playerId === playerId) {
+          // Move all army units back to draft
+          const armyUnits = result.armyUnits || []
+          const newDraftUnits = [...result.units, ...armyUnits]
+          const secretCards = result.secretCards || []
+          const newDraftPoints = newDraftUnits.reduce((sum, u) => sum + u.points, 0)
+          const newArmyPoints = secretCards.reduce((sum, c) => sum + c.points, 0)
+          
+          return {
+            ...result,
+            units: newDraftUnits,
+            armyUnits: [],
+            totalPoints: newDraftPoints,
+            armyPoints: newArmyPoints
+          }
+        }
+        return result
+      }),
+      updatedAt: new Date().toISOString()
+    }
+    
+    const updatedDrafts = drafts.map(d => d.id === selectedDraft.id ? updatedDraft : d)
+    setDrafts(updatedDrafts)
+    setSelectedDraft(updatedDraft)
+    
+    if (isClient) {
+      safeLocalStorage.setItem('myDrafts', JSON.stringify(updatedDrafts))
+    }
+  }
+
+  const addUnitToArmy = (playerId: number, unit: Unit) => {
+    if (!selectedDraft) return
+    
+    const updatedDraft = {
+      ...selectedDraft,
+      results: selectedDraft.results.map(result => {
+        if (result.playerId === playerId) {
+          const newUnit: DraftUnit = {
+            id: unit.id,
+            name: unit.name,
+            type: unit.type,
+            points: unit.points,
+            faction: unit.faction,
+            expansion: unit.expansion,
+            collectionNumber: unit.collectionNumber?.toString(),
+            quantity: 1
+          }
+          const newArmyUnits = [...(result.armyUnits || []), newUnit]
+          const secretCards = result.secretCards || []
+          const newArmyPoints = newArmyUnits.reduce((sum, u) => sum + u.points, 0) + 
+                               secretCards.reduce((sum, c) => sum + c.points, 0)
+          
+          return {
+            ...result,
+            armyUnits: newArmyUnits,
+            armyPoints: newArmyPoints
+          }
+        }
+        return result
+      }),
+      updatedAt: new Date().toISOString()
+    }
+    
+    const updatedDrafts = drafts.map(d => d.id === selectedDraft.id ? updatedDraft : d)
+    setDrafts(updatedDrafts)
+    setSelectedDraft(updatedDraft)
+    
+    if (isClient) {
+      safeLocalStorage.setItem('myDrafts', JSON.stringify(updatedDrafts))
+    }
+  }
+
+  const removeUnitFromArmy = (playerId: number, unitId: string) => {
+    if (!selectedDraft) return
+    
+    const updatedDraft = {
+      ...selectedDraft,
+      results: selectedDraft.results.map(result => {
+        if (result.playerId === playerId) {
+          const newArmyUnits = (result.armyUnits || []).filter(u => u.id !== unitId)
+          const secretCards = result.secretCards || []
+          const newArmyPoints = newArmyUnits.reduce((sum, u) => sum + u.points, 0) + 
+                               secretCards.reduce((sum, c) => sum + c.points, 0)
+          
+          return {
+            ...result,
+            armyUnits: newArmyUnits,
+            armyPoints: newArmyPoints
+          }
+        }
+        return result
+      }),
+      updatedAt: new Date().toISOString()
+    }
+    
+    const updatedDrafts = drafts.map(d => d.id === selectedDraft.id ? updatedDraft : d)
+    setDrafts(updatedDrafts)
+    setSelectedDraft(updatedDraft)
+    
+    if (isClient) {
+      safeLocalStorage.setItem('myDrafts', JSON.stringify(updatedDrafts))
+    }
+  }
+
+  // Secret card management functions
+  const addSecretCard = (playerId: number, points: number) => {
+    if (!selectedDraft) return
+    
+    const newSecretCard: DraftUnit = {
+      id: `secret-${Date.now()}`,
+      name: 'Card Secreto',
+      type: 'Card',
+      points: points,
+      faction: '',
+      quantity: 1,
+      isCard: true
+    }
+    
+    const updatedDraft = {
+      ...selectedDraft,
+      results: selectedDraft.results.map(result => {
+        if (result.playerId === playerId) {
+          const newSecretCards = [...(result.secretCards || []), newSecretCard]
+          const armyUnits = result.armyUnits || []
+          const newArmyPoints = armyUnits.reduce((sum, u) => sum + u.points, 0) + 
+                               newSecretCards.reduce((sum, c) => sum + c.points, 0)
+          
+          return {
+            ...result,
+            secretCards: newSecretCards,
+            armyPoints: newArmyPoints
+          }
+        }
+        return result
+      }),
+      updatedAt: new Date().toISOString()
+    }
+    
+    const updatedDrafts = drafts.map(d => d.id === selectedDraft.id ? updatedDraft : d)
+    setDrafts(updatedDrafts)
+    setSelectedDraft(updatedDraft)
+    
+    if (isClient) {
+      safeLocalStorage.setItem('myDrafts', JSON.stringify(updatedDrafts))
+    }
+  }
+
+  const removeSecretCard = (playerId: number, cardId: string) => {
+    if (!selectedDraft) return
+    
+    const updatedDraft = {
+      ...selectedDraft,
+      results: selectedDraft.results.map(result => {
+        if (result.playerId === playerId) {
+          const newSecretCards = (result.secretCards || []).filter(c => c.id !== cardId)
+          const armyUnits = result.armyUnits || []
+          const newArmyPoints = armyUnits.reduce((sum, u) => sum + u.points, 0) + 
+                               newSecretCards.reduce((sum, c) => sum + c.points, 0)
+          
+          return {
+            ...result,
+            secretCards: newSecretCards,
+            armyPoints: newArmyPoints
+          }
+        }
+        return result
+      }),
+      updatedAt: new Date().toISOString()
+    }
+    
+    const updatedDrafts = drafts.map(d => d.id === selectedDraft.id ? updatedDraft : d)
+    setDrafts(updatedDrafts)
+    setSelectedDraft(updatedDraft)
+    
+    if (isClient) {
+      safeLocalStorage.setItem('myDrafts', JSON.stringify(updatedDrafts))
+    }
+  }
+
   return (
     <div className="min-h-screen" style={{background:'linear-gradient(160deg,#080c05 0%,#0d1208 60%,#0a0f06 100%)'}}>
       <div className="container mx-auto px-4 py-6">
@@ -769,7 +1181,7 @@ export default function DraftsPage() {
               <div className="p-3 space-y-2 max-h-96 overflow-y-auto">
                 {drafts.length === 0 ? (
                   <p className="font-mono text-xs text-center py-8" style={{color:'#3a5a2a'}}>
-                    // Nenhum draft criado.<br />
+                    Nenhum draft criado.<br />
                     Clique em &quot;+ NOVO DRAFT&quot;
                   </p>
                 ) : (
@@ -837,7 +1249,7 @@ export default function DraftsPage() {
                 <div className="p-4">
                   {!selectedDraft.results || selectedDraft.results.length === 0 ? (
                     <div className="text-center py-12">
-                      <p className="font-mono text-xs mb-4" style={{color:'#4a5e3a'}}>// Draft ainda não foi gerado.</p>
+                      <p className="font-mono text-xs mb-4" style={{color:'#4a5e3a'}}>Draft ainda não foi gerado.</p>
                       <button
                         onClick={() => regenerateDraft(selectedDraft)}
                         className="px-6 py-2 font-mono text-xs corner-clip-sm transition-colors"
@@ -853,20 +1265,148 @@ export default function DraftsPage() {
                         <div key={result.playerId} className="p-3" style={{border:'1px solid #2a3a1a',background:'rgba(0,0,0,0.2)'}}>
                           <div className="flex justify-between items-center mb-2">
                             <h4 className="font-mono text-xs font-bold" style={{color:'#c9a84c'}}>{result.playerName}</h4>
-                            <span className="font-mono text-xs" style={{color:'#7a9a5a'}}>{result.totalPoints} pts</span>
+                            <div className="flex gap-4 text-xs font-mono">
+                              <span style={{color:'#7a9a5a'}}>Draft: {result.totalPoints} pts</span>
+                              <span style={{color:'#c9a84c'}}>Army: {result.armyPoints || 0} pts</span>
+                            </div>
                           </div>
-                          <div className="space-y-1">
-                            {result.units.map((unit, index) => (
-                              <div key={`${unit.id}-${index}`} className="flex items-center justify-between px-2 py-1" style={{background:'rgba(122,154,90,0.05)',border:'1px solid #1a2a10'}}>
-                                <div className="flex-1">
-                                  <div className="font-mono text-xs" style={{color:'#e8d5a0'}}>{unit.name}</div>
-                                  <div className="font-mono text-xs mt-0.5" style={{color:'#4a5e3a'}}>
-                                    {unit.type} / {unit.faction}{unit.expansion ? ` / ${unit.expansion}` : ''}{unit.collectionNumber ? ` #${unit.collectionNumber}` : ''}
-                                  </div>
-                                </div>
-                                <span className="font-mono text-xs font-bold ml-3" style={{color:'#c9a84c'}}>{unit.points}pts</span>
+                          
+                          {/* Kanban-style Draft and Army */}
+                          <div className="grid grid-cols-2 gap-3">
+                            {/* Draft Column */}
+                            <div>
+                              <div className="flex justify-between items-center mb-1">
+                                <span className="font-mono text-xs" style={{color:'#5a7a4a'}}>DRAFT ({result.units.length})</span>
+                                <span className="font-mono text-xs" style={{color:'#7a7a6a'}}>{result.totalPoints} pts</span>
                               </div>
-                            ))}
+                              <div className="space-y-1" style={{minHeight:'100px'}}>
+                                {result.units.map((unit, index) => (
+                                  <div 
+                                    key={`${unit.id}-${index}`} 
+                                    className="flex items-center justify-between px-2 py-1 cursor-pointer hover:bg-opacity-10 transition-colors"
+                                    style={{background:'rgba(90,90,90,0.05)',border:'1px solid #1a1a10'}}
+                                    onClick={() => router.push(`/list?unitId=${unit.id}`)}
+                                  >
+                                    <div className="flex-1">
+                                      <div className="font-mono text-xs" style={{color:'#a0a090'}}>{unit.name}</div>
+                                      <div className="font-mono text-xs mt-0.5" style={{color:'#3a3a2a'}}>
+                                        {unit.type} / {unit.faction}
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      <span className="font-mono text-xs font-bold" style={{color:'#7a7a6a'}}>{unit.points}</span>
+                                      <button 
+                                        onClick={(e) => { e.stopPropagation(); moveUnitToArmy(result.playerId, unit) }}
+                                        className="px-1.5 py-0.5 font-mono text-xs"
+                                        style={{background:'rgba(122,154,90,0.2)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}
+                                        title="Mover para Army"
+                                      >
+                                        →
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                                {result.units.length === 0 && (
+                                  <div className="font-mono text-xs px-2 py-1 text-center" style={{color:'#3a3a2a'}}>
+                                    Vazio
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            
+                            {/* Army Column */}
+                            <div>
+                              <div className="flex justify-between items-center mb-1">
+                                <span className="font-mono text-xs" style={{color:'#5a7a4a'}}>ARMY ({(result.armyUnits || []).length})</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono text-xs" style={{color:'#c9a84c'}}>{result.armyPoints || 0} pts</span>
+                                  <button 
+                                    onClick={() => moveAllUnitsToDraft(result.playerId)}
+                                    disabled={(result.armyUnits || []).length === 0}
+                                    className="px-1.5 py-0.5 font-mono text-xs disabled:opacity-40 disabled:cursor-not-allowed"
+                                    style={{background:'rgba(150,50,50,0.2)',border:'1px solid #5a2a2a',color:'#c06060'}}
+                                    title="Mover tudo para Draft"
+                                  >
+                                    ←
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="space-y-1" style={{minHeight:'100px'}}>
+                                {(result.armyUnits || []).map((unit, index) => (
+                                  <div 
+                                    key={`${unit.id}-${index}`} 
+                                    className="flex items-center justify-between px-2 py-1 cursor-pointer hover:bg-opacity-10 transition-colors"
+                                    style={{background:'rgba(122,154,90,0.05)',border:'1px solid #1a2a10'}}
+                                    onClick={() => router.push(`/list?unitId=${unit.id}`)}
+                                  >
+                                    <div className="flex-1">
+                                      <div className="font-mono text-xs" style={{color:'#e8d5a0'}}>{unit.name}</div>
+                                      <div className="font-mono text-xs mt-0.5" style={{color:'#4a5e3a'}}>
+                                        {unit.type} / {unit.faction}
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      <span className="font-mono text-xs font-bold" style={{color:'#c9a84c'}}>{unit.points}</span>
+                                      <button 
+                                        onClick={(e) => { e.stopPropagation(); moveUnitToDraft(result.playerId, unit) }}
+                                        className="px-1.5 py-0.5 font-mono text-xs"
+                                        style={{background:'rgba(90,90,90,0.2)',border:'1px solid #3a3a2a',color:'#7a7a6a'}}
+                                        title="Mover para Draft"
+                                      >
+                                        ←
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                                {(result.armyUnits || []).length === 0 && (
+                                  <div className="font-mono text-xs px-2 py-1 text-center" style={{color:'#3a5a2a'}}>
+                                    Vazio
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Secret Cards */}
+                          <div>
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="font-mono text-xs" style={{color:'#5a7a4a'}}>CARDS SECRETOS:</span>
+                              <button 
+                                onClick={() => { setEditingPlayerId(result.playerId); setSecretCardValue(''); setShowSecretCardModal(true) }}
+                                className="px-2 py-0.5 font-mono text-xs"
+                                style={{background:'rgba(201,168,76,0.15)',border:'1px solid #c9a84c',color:'#c9a84c'}}
+                              >
+                                + ADICIONAR CARD
+                              </button>
+                            </div>
+                            <div className="space-y-1">
+                              {(result.secretCards || []).map((card, index) => (
+                                <div 
+                                  key={`${card.id}-${index}`} 
+                                  className="flex items-center justify-between px-2 py-1"
+                                  style={{background:'rgba(201,168,76,0.05)',border:'1px solid #3a2a1a'}}
+                                >
+                                  <div className="flex-1">
+                                    <div className="font-mono text-xs" style={{color:'#e8d5a0'}}>Card Secreto #{index + 1}</div>
+                                    <div className="font-mono text-xs mt-0.5" style={{color:'#4a5e3a'}}>
+                                      Valor: {card.points} pts
+                                    </div>
+                                  </div>
+                                  <button 
+                                    onClick={() => removeSecretCard(result.playerId, card.id)}
+                                    className="px-1.5 py-0.5 font-mono text-xs"
+                                    style={{background:'rgba(150,50,50,0.2)',border:'1px solid #5a2a2a',color:'#c06060'}}
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              ))}
+                              {(result.secretCards || []).length === 0 && (
+                                <div className="font-mono text-xs px-2 py-1" style={{color:'#3a5a2a'}}>
+                                  Nenhum card secreto adicionado
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -876,7 +1416,7 @@ export default function DraftsPage() {
               </div>
             ) : (
               <div className="p-12 text-center" style={{background:'rgba(0,0,0,0.2)',border:'1px dashed #2a3a1a'}}>
-                <p className="font-mono text-xs" style={{color:'#3a5a2a'}}>// Selecione um draft para ver os detalhes</p>
+                <p className="font-mono text-xs" style={{color:'#3a5a2a'}}>Selecione um draft para ver os detalhes</p>
               </div>
             )}
           </div>
@@ -887,7 +1427,7 @@ export default function DraftsPage() {
           <div className="fixed inset-0 flex items-center justify-center z-50" style={{background:'rgba(0,0,0,0.85)'}}>
             <div className="p-8 max-w-2xl w-full mx-4" style={{background:'#0d1208',border:'1px solid #3a4a2a',boxShadow:'0 0 40px rgba(201,168,76,0.1)'}}>
               <div className="text-center">
-                <h2 className="text-lg font-bold font-mono tracking-widest uppercase mb-6" style={{color:'#c9a84c'}}>// SORTEANDO DRAFT...</h2>
+                <h2 className="text-lg font-bold font-mono tracking-widest uppercase mb-6" style={{color:'#c9a84c'}}>SORTEANDO DRAFT...</h2>
                 
                 <div className="mb-6">
                   <div className="font-mono text-xs mb-2" style={{color:'#7a9a5a'}}>
@@ -1029,12 +1569,22 @@ export default function DraftsPage() {
                 </div>
 
                 <div>
+                  <label className="block text-xs font-mono mb-2" style={{color:'#5a7a4a'}}>CARDS</label>
+                  <div className="font-mono text-xs" style={{color:'#4a5e3a'}}>
+                    {availableCards.length} cards disponíveis (incluídos automaticamente)
+                  </div>
+                </div>
+
+                <div>
                   <label className="block text-xs font-mono mb-2" style={{color:'#5a7a4a'}}>CONFIG DO BOOSTER</label>
                   <div className="space-y-2">
                     {draftSettings.boosterConfigs.map((config, index) => (
                       <div key={index} className="flex items-center gap-3">
                         <input type="number" min="0" max="10" value={config.quantity} onChange={(e) => { const c = [...draftSettings.boosterConfigs]; c[index].quantity = parseInt(e.target.value) || 0; setDraftSettings({...draftSettings, boosterConfigs: c}) }} className="w-20 px-2 py-1 text-xs font-mono text-center" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c',outline:'none'}} />
-                        <span className="font-mono text-xs" style={{color:'#7a9a5a'}}>{config.unitType}</span>
+                        <span className="font-mono text-xs" style={{color: config.unitType === 'Card' ? '#c9a84c' : '#7a9a5a'}}>{config.unitType}</span>
+                        {config.unitType === 'Card' && (
+                          <span className="font-mono text-xs" style={{color:'#4a5e3a'}}>(cards disponíveis: {availableCards.length})</span>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -1169,6 +1719,107 @@ export default function DraftsPage() {
                   <button onClick={() => setSelectedUnits([])} className="px-4 py-1.5 font-mono text-xs corner-clip-sm" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#5a7a4a'}}>LIMPAR</button>
                   <button onClick={() => setShowUnitSelector(false)} className="px-4 py-1.5 font-mono text-xs corner-clip-sm" style={{background:'rgba(201,168,76,0.15)',border:'1px solid #c9a84c',color:'#c9a84c'}}>CONFIRMAR</button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Army Unit Selector Modal */}
+        {showArmyUnitSelector && editingPlayerId && selectedDraft && (
+          <div className="fixed inset-0 flex items-center justify-center z-50" style={{background:'rgba(0,0,0,0.85)'}}>
+            <div className="max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col" style={{background:'#0d1208',border:'1px solid #3a4a2a'}}>
+              <div className="px-4 py-3 flex justify-between items-center" style={{borderBottom:'1px solid #2a3a1a',background:'rgba(0,0,0,0.3)'}}>
+                <h3 className="font-mono text-xs tracking-widest uppercase" style={{color:'#c9a84c'}}>ADICIONAR UNIDADE AO ARMY - JOGADOR {editingPlayerId}</h3>
+                <button onClick={() => { setShowArmyUnitSelector(false); setEditingPlayerId(null) }} className="font-mono text-xs px-2" style={{color:'#5a7a4a'}}>✕</button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4">
+                <table className="w-full text-xs font-mono">
+                  <thead>
+                    <tr style={{background:'rgba(0,0,0,0.3)'}}>
+                      <th className="px-2 py-2 text-left" style={{borderBottom:'1px solid #2a3a1a',borderRight:'1px solid #2a3a1a',color:'#5a7a4a'}}>NOME</th>
+                      <th className="px-2 py-2 text-center" style={{borderBottom:'1px solid #2a3a1a',borderRight:'1px solid #2a3a1a',color:'#5a7a4a'}}>TIPO</th>
+                      <th className="px-2 py-2 text-center" style={{borderBottom:'1px solid #2a3a1a',borderRight:'1px solid #2a3a1a',color:'#5a7a4a'}}>FACÇÃO</th>
+                      <th className="px-2 py-2 text-center" style={{borderBottom:'1px solid #2a3a1a',color:'#5a7a4a'}}>CUSTO</th>
+                      <th className="px-2 py-2 text-center" style={{borderBottom:'1px solid #2a3a1a',color:'#5a7a4a'}}>AÇÃO</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedDraft.availableUnits.map(({unit}) => (
+                      <tr key={unit.id} style={{borderBottom:'1px solid #1a2a10'}}>
+                        <td className="px-2 py-1.5" style={{borderRight:'1px solid #1a2a10'}}>
+                          <div className="font-mono text-xs truncate" style={{color:'#e8d5a0'}}>{unit.name}</div>
+                          <div className="font-mono text-xs truncate" style={{color:'#3a5a2a'}}>{unit.variant}</div>
+                        </td>
+                        <td className="px-2 py-1.5 text-xs font-mono text-center" style={{color:'#7a9a5a',borderRight:'1px solid #1a2a10'}}>{unit.type}</td>
+                        <td className="px-2 py-1.5 text-xs font-mono text-center truncate" style={{color:'#7a9a5a',borderRight:'1px solid #1a2a10'}}>{unit.faction}</td>
+                        <td className="px-2 py-1.5 text-xs font-mono font-bold text-center" style={{color:'#c9a84c',borderRight:'1px solid #1a2a10'}}>{unit.points}</td>
+                        <td className="px-2 py-1.5 text-center">
+                          <button 
+                            onClick={() => addUnitToArmy(editingPlayerId, unit)}
+                            className="px-2 py-1 font-mono text-xs"
+                            style={{background:'rgba(122,154,90,0.2)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}
+                          >
+                            ADICIONAR
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              
+              <div className="px-4 py-3 flex justify-end" style={{borderTop:'1px solid #2a3a1a',background:'rgba(0,0,0,0.3)'}}>
+                <button onClick={() => { setShowArmyUnitSelector(false); setEditingPlayerId(null) }} className="px-4 py-1.5 font-mono text-xs corner-clip-sm" style={{background:'rgba(201,168,76,0.15)',border:'1px solid #c9a84c',color:'#c9a84c'}}>FECHAR</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Secret Card Modal */}
+        {showSecretCardModal && editingPlayerId && (
+          <div className="fixed inset-0 flex items-center justify-center z-50" style={{background:'rgba(0,0,0,0.85)'}}>
+            <div className="p-6 max-w-md w-full mx-4" style={{background:'#0d1208',border:'1px solid #3a2a1a'}}>
+              <h3 className="font-mono text-sm font-bold tracking-widest uppercase mb-4" style={{color:'#c9a84c'}}>ADICIONAR CARD SECRETO</h3>
+              <p className="font-mono text-xs mb-4" style={{color:'#5a7a4a'}}>Jogador {editingPlayerId}</p>
+              
+              <div className="mb-4">
+                <label className="block text-xs font-mono mb-2" style={{color:'#5a7a4a'}}>VALOR DO CARD (pontos)</label>
+                <input 
+                  type="number" 
+                  value={secretCardValue} 
+                  onChange={(e) => setSecretCardValue(e.target.value)}
+                  className="w-full px-3 py-2 text-xs font-mono" 
+                  style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a2a1a',color:'#c9a84c',outline:'none'}}
+                  placeholder="Ex: 10"
+                  autoFocus
+                />
+              </div>
+              
+              <div className="flex gap-3 justify-end">
+                <button 
+                  onClick={() => { setShowSecretCardModal(false); setEditingPlayerId(null); setSecretCardValue('') }}
+                  className="px-4 py-2 font-mono text-xs corner-clip-sm transition-colors" 
+                  style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a2a1a',color:'#7a9a5a'}}
+                >
+                  CANCELAR
+                </button>
+                <button 
+                  onClick={() => {
+                    const points = parseInt(secretCardValue)
+                    if (points > 0) {
+                      addSecretCard(editingPlayerId, points)
+                      setShowSecretCardModal(false)
+                      setEditingPlayerId(null)
+                      setSecretCardValue('')
+                    }
+                  }}
+                  disabled={!secretCardValue || parseInt(secretCardValue) <= 0}
+                  className="px-4 py-2 font-mono text-xs corner-clip-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed" 
+                  style={{background:'rgba(201,168,76,0.15)',border:'1px solid #c9a84c',color:'#c9a84c'}}
+                >
+                  ADICIONAR
+                </button>
               </div>
             </div>
           </div>

@@ -637,7 +637,7 @@ export default function MyCollection() {
           )}
           {allUnits.length === 0 && (
             <div className="text-center mt-8">
-              <p className="font-mono text-sm mb-2" style={{color:'#c9a84c'}}>// COLEÇÃO VAZIA</p>
+              <p className="font-mono text-sm mb-2" style={{color:'#c9a84c'}}>COLEÇÃO VAZIA</p>
               <p className="font-mono text-xs" style={{color:'#3a5a2a'}}>Importe um JSON ou adicione unidades pela busca</p>
             </div>
           )}

@@ -45,7 +45,7 @@ function ListContent() {
   if (!selectedUnit) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4" style={{background:'#0d1208'}}>
-        <div className="font-mono text-[#c9a84c] text-lg tracking-widest">// NENHUMA UNIDADE SELECIONADA</div>
+        <div className="font-mono text-[#c9a84c] text-lg tracking-widest">NENHUMA UNIDADE SELECIONADA</div>
         <div className="font-mono text-xs text-[#4a5e3a] tracking-widest">Selecione uma unidade na página de busca</div>
       </div>
     );
@@ -187,7 +187,7 @@ function ListContent() {
 
       {/* Right Column - Dial and Controls */}
       <div className="w-full lg:flex-1 flex flex-col items-center justify-center min-h-0 mt-4 lg:mt-0">
-        {selectedUnit.type.toLowerCase() === 'infantry' ? (
+        {selectedUnit.type.toLowerCase() === 'infantry' || selectedUnit.type.toLowerCase() === 'vehicle' ? (
           <div className="w-full flex justify-center p-6" style={{background:'#d8d0c0',border:'1px solid #3a4a2a'}}>
             <div className="scale-75 sm:scale-75 lg:scale-100 origin-center">
               <InfantryDial
@@ -199,7 +199,7 @@ function ListContent() {
             </div>
           </div>
         ) : selectedUnit.type.toLowerCase() === 'mech' && 
-         selectedUnit.speedMode.toLowerCase() === 'mech' && 
+         (selectedUnit.speedMode.toLowerCase() === 'mech' || selectedUnit.speedMode.toLowerCase() === 'quadmech') && 
          selectedUnit.class.toLowerCase() !== 'colossal' ? (
           <div className="w-full flex justify-center p-6" style={{background:'#d8d0c0',border:'1px solid #3a4a2a'}}>
             <div className="scale-75 sm:scale-75 lg:scale-100 origin-center">
@@ -216,7 +216,7 @@ function ListContent() {
         ) : (
           <div className="flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8" style={{background:'rgba(0,0,0,0.4)',border:'1px dashed #3a4a2a'}}>
             <div className="text-center max-w-md">
-              <h3 className="text-lg sm:text-xl font-bold font-mono mb-2" style={{color:'#c9a84c'}}>// DIAL EM DESENVOLVIMENTO</h3>
+              <h3 className="text-lg sm:text-xl font-bold font-mono mb-2" style={{color:'#c9a84c'}}>DIAL EM DESENVOLVIMENTO</h3>
               <p className="text-sm sm:text-base mb-4 font-mono" style={{color:'#5a7a4a'}}>
                 Tipo: <span style={{color:'#7a9a5a'}}>{selectedUnit.type}</span> |
                 Modo: <span style={{color:'#7a9a5a'}}>{selectedUnit.speedMode}</span> |

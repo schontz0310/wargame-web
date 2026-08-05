@@ -102,6 +102,41 @@ export default function Home() {
             </div>
           </Link>
 
+          {/* Criador de Unidades */}
+          <Link href="/unit-builder" className="group block">
+            <div className="corner-clip relative p-6 transition-all duration-300 group-hover:translate-y-[-2px]"
+              style={{
+                background: 'linear-gradient(135deg, #0d1208 0%, #141a0e 100%)',
+                border: '1px solid #3a4a2a',
+                boxShadow: 'inset 0 1px 0 rgba(180,150,60,0.1), 0 4px 20px rgba(0,0,0,0.6)',
+              }}>
+              <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-[#c9a84c33] via-[#c9a84c] to-[#c9a84c33]" />
+              <div className="flex items-start gap-4 mb-4">
+                <div className="corner-clip-sm w-12 h-12 flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'rgba(122,154,90,0.15)', border: '1px solid #3a4a2a' }}>
+                  <svg className="w-6 h-6 text-[#7a9a5a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="text-xs font-mono text-[#c9a84c] tracking-widest uppercase mb-1">Módulo 04</div>
+                  <h2 className="text-lg font-bold text-[#e8d5a0] group-hover:text-[#c9a84c] transition-colors">
+                    Criador de Unidades
+                  </h2>
+                </div>
+              </div>
+              <p className="text-sm text-[#6a7a5a] mb-5 leading-relaxed">
+                Crie unidades do zero: dial de combate click a click, equipamentos por slot, arco frontal/traseiro, dial de calor e ataques.
+              </p>
+              <div className="flex items-center gap-2 text-xs font-mono text-[#7a9a5a] group-hover:text-[#c9a84c] transition-colors">
+                <span className="tracking-widest uppercase">Acessar</span>
+                <svg className="w-3 h-3 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </div>
+          </Link>
+
           {/* Cartas */}
           <Link href="/cards" className="group block">
             <div className="corner-clip relative p-6 transition-all duration-300 group-hover:translate-y-[-2px]"

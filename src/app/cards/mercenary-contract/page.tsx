@@ -62,7 +62,7 @@ function MercenaryContractListContent() {
       {/* Sidebar */}
       <div className="w-56 flex flex-col h-full overflow-y-auto flex-shrink-0" style={{background:'#0a0f06',borderRight:'1px solid #2a3a1a'}}>
         <div className="px-3 py-3" style={{borderBottom:'1px solid #2a3a1a',background:'rgba(0,0,0,0.4)'}}>
-          <div className="font-mono text-xs tracking-widest uppercase" style={{color:'#c9a84c'}}>// FILTROS</div>
+          <div className="font-mono text-xs tracking-widest uppercase" style={{color:'#c9a84c'}}>FILTROS</div>
         </div>
         <div className="p-3 space-y-4 flex-1">
           <form onSubmit={handleSearch}>
@@ -132,7 +132,7 @@ function MercenaryContractListContent() {
             </div>
           ) : cards.length === 0 ? (
             <div className="flex items-center justify-center h-64">
-              <div className="font-mono text-xs" style={{color:'#3a5a2a'}}>// Nenhuma carta encontrada</div>
+              <div className="font-mono text-xs" style={{color:'#3a5a2a'}}>Nenhuma carta encontrada</div>
             </div>
           ) : (
             <div style={{border:'1px solid #2a3a1a',overflow:'hidden'}}>

@@ -64,7 +64,7 @@ export default function CardsPage() {
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(122,154,90,0.06)'; }}
             >
               <div className="font-mono text-xs tracking-widest mb-1" style={{color:'#4a5e3a'}}>
-                // DISPONÍVEL
+                DISPONÍVEL
               </div>
               <div className="font-mono font-bold text-base mb-3" style={{color:'#c9a84c'}}>
                 {ct.label}

@@ -1,7 +1,5 @@
-// Wargame API Service - Routes through Next.js proxy to avoid CORS
-const API_BASE_URL = typeof window === 'undefined'
-  ? process.env.NEXT_PUBLIC_API_BASE_URL
-  : '/api/proxy';
+// Wargame API Service - Direct API calls (required for static export)
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export interface ColorMeaning {
   id: string;

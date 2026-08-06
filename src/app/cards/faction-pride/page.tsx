@@ -160,7 +160,7 @@ function FactionPrideListContent() {
                       style={{borderBottom:'1px solid #1a2a10'}}
                       onMouseEnter={e => (e.currentTarget.style.background = 'rgba(122,154,90,0.06)')}
                       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                      onClick={() => router.push(`/cards/faction-pride/${card.id}`)}
+                      onClick={() => router.push(`/cards/faction-pride-id?id=${card.id}`)}
                     >
                       <td className="px-3 py-2 text-xs font-mono" style={{color:'#7a9a5a',borderRight:'1px solid #1a2a10'}}>{card.cardId}</td>
                       <td className="px-3 py-2 text-xs font-mono" style={{color:'#4a5e3a',borderRight:'1px solid #1a2a10'}}>{card.collectionNumber}</td>
@@ -176,7 +176,7 @@ function FactionPrideListContent() {
                       <td className="px-3 py-2 text-xs font-mono max-w-xs truncate" style={{color:'#6a8a4a',borderRight:'1px solid #1a2a10'}}>{card.description}</td>
                       <td className="px-3 py-2 text-center">
                         <button
-                          onClick={e => { e.stopPropagation(); router.push(`/cards/faction-pride/${card.id}`); }}
+                          onClick={e => { e.stopPropagation(); router.push(`/cards/faction-pride-id?id=${card.id}`); }}
                           className="px-2 py-1 font-mono text-xs corner-clip-sm"
                           style={{background:'rgba(201,168,76,0.15)',border:'1px solid #c9a84c',color:'#c9a84c'}}
                         >

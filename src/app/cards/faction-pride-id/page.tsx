@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, IFactionPride, apiService } from '@/lib/api'
 import CardDesktopFactionPride from '@/components/CardDesktopFactionPride'
 import CardMobile from '@/components/CardMobile'
@@ -38,8 +38,10 @@ function factionPrideToCard(fp: IFactionPride): Card {
   };
 }
 
-function FactionPrideDetailContent({ id }: { id: string }) {
+function FactionPrideDetailContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const id = searchParams.get('id');
 
   const [card, setCard] = useState<Card | null>(null);
   const [loading, setLoading] = useState(true);
@@ -258,11 +260,10 @@ function FactionPrideDetailContent({ id }: { id: string }) {
   );
 }
 
-export default async function FactionPrideDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export default function FactionPrideDetailPage() {
   return (
     <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="text-lg">Carregando...</div></div>}>
-      <FactionPrideDetailContent id={id} />
+      <FactionPrideDetailContent />
     </Suspense>
   );
 }

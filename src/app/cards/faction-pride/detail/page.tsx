@@ -201,8 +201,8 @@ function FactionPrideDetailContent() {
           <button
             onClick={() => setViewMode('2d')}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              viewMode === '2d' 
-                ? 'bg-blue-500 text-white' 
+              viewMode === '2d'
+                ? 'bg-blue-500 text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             } ${isSmallMobile ? 'px-2 py-1 text-xs' : isDesktop ? 'px-6 py-3 text-base' : 'px-4 py-2 text-sm'}`}
           >
@@ -211,8 +211,8 @@ function FactionPrideDetailContent() {
           <button
             onClick={() => setViewMode('3d')}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              viewMode === '3d' 
-                ? 'bg-blue-500 text-white' 
+              viewMode === '3d'
+                ? 'bg-blue-500 text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             } ${isSmallMobile ? 'px-2 py-1 text-xs' : isDesktop ? 'px-6 py-3 text-base' : 'px-4 py-2 text-sm'}`}
           >
@@ -249,7 +249,7 @@ function FactionPrideDetailContent() {
               />
             )
           ) : (
-            <Card3DViewer 
+            <Card3DViewer
               card={card}
               className={isDesktop ? 'w-full h-full' : 'w-full h-80'}
             />

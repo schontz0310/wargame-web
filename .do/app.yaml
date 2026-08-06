@@ -3,7 +3,7 @@ services:
 - name: web
   source_dir: /
   github:
-    repo: your-username/wargame-web
+    repo: schontz0310/wargame-web
     branch: main
   run_command: echo "This is a static site"
   environment_slug: node-js

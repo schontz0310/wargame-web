@@ -10,15 +10,16 @@ export interface CombatDialRow {
   movementValue: number
   defenseValue: number
   attackValue: number
-  frontArcPrimary: boolean
-  rearArcPrimary: boolean
-  frontArcSecondary: boolean
-  rearArcSecondary: boolean
   primaryEquipColorMeaningId: string | null
+  primaryEquipUsageType: 'standard' | 'single-use'
   secondaryEquipColorMeaningId: string | null
+  secondaryEquipUsageType: 'standard' | 'single-use'
   movementEquipColorMeaningId: string | null
+  movementEquipUsageType: 'standard' | 'single-use'
   attackEquipColorMeaningId: string | null
+  attackEquipUsageType: 'standard' | 'single-use'
   defenseEquipColorMeaningId: string | null
+  defenseEquipUsageType: 'standard' | 'single-use'
 }
 
 interface Props {
@@ -26,27 +27,43 @@ interface Props {
   onChange: (rows: CombatDialRow[]) => void
 }
 
-const SLOT_LABELS: { key: keyof CombatDialRow; label: string; type: 'num' | 'equip' | 'arc' | 'marker' }[] = [
+const SLOT_LABELS: { key: keyof CombatDialRow; label: string; type: 'num' | 'equip' | 'usage' | 'marker' }[] = [
   { key: 'marker',                       label: 'Marcador',    type: 'marker' },
   { key: 'primaryValue',                 label: 'Primário',    type: 'num' },
   { key: 'primaryEquipColorMeaningId',   label: 'Equip P',     type: 'equip' },
-  { key: 'frontArcPrimary',              label: 'Arc F·P',     type: 'arc' },
-  { key: 'rearArcPrimary',               label: 'Arc T·P',     type: 'arc' },
+  { key: 'primaryEquipUsageType',        label: 'Uso P',       type: 'usage' },
   { key: 'secondaryValue',               label: 'Secundário',  type: 'num' },
   { key: 'secondaryEquipColorMeaningId', label: 'Equip S',     type: 'equip' },
-  { key: 'frontArcSecondary',            label: 'Arc F·S',     type: 'arc' },
-  { key: 'rearArcSecondary',             label: 'Arc T·S',     type: 'arc' },
+  { key: 'secondaryEquipUsageType',      label: 'Uso S',       type: 'usage' },
   { key: 'movementValue',                label: 'Movimento',   type: 'num' },
   { key: 'movementEquipColorMeaningId',  label: 'Equip Mov',   type: 'equip' },
+  { key: 'movementEquipUsageType',       label: 'Uso Mov',     type: 'usage' },
   { key: 'defenseValue',                 label: 'Defesa',      type: 'num' },
   { key: 'defenseEquipColorMeaningId',   label: 'Equip Def',   type: 'equip' },
+  { key: 'defenseEquipUsageType',        label: 'Uso Def',     type: 'usage' },
   { key: 'attackValue',                  label: 'Ataque',      type: 'num' },
   { key: 'attackEquipColorMeaningId',    label: 'Equip Atk',   type: 'equip' },
+  { key: 'attackEquipUsageType',         label: 'Uso Atk',     type: 'usage' },
 ]
+
+const CTX_ABBREV: Record<string, string> = {
+  movement:  'M',
+  ballistic: 'B',
+  melee:     'ME',
+  energetic: 'E',
+  attack:    'ATK',
+  defense:   'DEF',
+}
+
+function optionLabel(colorName: string, context: string): string {
+  const c = colorName[0]
+  const ctx = CTX_ABBREV[context]
+  return ctx ? `[${ctx}, ${c}]` : `[${c}]`
+}
 
 // Color display name → hex
 const COLOR_HEX: Record<string, string> = {
-  Black:  '#111111',
+  Black:  '#aaaaaa',
   Red:    '#cc2200',
   Blue:   '#00aacc',
   Purple: '#9900aa',
@@ -128,15 +145,8 @@ export function CombatDialEditor({ rows, onChange }: Props) {
                     options={equipMeanings}
                   />
                 </td>
-
-                {/* Front arc primary */}
                 <td className={tdCls}>
-                  <ArcToggle value={row.frontArcPrimary} onChange={v => update(row.step, 'frontArcPrimary', v)} label="F" />
-                </td>
-
-                {/* Rear arc primary */}
-                <td className={tdCls}>
-                  <ArcToggle value={row.rearArcPrimary} onChange={v => update(row.step, 'rearArcPrimary', v)} label="T" />
+                  <UsageTypeSelect value={row.primaryEquipUsageType} onChange={v => update(row.step, 'primaryEquipUsageType', v)} />
                 </td>
 
                 {/* Secondary value */}
@@ -152,15 +162,8 @@ export function CombatDialEditor({ rows, onChange }: Props) {
                     options={equipMeanings}
                   />
                 </td>
-
-                {/* Front arc secondary */}
                 <td className={tdCls}>
-                  <ArcToggle value={row.frontArcSecondary} onChange={v => update(row.step, 'frontArcSecondary', v)} label="F" />
-                </td>
-
-                {/* Rear arc secondary */}
-                <td className={tdCls}>
-                  <ArcToggle value={row.rearArcSecondary} onChange={v => update(row.step, 'rearArcSecondary', v)} label="T" />
+                  <UsageTypeSelect value={row.secondaryEquipUsageType} onChange={v => update(row.step, 'secondaryEquipUsageType', v)} />
                 </td>
 
                 {/* Movement */}
@@ -176,6 +179,9 @@ export function CombatDialEditor({ rows, onChange }: Props) {
                     options={equipMeanings.filter(m => m.context === 'movement')}
                   />
                 </td>
+                <td className={tdCls}>
+                  <UsageTypeSelect value={row.movementEquipUsageType} onChange={v => update(row.step, 'movementEquipUsageType', v)} />
+                </td>
 
                 {/* Defense */}
                 <td className={tdCls}>
@@ -190,6 +196,9 @@ export function CombatDialEditor({ rows, onChange }: Props) {
                     options={equipMeanings.filter(m => m.context === 'defense')}
                   />
                 </td>
+                <td className={tdCls}>
+                  <UsageTypeSelect value={row.defenseEquipUsageType} onChange={v => update(row.step, 'defenseEquipUsageType', v)} />
+                </td>
 
                 {/* Attack */}
                 <td className={tdCls}>
@@ -203,6 +212,9 @@ export function CombatDialEditor({ rows, onChange }: Props) {
                     onChange={v => update(row.step, 'attackEquipColorMeaningId', v)}
                     options={equipMeanings.filter(m => m.context === 'attack')}
                   />
+                </td>
+                <td className={tdCls}>
+                  <UsageTypeSelect value={row.attackEquipUsageType} onChange={v => update(row.step, 'attackEquipUsageType', v)} />
                 </td>
 
                 {/* Copy down */}
@@ -232,7 +244,6 @@ export function CombatDialEditor({ rows, onChange }: Props) {
             <span style={{ color: '#7a9a5a' }}>{name}</span>
           </span>
         ))}
-        <span className="font-mono text-[10px] text-[#4a5e3a] ml-4">F = Arco Frontal · T = Arco Traseiro</span>
       </div>
     </div>
   )
@@ -249,19 +260,18 @@ function NumInput({ value, onChange }: { value: number; onChange: (v: number) =>
   )
 }
 
-function ArcToggle({ value, onChange, label }: { value: boolean; onChange: (v: boolean) => void; label: string }) {
+
+function UsageTypeSelect({ value, onChange }: { value: 'standard' | 'single-use'; onChange: (v: 'standard' | 'single-use') => void }) {
   return (
-    <button
-      onClick={() => onChange(!value)}
-      className="w-7 h-5 rounded text-[10px] font-mono font-bold transition-all"
-      style={{
-        background: value ? '#c9a84c22' : 'transparent',
-        border: `1px solid ${value ? '#c9a84c' : '#2a3a1a'}`,
-        color: value ? '#c9a84c' : '#3a4a2a',
-      }}
+    <select
+      value={value}
+      onChange={e => onChange(e.target.value as 'standard' | 'single-use')}
+      className="bg-transparent font-mono text-[10px] outline-none cursor-pointer"
+      style={{ color: value === 'single-use' ? '#cc2200' : '#7a9a5a' }}
     >
-      {label}
-    </button>
+      <option value="standard"   style={{ background: '#0d1208', color: '#7a9a5a' }}>Std</option>
+      <option value="single-use" style={{ background: '#0d1208', color: '#cc2200' }}>1×</option>
+    </select>
   )
 }
 
@@ -293,7 +303,7 @@ function EquipSelect({
           style={{ color: COLOR_HEX[o.color.name] ?? '#fff', background: '#0d1208' }}
           title={o.description}
         >
-          [{o.color.name[0]}] {o.meaning.split(' ')[0]}
+          {optionLabel(o.color.name, o.context)} {o.meaning.split(' ')[0]}
         </option>
       ))}
     </select>

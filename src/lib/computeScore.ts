@@ -1,10 +1,26 @@
 import type { CombatDialRow } from '@/components/unit-builder/CombatDialEditor'
 import type { HeatDialRow } from '@/components/unit-builder/HeatDialEditor'
 import type { AttackRow } from '@/components/unit-builder/AttackEditor'
-import { LIGHT_MECH_SCORING_WEIGHTS } from '@/lib/scoringWeights'
+import {
+  LIGHT_MECH_SCORING_WEIGHTS,
+  MEDIUM_MECH_SCORING_WEIGHTS,
+  HEAVY_MECH_SCORING_WEIGHTS,
+  ASSAULT_MECH_SCORING_WEIGHTS,
+  NA_VEHICLE_SCORING_WEIGHTS,
+  NA_INFANTRY_SCORING_WEIGHTS,
+} from '@/lib/scoringWeights/index'
 import type { ColorMeaning } from '@/lib/api'
 
-const { bias, weights } = LIGHT_MECH_SCORING_WEIGHTS
+type ScoringWeights = { bias: number; weights: Record<string, number> }
+
+function selectWeights(unitClass: string, unitType: string): ScoringWeights {
+  if (unitType === 'Vehicle') return NA_VEHICLE_SCORING_WEIGHTS
+  if (unitType === 'Infantry') return NA_INFANTRY_SCORING_WEIGHTS
+  if (unitClass === 'Medium') return MEDIUM_MECH_SCORING_WEIGHTS
+  if (unitClass === 'Heavy') return HEAVY_MECH_SCORING_WEIGHTS
+  if (unitClass === 'Assault') return ASSAULT_MECH_SCORING_WEIGHTS
+  return LIGHT_MECH_SCORING_WEIGHTS
+}
 
 // Slugify must match the ETL: equip__ + NFD + lowercase + non-alphanum→_ + trim _
 function slugify(meaning: string): string {
@@ -27,6 +43,8 @@ interface UnitMeta {
   maxDefense: number
   maxDamage: number
   isUnique: boolean
+  class: string
+  type: string
 }
 
 export interface ScoreBreakdown {
@@ -42,6 +60,8 @@ export function computeScore(
   attacks: AttackRow[],
   colorMeanings: ColorMeaning[],
 ): ScoreBreakdown {
+  const { bias, weights } = selectWeights(meta.class, meta.type)
+
   const n = combatDial.length
   if (n === 0) return { total: 0, rounded: 0, contributions: [] }
 

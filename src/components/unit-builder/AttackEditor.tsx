@@ -1,7 +1,5 @@
 'use client'
 
-import { useColorMeanings } from '@/hooks/useColorMeanings'
-
 export interface AttackRow {
   id: string
   attackType: 'primary' | 'secondary'
@@ -9,8 +7,6 @@ export interface AttackRow {
   targetCount: number
   minRange: number
   maxRange: number
-  primaryEquipColorMeaningId?: string | null
-  secondaryEquipColorMeaningId?: string | null
 }
 
 interface Props {
@@ -30,15 +26,7 @@ const DAMAGE_COLOR: Record<string, string> = {
   melee:     '#c9a84c',
 }
 
-const COLOR_HEX: Record<string, string> = {
-  Black: '#111111', Red: '#cc2200', Blue: '#00aacc',
-  Purple: '#9900aa', Gray: '#888888', Green: '#339900', Yellow: '#ccaa00',
-}
-
 export function AttackEditor({ rows, onChange }: Props) {
-  const { colorMeanings } = useColorMeanings()
-  const equipMeanings = colorMeanings.filter(c => c.usageType === 'equipment')
-
   function update(id: string, key: keyof AttackRow, value: unknown) {
     onChange(rows.map(r => r.id === id ? { ...r, [key]: value } : r))
   }
@@ -52,8 +40,6 @@ export function AttackEditor({ rows, onChange }: Props) {
       targetCount: 1,
       minRange: 0,
       maxRange: 6,
-      primaryEquipColorMeaningId: null,
-      secondaryEquipColorMeaningId: null,
     }])
   }
 
@@ -190,43 +176,6 @@ export function AttackEditor({ rows, onChange }: Props) {
               />
             </Field>
 
-            {/* Equipment (primary slot context) */}
-            <Field label="Equipamento Especial">
-              <select
-                className={inputCls + ' w-full cursor-pointer'}
-                value={row.primaryEquipColorMeaningId ?? ''}
-                onChange={e => update(row.id, 'primaryEquipColorMeaningId', e.target.value || null)}
-                style={{
-                  color: (() => {
-                    const sel = equipMeanings.find(o => o.id === row.primaryEquipColorMeaningId)
-                    return sel ? (COLOR_HEX[sel.color.name] ?? '#e8d5a0') : '#4a5e3a'
-                  })()
-                }}
-              >
-                <option value="" style={{ color: '#4a5e3a', background: '#0d1208' }}>— Nenhum</option>
-                {equipMeanings
-                  .filter(m => ['ballistic', 'energetic', 'melee'].includes(m.context))
-                  .map(o => (
-                    <option
-                      key={o.id}
-                      value={o.id}
-                      style={{ color: COLOR_HEX[o.color.name] ?? '#fff', background: '#0d1208' }}
-                      title={o.description}
-                    >
-                      [{o.color.name[0]}] {o.meaning}
-                    </option>
-                  ))
-                }
-              </select>
-              {row.primaryEquipColorMeaningId && (() => {
-                const sel = equipMeanings.find(o => o.id === row.primaryEquipColorMeaningId)
-                return sel ? (
-                  <p className="font-mono text-[9px] mt-0.5 leading-tight" style={{ color: COLOR_HEX[sel.color.name] ?? '#fff' }}>
-                    {sel.description.slice(0, 80)}…
-                  </p>
-                ) : null
-              })()}
-            </Field>
           </div>
         </div>
       ))}

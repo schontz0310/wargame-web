@@ -57,7 +57,7 @@
   --secondary: oklch(0.22 0.04 140);
   --secondary-foreground: oklch(0.88 0.04 95);
   --muted: oklch(0.2 0.015 140);
-  --muted-foreground: oklch(0.55 0.04 95);
+  --muted-foreground: oklch(0.67 0.04 95);
   --accent: oklch(0.55 0.1 140);
   --accent-foreground: oklch(0.95 0.02 95);
   --destructive: oklch(0.55 0.22 25);
@@ -91,7 +91,7 @@
   --secondary: oklch(0.22 0.04 140);
   --secondary-foreground: oklch(0.88 0.04 95);
   --muted: oklch(0.2 0.015 140);
-  --muted-foreground: oklch(0.55 0.04 95);
+  --muted-foreground: oklch(0.67 0.04 95);
   --accent: oklch(0.55 0.1 140);
   --accent-foreground: oklch(0.95 0.02 95);
   --destructive: oklch(0.55 0.22 25);
@@ -156,18 +156,18 @@
 /* Grimdark / Military utility classes */
 .grimdark-panel {
   background: linear-gradient(135deg, #0d1208 0%, #141a0e 50%, #0d1208 100%);
-  border: 1px solid #3a4a2a;
-  box-shadow: inset 0 1px 0 rgba(180,150,60,0.15), 0 4px 16px rgba(0,0,0,0.7);
+  border: 1px solid #4a5e35;
+  box-shadow: inset 0 1px 0 rgba(180,150,60,0.18), 0 4px 16px rgba(0,0,0,0.7);
 }
 
 .grimdark-border {
-  border: 1px solid #3a4a2a;
-  box-shadow: inset 0 0 0 1px rgba(180,150,60,0.08);
+  border: 1px solid #4a5e35;
+  box-shadow: inset 0 0 0 1px rgba(180,150,60,0.1);
 }
 
 .gold-accent {
   color: #c9a84c;
-  text-shadow: 0 0 8px rgba(201,168,76,0.4);
+  text-shadow: 0 0 6px rgba(201,168,76,0.2);
 }
 
 .military-green {
@@ -179,8 +179,8 @@
     0deg,
     transparent,
     transparent 2px,
-    rgba(0,0,0,0.08) 2px,
-    rgba(0,0,0,0.08) 4px
+    rgba(0,0,0,0.04) 2px,
+    rgba(0,0,0,0.04) 4px
   );
 }
 
@@ -200,5 +200,6 @@
     @apply bg-background text-foreground;
     background-color: #0d1208;
     color: #c8b97a;
+    line-height: 1.6;
   }
 }

@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, IFactionPride, apiService } from '@/lib/api'
 import CardDesktopFactionPride from '@/components/CardDesktopFactionPride'
 import CardMobile from '@/components/CardMobile'
-import Card3DViewer from '@/components/Card3DViewer'
 
 const getFactionLogo = (faction: string, version: string = 'standard'): string => {
   const baseName = faction.toLowerCase().replace(/'/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -48,7 +47,6 @@ function FactionPrideDetailContent() {
   const [isFlipped, setIsFlipped] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
   const [isSmallMobile, setIsSmallMobile] = useState(false);
-  const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
 
   useEffect(() => {
     const checkScreenSize = () => {
@@ -89,35 +87,50 @@ function FactionPrideDetailContent() {
   }
 
   return (
-    <div className={`min-h-screen flex overflow-hidden ${isSmallMobile ? 'p-1' : 'p-2 md:p-4 lg:p-8'} ${isSmallMobile ? 'gap-1' : 'gap-2 md:gap-4 lg:gap-8'} ${isDesktop ? 'flex-row items-stretch' : 'flex-col'}`}>
+    <div
+      className={`min-h-screen flex overflow-hidden ${isSmallMobile ? 'p-1' : 'p-2 md:p-4 lg:p-8'} ${isSmallMobile ? 'gap-1' : 'gap-2 md:gap-4 lg:gap-8'} ${isDesktop ? 'flex-row items-stretch' : 'flex-col'}`}
+      style={{ backgroundColor: '#0d1208' }}
+    >
       {/* Left Column - Card Details */}
-      <div className={`bg-white shadow-lg ${isSmallMobile ? 'p-2' : 'p-3 md:p-4'} flex flex-col overflow-hidden ${isDesktop ? 'w-[40%]' : 'w-full'}`}>
+      <div
+        className={`grimdark-panel flex flex-col overflow-hidden ${isSmallMobile ? 'p-2' : 'p-3 md:p-4'} ${isDesktop ? 'w-[40%]' : 'w-full'}`}
+      >
         {/* Back button */}
         <button
           onClick={() => router.push('/cards/faction-pride')}
-          className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm mb-4 w-fit"
+          className="gold-accent flex items-center gap-2 text-sm mb-4 w-fit transition-opacity hover:opacity-75"
         >
           ← Voltar para listagem
         </button>
 
         {/* Card Header */}
-        <div className="border-b pb-3 mb-3 flex-shrink-0">
-          <div className="flex flex-col md:flex-row gap-3">
-            <div className={`bg-gradient-to-br from-blue-100 to-purple-100 rounded-lg flex items-center justify-center flex-shrink-0 p-2 border-2 border-blue-200 ${
-              isDesktop ? 'w-24 lg:w-32 h-24 md:h-28' : isSmallMobile ? 'w-12 h-12' : 'w-16 h-16'
-            }`}>
-              <div className="text-center">
-                <div className={`mb-1 ${isDesktop ? 'text-2xl' : isSmallMobile ? 'text-sm' : 'text-lg'}`}>🃏</div>
-                <div className={`font-bold text-blue-600 ${isDesktop ? 'text-xs' : isSmallMobile ? 'text-[8px]' : 'text-[10px]'}`}>{card.type}</div>
+        <div className="pb-3 mb-3 flex-shrink-0" style={{ borderBottom: '1px solid #4a5e35' }}>
+          <div>
+            <div className="flex flex-col justify-center space-y-1">
+              <div
+                className={`font-semibold ${isDesktop ? 'text-base' : 'text-sm'}`}
+                style={{ color: '#e8d5a0' }}
+              >
+                {card.name}
               </div>
-            </div>
-            <div className="flex-1 flex flex-col justify-center space-y-1">
-              <div className={`font-semibold text-gray-800 ${isDesktop ? 'text-base' : 'text-sm'}`}>{card.name}</div>
-              <div className={`text-gray-600 ${isDesktop ? 'text-xs' : isSmallMobile ? 'text-[8px]' : 'text-[10px]'}`}>{card.typeName}</div>
-              <div className={`text-gray-600 ${isDesktop ? 'text-xs' : isSmallMobile ? 'text-[8px]' : 'text-[10px]'}`}>#{card.collectionNumber}</div>
-              <div className={`font-bold bg-blue-100 text-blue-800 px-2 py-1 rounded inline-block w-fit ${
-                isDesktop ? 'text-sm' : isSmallMobile ? 'text-[10px]' : 'text-xs'
-              }`}>
+              <div
+                className={`font-mono uppercase tracking-wider ${isDesktop ? 'text-xs' : isSmallMobile ? 'text-[8px]' : 'text-[10px]'}`}
+                style={{ color: '#7a9a5a' }}
+              >
+                {card.typeName}
+              </div>
+              <div
+                className={`font-mono ${isDesktop ? 'text-xs' : isSmallMobile ? 'text-[8px]' : 'text-[10px]'}`}
+                style={{ color: '#6a7a5a' }}
+              >
+                #{card.collectionNumber}
+              </div>
+              <div
+                className={`font-bold font-mono corner-clip-sm inline-block w-fit px-2 py-1 ${
+                  isDesktop ? 'text-sm' : isSmallMobile ? 'text-[10px]' : 'text-xs'
+                }`}
+                style={{ background: '#1a2410', color: '#c9a84c', border: '1px solid #4a5e35' }}
+              >
                 {card.cost} ⚡
               </div>
             </div>
@@ -126,67 +139,100 @@ function FactionPrideDetailContent() {
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-          <div className={`bg-gray-50 rounded-lg border ${isDesktop ? 'p-2' : 'p-1'}`}>
+          <div
+            className={`rounded ${isDesktop ? 'p-2' : 'p-1'}`}
+            style={{ background: '#111608', border: '1px solid #4a5e35' }}
+          >
             <div className="grid grid-cols-3 gap-2 text-center">
               <div>
-                <div className={`text-gray-500 ${isDesktop ? 'text-xs' : 'text-[10px]'}`}>Tipo</div>
-                <div className={`font-bold bg-white px-1 py-0.5 rounded ${isDesktop ? 'text-xs' : 'text-[10px]'}`}>{card.typeName}</div>
+                <div
+                  className={`font-mono uppercase tracking-wider mb-0.5 ${isDesktop ? 'text-xs' : 'text-[10px]'}`}
+                  style={{ color: '#6a7a5a' }}
+                >
+                  Tipo
+                </div>
+                <div
+                  className={`font-bold px-1 py-0.5 rounded ${isDesktop ? 'text-xs' : 'text-[10px]'}`}
+                  style={{ background: '#0d1208', color: '#c8b97a', border: '1px solid #3a4a2a' }}
+                >
+                  {card.typeName}
+                </div>
               </div>
               <div>
-                <div className={`text-gray-500 ${isDesktop ? 'text-xs' : 'text-[10px]'}`}>Custo</div>
-                <div className={`font-bold bg-white px-1 py-0.5 rounded ${isDesktop ? 'text-xs' : 'text-[10px]'}`}>{card.cost} ⚡</div>
+                <div
+                  className={`font-mono uppercase tracking-wider mb-0.5 ${isDesktop ? 'text-xs' : 'text-[10px]'}`}
+                  style={{ color: '#6a7a5a' }}
+                >
+                  Custo
+                </div>
+                <div
+                  className={`font-bold px-1 py-0.5 rounded ${isDesktop ? 'text-xs' : 'text-[10px]'}`}
+                  style={{ background: '#0d1208', color: '#c9a84c', border: '1px solid #3a4a2a' }}
+                >
+                  {card.cost} ⚡
+                </div>
               </div>
               {card.alternativeCost && (
                 <div>
-                  <div className={`text-gray-500 ${isDesktop ? 'text-xs' : 'text-[10px]'}`}>Custo Alt.</div>
-                  <div className={`font-bold bg-white px-1 py-0.5 rounded ${isDesktop ? 'text-xs' : 'text-[10px]'}`}>{card.alternativeCost} ⚡</div>
+                  <div
+                    className={`font-mono uppercase tracking-wider mb-0.5 ${isDesktop ? 'text-xs' : 'text-[10px]'}`}
+                    style={{ color: '#6a7a5a' }}
+                  >
+                    Custo Alt.
+                  </div>
+                  <div
+                    className={`font-bold px-1 py-0.5 rounded ${isDesktop ? 'text-xs' : 'text-[10px]'}`}
+                    style={{ background: '#0d1208', color: '#c9a84c', border: '1px solid #3a4a2a' }}
+                  >
+                    {card.alternativeCost} ⚡
+                  </div>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="bg-gray-50 p-2 rounded-lg border">
+          <div className="p-2 rounded" style={{ background: '#111608', border: '1px solid #4a5e35' }}>
             <div className="grid grid-cols-2 gap-2 text-center">
               <div>
-                <div className="text-gray-500 text-xs">Facção</div>
-                <div className="font-bold text-xs bg-white px-1 py-0.5 rounded">{card.faction}</div>
+                <div className="font-mono uppercase tracking-wider text-xs mb-0.5" style={{ color: '#6a7a5a' }}>Facção</div>
+                <div className="font-bold text-xs px-1 py-0.5 rounded" style={{ background: '#0d1208', color: '#c8b97a', border: '1px solid #3a4a2a' }}>{card.faction}</div>
               </div>
               <div>
-                <div className="text-gray-500 text-xs">Expansão</div>
-                <div className="font-bold text-xs bg-white px-1 py-0.5 rounded">{card.expansion}</div>
+                <div className="font-mono uppercase tracking-wider text-xs mb-0.5" style={{ color: '#6a7a5a' }}>Expansão</div>
+                <div className="font-bold text-xs px-1 py-0.5 rounded" style={{ background: '#0d1208', color: '#c8b97a', border: '1px solid #3a4a2a' }}>{card.expansion}</div>
               </div>
             </div>
           </div>
 
-          <div className="bg-gray-50 p-2 rounded-lg border">
-            <div className="text-gray-500 text-xs mb-1">Descrição</div>
-            <p className="text-gray-700 text-xs leading-relaxed">
+          <div className="p-2 rounded" style={{ background: '#111608', border: '1px solid #4a5e35' }}>
+            <div className="font-mono uppercase tracking-wider text-xs mb-1" style={{ color: '#6a7a5a' }}>Descrição</div>
+            <p className="text-xs leading-relaxed" style={{ color: '#c8b97a' }}>
               {card.description}
             </p>
           </div>
 
           {card.flavorText && (
-            <div className="bg-gray-50 p-2 rounded-lg border">
-              <div className="text-gray-500 text-xs mb-1">Texto de Sabor</div>
-              <p className="text-xs italic text-gray-600 leading-relaxed">
+            <div className="p-2 rounded" style={{ background: '#111608', border: '1px solid #4a5e35' }}>
+              <div className="font-mono uppercase tracking-wider text-xs mb-1" style={{ color: '#6a7a5a' }}>Texto de Sabor</div>
+              <p className="text-xs italic leading-relaxed" style={{ color: '#7a9a5a' }}>
                 {card.flavorText}
               </p>
             </div>
           )}
 
           {card.backDescription && (
-            <div className="bg-gray-50 p-2 rounded-lg border">
-              <div className="text-gray-500 text-xs mb-1">Descrição (Verso)</div>
-              <p className="text-gray-700 text-xs leading-relaxed">
+            <div className="p-2 rounded" style={{ background: '#111608', border: '1px solid #4a5e35' }}>
+              <div className="font-mono uppercase tracking-wider text-xs mb-1" style={{ color: '#6a7a5a' }}>Descrição (Verso)</div>
+              <p className="text-xs leading-relaxed" style={{ color: '#c8b97a' }}>
                 {card.backDescription}
               </p>
             </div>
           )}
 
           {card.backFlavorText && (
-            <div className="bg-gray-50 p-2 rounded-lg border">
-              <div className="text-gray-500 text-xs mb-1">Texto de Sabor (Verso)</div>
-              <p className="text-xs italic text-gray-600 leading-relaxed">
+            <div className="p-2 rounded" style={{ background: '#111608', border: '1px solid #4a5e35' }}>
+              <div className="font-mono uppercase tracking-wider text-xs mb-1" style={{ color: '#6a7a5a' }}>Texto de Sabor (Verso)</div>
+              <p className="text-xs italic leading-relaxed" style={{ color: '#7a9a5a' }}>
                 {card.backFlavorText}
               </p>
             </div>
@@ -196,62 +242,30 @@ function FactionPrideDetailContent() {
 
       {/* Right Column - Card Display */}
       <div className={`flex flex-col items-center justify-center ${isDesktop ? 'flex-1 overflow-hidden' : 'w-full min-h-[300px]'}`}>
-        {/* View Mode Toggle */}
-        <div className="flex gap-2 flex-shrink-0 mb-4">
-          <button
-            onClick={() => setViewMode('2d')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              viewMode === '2d'
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            } ${isSmallMobile ? 'px-2 py-1 text-xs' : isDesktop ? 'px-6 py-3 text-base' : 'px-4 py-2 text-sm'}`}
-          >
-            📄 2D
-          </button>
-          <button
-            onClick={() => setViewMode('3d')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              viewMode === '3d'
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            } ${isSmallMobile ? 'px-2 py-1 text-xs' : isDesktop ? 'px-6 py-3 text-base' : 'px-4 py-2 text-sm'}`}
-          >
-            🎮 3D
-          </button>
-        </div>
-
-        {/* Flip Button - only show in 2D mode */}
-        {viewMode === '2d' && (
-          <button
-            onClick={() => setIsFlipped(!isFlipped)}
-            className={`bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors shadow-lg flex-shrink-0 mb-4 ${
-              isDesktop ? 'px-6 py-3 text-base' : isSmallMobile ? 'px-2 py-1 text-xs' : 'px-4 py-2 text-sm'
-            }`}
-          >
-            {isFlipped ? '🔄 Ver Frente' : '🔄 Ver Verso'}
-          </button>
-        )}
+        {/* Flip Button */}
+        <button
+          onClick={() => setIsFlipped(!isFlipped)}
+          className={`font-medium font-mono uppercase tracking-wider transition-opacity hover:opacity-80 shadow-lg flex-shrink-0 mb-4 corner-clip-sm ${
+            isDesktop ? 'px-6 py-3 text-base' : isSmallMobile ? 'px-2 py-1 text-xs' : 'px-4 py-2 text-sm'
+          }`}
+          style={{ background: '#c9a84c', color: '#0d1208' }}
+        >
+          {isFlipped ? '↺ Ver Frente' : '↺ Ver Verso'}
+        </button>
 
         <div className="w-full flex-1 flex items-center justify-center">
-          {viewMode === '2d' ? (
-            isDesktop ? (
-              <CardDesktopFactionPride
-                selectedCard={card}
-                isFlipped={isFlipped}
-                getFactionLogo={getFactionLogo}
-              />
-            ) : (
-              <CardMobile
-                selectedCard={card}
-                isFlipped={isFlipped}
-                isSmallMobile={isSmallMobile}
-                getFactionLogo={getFactionLogo}
-              />
-            )
+          {isDesktop ? (
+            <CardDesktopFactionPride
+              selectedCard={card}
+              isFlipped={isFlipped}
+              getFactionLogo={getFactionLogo}
+            />
           ) : (
-            <Card3DViewer
-              card={card}
-              className={isDesktop ? 'w-full h-full' : 'w-full h-80'}
+            <CardMobile
+              selectedCard={card}
+              isFlipped={isFlipped}
+              isSmallMobile={isSmallMobile}
+              getFactionLogo={getFactionLogo}
             />
           )}
         </div>

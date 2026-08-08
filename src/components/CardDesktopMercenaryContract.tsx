@@ -27,11 +27,12 @@ export default function CardDesktop({ selectedCard, isFlipped, getFactionLogo }:
               {/* Faction Logo Overlay */}
               {selectedCard.cardModel === 'single' ? (
                 <div className="absolute inset-y-0 flex items-center justify-end pointer-events-none z-10" style={{left: 0, right: '50px'}}>
-                  <img 
+                  <img
                     key={`${selectedCard.id}-${selectedCard.faction}-${selectedCard.factionLogoVersion}`}
                     src={`/images/factions/${getFactionLogo(selectedCard.faction, selectedCard.factionLogoVersion || 'standard')}`}
                     alt={`${selectedCard.faction} Logo`}
                     className="w-auto object-contain h-[70%]"
+                    onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
                   />
                 </div>
               ) : selectedCard.cardModel === 'double' ? (
@@ -43,20 +44,22 @@ export default function CardDesktop({ selectedCard, isFlipped, getFactionLogo }:
                     <div className="absolute inset-0 pointer-events-none z-10">
                       {/* First logo - top left of right half (left of dash) */}
                       <div className="absolute z-30" style={{top: '10%', left: '42%', height: '52%', width: 'auto'}}>
-                        <img 
+                        <img
                           key={`${selectedCard.id}-1-${topFaction}`}
                           src={`/images/factions/${getFactionLogo(topFaction, selectedCard.factionLogoVersion || 'standard')}`}
                           alt={`${topFaction} Logo`}
                           className="h-full w-auto object-contain"
+                          onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
                         />
                       </div>
                       {/* Second logo - bottom right of right half (right of dash) */}
                       <div className="absolute z-20" style={{bottom: '9%', right: '1%', height: '55%', width: 'auto'}}>
-                        <img 
+                        <img
                           key={`${selectedCard.id}-2-${bottomFaction}`}
                           src={`/images/factions/${getFactionLogo(bottomFaction, selectedCard.factionLogoVersion || 'standard')}`}
                           alt={`${bottomFaction} Logo`}
                           className="h-full w-auto object-contain"
+                          onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
                         />
                       </div>
                     </div>
@@ -64,11 +67,12 @@ export default function CardDesktop({ selectedCard, isFlipped, getFactionLogo }:
                 })()
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                  <img 
+                  <img
                     key={`${selectedCard.id}-${selectedCard.faction}-${selectedCard.factionLogoVersion}`}
                     src={`/images/factions/${getFactionLogo(selectedCard.faction, selectedCard.factionLogoVersion || 'standard')}`}
                     alt={`${selectedCard.faction} Logo`}
                     className="w-auto object-contain h-[90%]"
+                    onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
                   />
                 </div>
               )}
@@ -117,7 +121,7 @@ export default function CardDesktop({ selectedCard, isFlipped, getFactionLogo }:
               />
               {/* Faction Name Overlay - gray banner area */}
               <div className="absolute pointer-events-none z-20" style={{
-                top: 'calc(8% - 5px)', left: 'calc(6.5% - 15px)', width: '73.5%', height: 'calc(12% - 10px)'
+                top: 'calc(8% - 5px)', left: 'calc(6.5% - 15px)', width: '88%', height: 'calc(12% - 10px)'
               }}>
                 <div className="w-full h-full flex items-center justify-start">
                   <h2 className="font-ocr text-white drop-shadow-custom font-bold uppercase tracking-widest m-0" style={{fontSize:'32px'}}>

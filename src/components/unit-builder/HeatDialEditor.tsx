@@ -19,7 +19,7 @@ interface Props {
 
 export function HeatDialEditor({ rows, onChange }: Props) {
   const { colorMeanings } = useColorMeanings()
-  const heatMeanings = colorMeanings.filter(c => c.usageType === 'equipment')
+  const heatMeanings = colorMeanings.filter(c => c.usageType === 'heat')
 
   function update(step: number, key: keyof HeatDialRow, value: unknown) {
     onChange(rows.map(r => r.step === step ? { ...r, [key]: value } : r))
@@ -67,7 +67,7 @@ export function HeatDialEditor({ rows, onChange }: Props) {
       <div className="px-4 py-2 border-b border-[#1a2a12]" style={{ background: 'rgba(0,0,0,0.15)' }}>
         <p className="font-mono text-[10px] text-[#4a5e3a] leading-relaxed">
           Cada nível representa um nível de aquecimento. Os valores negativos representam penalidades aplicadas aos stats quando o mech atinge aquele nível de calor.
-          O último nível é o desligamento. O modificador de cor indica um equipamento especial que altera o comportamento do slot naquele nível.
+          O último nível é o desligamento. O efeito de calor indica um efeito especial de aquecimento que altera o comportamento do slot naquele nível.
         </p>
       </div>
 
@@ -77,11 +77,11 @@ export function HeatDialEditor({ rows, onChange }: Props) {
             <tr className="border-b border-[#2a3a1a]" style={{ background: 'rgba(0,0,0,0.4)' }}>
               <th className={thCls}>Nível</th>
               <th className={thCls}>Mod. Primário</th>
-              <th className={thCls}>Equip. Primário</th>
+              <th className={thCls}>Efeito Primário</th>
               <th className={thCls}>Mod. Secundário</th>
-              <th className={thCls}>Equip. Secundário</th>
+              <th className={thCls}>Efeito Secundário</th>
               <th className={thCls}>Mod. Movimento</th>
-              <th className={thCls}>Equip. Movimento</th>
+              <th className={thCls}>Efeito Movimento</th>
             </tr>
           </thead>
           <tbody>
@@ -133,7 +133,7 @@ export function HeatDialEditor({ rows, onChange }: Props) {
                     <HeatEquipSelect
                       value={row.primaryHeatColorMeaningId}
                       onChange={v => update(row.step, 'primaryHeatColorMeaningId', v)}
-                      options={heatMeanings.filter(m => ['ballistic','energetic'].includes(m.context))}
+                      options={heatMeanings}
                     />
                   </td>
 
@@ -154,7 +154,7 @@ export function HeatDialEditor({ rows, onChange }: Props) {
                     <HeatEquipSelect
                       value={row.secondaryHeatColorMeaningId}
                       onChange={v => update(row.step, 'secondaryHeatColorMeaningId', v)}
-                      options={heatMeanings.filter(m => ['ballistic','energetic'].includes(m.context))}
+                      options={heatMeanings}
                     />
                   </td>
 
@@ -175,7 +175,7 @@ export function HeatDialEditor({ rows, onChange }: Props) {
                     <HeatEquipSelect
                       value={row.movementHeatColorMeaningId}
                       onChange={v => update(row.step, 'movementHeatColorMeaningId', v)}
-                      options={heatMeanings.filter(m => m.context === 'movement')}
+                      options={heatMeanings}
                     />
                   </td>
                 </tr>
@@ -220,6 +220,21 @@ function Stat({ label, value }: { label: string; value: number }) {
   )
 }
 
+const CTX_ABBREV: Record<string, string> = {
+  movement:  'M',
+  ballistic: 'B',
+  melee:     'ME',
+  energetic: 'E',
+  attack:    'ATK',
+  defense:   'DEF',
+}
+
+function optionLabel(colorName: string, context: string): string {
+  const c = colorName[0]
+  const ctx = CTX_ABBREV[context]
+  return ctx ? `[${ctx}, ${c}]` : `[${c}]`
+}
+
 function HeatEquipSelect({
   value,
   onChange,
@@ -252,7 +267,7 @@ function HeatEquipSelect({
           style={{ color: COLOR_HEX[o.color.name] ?? '#fff', background: '#0d1208' }}
           title={o.description}
         >
-          [{o.color.name[0]}] {o.meaning.split(' ')[0]}
+          {optionLabel(o.color.name, o.context)} {o.meaning.split(' ')[0]}
         </option>
       ))}
     </select>

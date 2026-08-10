@@ -1,10 +1,14 @@
+// src/components/game-mode/ArmyGrid.tsx
 'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import type { Draft } from '@/lib/api'
+import type { Draft, DraftUnit } from '@/lib/api'
 import { useGameSession } from '@/hooks/useGameSession'
-import { getInstanceKey } from '@/lib/gameMode'
+import { getInstanceKey, type OrderType } from '@/lib/gameMode'
 import GameDialCard from './GameDialCard'
+import OrderTypeMenu from './OrderTypeMenu'
+import AttackSequenceOverlay from './AttackSequenceOverlay'
 
 const PAGE_SIZE = 6
 
@@ -14,9 +18,16 @@ interface ArmyGridProps {
   page: number
 }
 
+interface ActiveAttack {
+  instanceKey: string
+  draftUnit: DraftUnit
+  orderType: 'ranged' | 'close'
+}
+
 export default function ArmyGrid({ draft, viewedPlayerId, page }: ArmyGridProps) {
   const router = useRouter()
-  const { session, getPlayerState, setDialClicks } = useGameSession(draft.id, draft.results)
+  const { session, getPlayerState, setDialClicks, setUnitOrder } = useGameSession(draft.id, draft.results)
+  const [activeAttack, setActiveAttack] = useState<ActiveAttack | null>(null)
   const result = draft.results.find(r => r.playerId === viewedPlayerId)
 
   if (!session || !result) {
@@ -32,9 +43,20 @@ export default function ArmyGrid({ draft, viewedPlayerId, page }: ArmyGridProps)
   const clampedPage = Math.min(Math.max(1, page), totalPages)
   const pageUnits = armyUnits.slice((clampedPage - 1) * PAGE_SIZE, clampedPage * PAGE_SIZE)
   const playerState = getPlayerState(viewedPlayerId)
+  const isActivePlayerOrderStage = viewedPlayerId === session.activePlayerId && session.stage === 'order'
 
   const goToPage = (nextPage: number) => {
     router.push(`/game-mode?draftId=${draft.id}&view=army&player=${viewedPlayerId}&page=${nextPage}`)
+  }
+
+  const handleSelectOrderType = (instanceKey: string, draftUnit: DraftUnit, type: OrderType) => {
+    if (type === 'ranged' || type === 'close') {
+      setActiveAttack({ instanceKey, draftUnit, orderType: type })
+      return
+    }
+    if (type === 'move' || type === 'vent') {
+      setUnitOrder(viewedPlayerId, instanceKey, type)
+    }
   }
 
   if (armyUnits.length === 0) {
@@ -68,6 +90,7 @@ export default function ArmyGrid({ draft, viewedPlayerId, page }: ArmyGridProps)
           const index = (clampedPage - 1) * PAGE_SIZE + idxOnPage
           const instanceKey = getInstanceKey(index, draftUnit.id)
           const dialState = playerState.units[instanceKey] ?? { damageClicks: 0, heatClicks: 0 }
+          const orderState = playerState.unitOrders[instanceKey] ?? { status: 'none' as const }
           return (
             <GameDialCard
               key={instanceKey}
@@ -77,10 +100,32 @@ export default function ArmyGrid({ draft, viewedPlayerId, page }: ArmyGridProps)
               heatClicks={dialState.heatClicks}
               onDamageChange={clicks => setDialClicks(viewedPlayerId, instanceKey, { damageClicks: clicks })}
               onHeatChange={clicks => setDialClicks(viewedPlayerId, instanceKey, { heatClicks: clicks })}
+              headerRight={
+                <OrderTypeMenu
+                  orderState={orderState}
+                  interactive={isActivePlayerOrderStage}
+                  onSelect={type => handleSelectOrderType(instanceKey, draftUnit, type)}
+                />
+              }
             />
           )
         })}
       </div>
+
+      {activeAttack && (
+        <AttackSequenceOverlay
+          draft={draft}
+          attackerPlayerId={viewedPlayerId}
+          attackerUnit={activeAttack.draftUnit}
+          attackerInstanceKey={activeAttack.instanceKey}
+          orderType={activeAttack.orderType}
+          getDialState={(playerId, instanceKey) => getPlayerState(playerId).units[instanceKey] ?? { damageClicks: 0, heatClicks: 0 }}
+          setDialClicks={setDialClicks}
+          onOrderMarked={() => setUnitOrder(viewedPlayerId, activeAttack.instanceKey, activeAttack.orderType)}
+          onComplete={() => setActiveAttack(null)}
+          onClose={() => setActiveAttack(null)}
+        />
+      )}
     </div>
   )
 }

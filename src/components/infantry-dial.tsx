@@ -51,9 +51,11 @@ interface InfantryDialParams {
   dialSide?: 'name' | 'stats';
   externalDamageClicks?: number;
   onDamageChange?: (clicks: number) => void;
+  /** Compact layout: small edge-anchored controls instead of the stacked header above the dial. Used by GameDialCard so the full dial face fits inside a small grid cell. */
+  compact?: boolean;
 }
 
-export function InfantryDial({ unitId, dialSide, externalDamageClicks, onDamageChange }: InfantryDialParams) {
+export function InfantryDial({ unitId, dialSide, externalDamageClicks, onDamageChange, compact = false }: InfantryDialParams) {
   const { getColorById, getTextColorForColor, loading: colorLoading, colorMapping } = useColorMeanings();
 
   const getPrimaryDamageColor = useCallback((step: CombatDialStep) => {
@@ -235,37 +237,72 @@ export function InfantryDial({ unitId, dialSide, externalDamageClicks, onDamageC
 
   return (
     <>
-      {/* Position indicator */}
-      <div className="relative flex justify-center items-center mb-6">
-        <div className="absolute -top-16 left-1/2 transform -translate-x-1/2 px-5 py-3 bg-gradient-to-r from-slate-100 to-slate-200 border border-slate-300 rounded-xl text-sm font-semibold text-slate-700 shadow-md z-10">
-          <span className="flex items-center gap-2">
-            <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+      {compact ? (
+        /* Compact header: one small badge instead of the tall absolute-positioned indicator */
+        <div className="text-center mb-1">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-200 border border-slate-300 rounded text-[10px] font-semibold text-slate-700 whitespace-nowrap">
             Posição: {damageClicks + 1}/9{isDeathClick ? ` 💀 ×${dialValues.deathClickNumber}` : ''}
           </span>
         </div>
-      </div>
+      ) : (
+        <>
+          {/* Position indicator */}
+          <div className="relative flex justify-center items-center mb-6">
+            <div className="absolute -top-16 left-1/2 transform -translate-x-1/2 px-5 py-3 bg-gradient-to-r from-slate-100 to-slate-200 border border-slate-300 rounded-xl text-sm font-semibold text-slate-700 shadow-md z-10">
+              <span className="flex items-center gap-2">
+                <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Posição: {damageClicks + 1}/9{isDeathClick ? ` 💀 ×${dialValues.deathClickNumber}` : ''}
+              </span>
+            </div>
+          </div>
 
-      {/* Control buttons */}
-      <div className="flex justify-center items-center gap-6 mt-6">
-        <button
-          onClick={handleRepair}
-          disabled={damageClicks <= 0}
-          className="group bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-110 disabled:transform-none disabled:shadow-md z-10"
-          style={{ clipPath: 'polygon(25% 0%, 100% 0%, 75% 50%, 100% 100%, 25% 100%, 0% 50%)', width: '60px', height: '40px' }}
-        />
-        <button
-          onClick={handleDamage}
-          disabled={damageClicks >= maxDamageClicks}
-          className="group bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-700 hover:to-red-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-110 disabled:transform-none disabled:shadow-md z-10"
-          style={{ clipPath: 'polygon(0% 0%, 75% 0%, 100% 50%, 75% 100%, 0% 100%, 25% 50%)', width: '60px', height: '40px' }}
-        />
-      </div>
-      <div className="flex justify-center items-center gap-6 mt-2">
-        <span className="text-xs font-semibold text-green-600 whitespace-nowrap">REPARO</span>
-        <span className="text-xs font-semibold text-red-600 whitespace-nowrap">DANO</span>
-      </div>
+          {/* Control buttons */}
+          <div className="flex justify-center items-center gap-6 mt-6">
+            <button
+              onClick={handleRepair}
+              disabled={damageClicks <= 0}
+              className="group bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-110 disabled:transform-none disabled:shadow-md z-10"
+              style={{ clipPath: 'polygon(25% 0%, 100% 0%, 75% 50%, 100% 100%, 25% 100%, 0% 50%)', width: '60px', height: '40px' }}
+            />
+            <button
+              onClick={handleDamage}
+              disabled={damageClicks >= maxDamageClicks}
+              className="group bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-700 hover:to-red-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-110 disabled:transform-none disabled:shadow-md z-10"
+              style={{ clipPath: 'polygon(0% 0%, 75% 0%, 100% 50%, 75% 100%, 0% 100%, 25% 50%)', width: '60px', height: '40px' }}
+            />
+          </div>
+          <div className="flex justify-center items-center gap-6 mt-2">
+            <span className="text-xs font-semibold text-green-600 whitespace-nowrap">REPARO</span>
+            <span className="text-xs font-semibold text-red-600 whitespace-nowrap">DANO</span>
+          </div>
+        </>
+      )}
+
+      <div className="relative">
+      {compact && (
+        <>
+          <button
+            onClick={handleRepair}
+            disabled={damageClicks <= 0}
+            className="absolute z-10 rounded font-mono text-[9px] font-bold text-white bg-gradient-to-b from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed shadow-md transition-colors"
+            style={{ left: 4, top: '50%', transform: 'translateY(-50%)', width: 34, height: 44 }}
+            title="Reparo"
+          >
+            REP
+          </button>
+          <button
+            onClick={handleDamage}
+            disabled={damageClicks >= maxDamageClicks}
+            className="absolute z-10 rounded font-mono text-[9px] font-bold text-white bg-gradient-to-b from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed shadow-md transition-colors"
+            style={{ right: 4, top: '50%', transform: 'translateY(-50%)', width: 34, height: 44 }}
+            title="Dano"
+          >
+            DAN
+          </button>
+        </>
+      )}
 
       <Stage width={500} height={500} rotation={dialSide === 'name' ? 0 : 180} x={dialSide === 'name' ? 0 : DIAL_WIDTH} y={dialSide === 'name' ? 0 : DIAL_HEIGHT}>
         {/* Tick marks */}
@@ -462,6 +499,7 @@ export function InfantryDial({ unitId, dialSide, externalDamageClicks, onDamageC
           )}
         </Layer>
       </Stage>
+      </div>
     </>
   );
 }

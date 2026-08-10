@@ -7,7 +7,12 @@ import { AppDial } from '@/components/app-dial'
 import { InfantryDial } from '@/components/infantry-dial'
 import { getDialKind } from '@/lib/gameMode'
 
-const DIAL_INTRINSIC_SIZE = 500
+// AppDial/InfantryDial's Stage canvas is a fixed 500x500, but in compact mode they still
+// render a small position badge above it — DIAL_CONTENT_HEIGHT accounts for that so the
+// scale factor is computed from the dial's *actual* rendered footprint, not just the
+// canvas, and the whole thing (badge + canvas) fits inside the cell's useful area.
+const DIAL_CONTENT_WIDTH = 500
+const DIAL_CONTENT_HEIGHT = 532
 const MAX_DAMAGE_CLICKS = 17
 
 export interface GameDialCardProps {
@@ -57,7 +62,7 @@ export default function GameDialCard({
     if (!el) return
     const observer = new ResizeObserver(entries => {
       const { width, height } = entries[0].contentRect
-      const factor = Math.min(width, height) / DIAL_INTRINSIC_SIZE
+      const factor = Math.min(width / DIAL_CONTENT_WIDTH, height / DIAL_CONTENT_HEIGHT)
       if (factor > 0) setScale(factor)
     })
     observer.observe(el)
@@ -102,7 +107,7 @@ export default function GameDialCard({
         {headerRight}
       </div>
 
-      <div ref={containerRef} className="flex-1 min-h-0 flex items-center justify-center" style={{ background: '#d8d0c0' }}>
+      <div ref={containerRef} className="flex-1 min-h-0 flex items-center justify-center p-2" style={{ background: '#d8d0c0' }}>
         {status === 'loading' && (
           <div className="text-center px-2">
             <div className="font-mono text-[10px] uppercase tracking-widest animate-pulse" style={{ color: '#7a9a5a' }}>
@@ -125,10 +130,11 @@ export default function GameDialCard({
           </div>
         )}
         {dialKind === 'mech' && (
-          <div style={{ width: DIAL_INTRINSIC_SIZE, height: DIAL_INTRINSIC_SIZE, transform: `scale(${scale})`, transformOrigin: 'center center' }}>
+          <div style={{ width: DIAL_CONTENT_WIDTH, height: DIAL_CONTENT_HEIGHT, transform: `scale(${scale})`, transformOrigin: 'center center' }}>
             <AppDial
               unitId={draftUnit.id}
               dialSide="stats"
+              compact
               externalDamageClicks={damageClicks}
               externalHeatClicks={heatClicks}
               onDamageChange={handleDamageChange}
@@ -137,10 +143,11 @@ export default function GameDialCard({
           </div>
         )}
         {dialKind === 'infantry' && (
-          <div style={{ width: DIAL_INTRINSIC_SIZE, height: DIAL_INTRINSIC_SIZE, transform: `scale(${scale})`, transformOrigin: 'center center' }}>
+          <div style={{ width: DIAL_CONTENT_WIDTH, height: DIAL_CONTENT_HEIGHT, transform: `scale(${scale})`, transformOrigin: 'center center' }}>
             <InfantryDial
               unitId={draftUnit.id}
               dialSide="stats"
+              compact
               externalDamageClicks={damageClicks}
               onDamageChange={handleDamageChange}
             />

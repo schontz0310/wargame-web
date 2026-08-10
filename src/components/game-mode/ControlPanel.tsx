@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import type { Draft } from '@/lib/api'
 import { useGameSession } from '@/hooks/useGameSession'
 import { computeOrdersTotal, ORDER_STAGES, type OrderStage } from '@/lib/gameMode'
+import { useBattleLog } from '@/hooks/useBattleLog'
 
 const STAGE_LABELS: Record<OrderStage, string> = {
   command: 'Comando',
@@ -19,6 +20,7 @@ interface ControlPanelProps {
 export default function ControlPanel({ draft }: ControlPanelProps) {
   const router = useRouter()
   const { session, getPlayerState, advanceStage, setBuildTotalOverride, resetSession } = useGameSession(draft.id, draft.results)
+  const { appendEvent, clearLog } = useBattleLog(draft.id)
   const [viewedPlayerId, setViewedPlayerId] = useState<number>(draft.results[0]?.playerId ?? 1)
   const [confirmingReset, setConfirmingReset] = useState(false)
 
@@ -38,6 +40,21 @@ export default function ControlPanel({ draft }: ControlPanelProps) {
 
   const goToArmy = (playerId: number) => {
     router.push(`/game-mode?draftId=${draft.id}&view=army&player=${playerId}&page=1`)
+  }
+
+  const handleAdvanceStage = () => {
+    if (!session) return
+    const stages: typeof session.stage[] = ['command', 'order', 'cleanup']
+    const currentIdx = stages.indexOf(session.stage)
+    const toStage = stages[(currentIdx + 1) % stages.length]
+    appendEvent({
+      turn: session.turn,
+      stage: session.stage,
+      playerId: session.activePlayerId,
+      type: 'stage_change',
+      payload: { toStage },
+    })
+    advanceStage()
   }
 
   return (
@@ -115,7 +132,7 @@ export default function ControlPanel({ draft }: ControlPanelProps) {
 
       <div className="flex gap-3 flex-wrap mt-auto">
         <button
-          onClick={advanceStage}
+          onClick={handleAdvanceStage}
           className="px-4 py-2 font-mono text-xs corner-clip-sm"
           style={{ background: 'rgba(201,168,76,0.15)', border: '1px solid #c9a84c', color: '#c9a84c' }}
         >
@@ -149,7 +166,7 @@ export default function ControlPanel({ draft }: ControlPanelProps) {
                 CANCELAR
               </button>
               <button
-                onClick={() => { resetSession(); setConfirmingReset(false) }}
+                onClick={() => { resetSession(); clearLog(); setConfirmingReset(false) }}
                 className="px-3 py-1.5 font-mono text-xs corner-clip-sm"
                 style={{ background: 'rgba(150,50,50,0.2)', border: '1px solid #5a2a2a', color: '#c06060' }}
               >

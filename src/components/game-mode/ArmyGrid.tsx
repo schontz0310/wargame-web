@@ -9,6 +9,8 @@ import { getInstanceKey, type OrderType } from '@/lib/gameMode'
 import GameDialCard from './GameDialCard'
 import OrderTypeMenu from './OrderTypeMenu'
 import AttackSequenceOverlay from './AttackSequenceOverlay'
+import { useBattleLog } from '@/hooks/useBattleLog'
+import type { AttackResolutionResult } from './AttackSequenceOverlay'
 
 const PAGE_SIZE = 6
 
@@ -27,6 +29,7 @@ interface ActiveAttack {
 export default function ArmyGrid({ draft, viewedPlayerId, page }: ArmyGridProps) {
   const router = useRouter()
   const { session, getPlayerState, setDialClicks, setUnitOrder } = useGameSession(draft.id, draft.results)
+  const { appendEvent } = useBattleLog(draft.id)
   const [activeAttack, setActiveAttack] = useState<ActiveAttack | null>(null)
   const result = draft.results.find(r => r.playerId === viewedPlayerId)
 
@@ -49,12 +52,25 @@ export default function ArmyGrid({ draft, viewedPlayerId, page }: ArmyGridProps)
     router.push(`/game-mode?draftId=${draft.id}&view=army&player=${viewedPlayerId}&page=${nextPage}`)
   }
 
+  const logOrderEvent = (instanceKey: string, unitName: string, type: OrderType) => {
+    const existing = playerState.unitOrders[instanceKey]
+    const alreadyHadOrder = existing?.status === 'ordered' || existing?.status === 'pushed'
+    appendEvent({
+      turn: session.turn,
+      stage: session.stage,
+      playerId: viewedPlayerId,
+      type: alreadyHadOrder ? 'order_pushed' : 'order_given',
+      payload: { unitName, orderType: type },
+    })
+  }
+
   const handleSelectOrderType = (instanceKey: string, draftUnit: DraftUnit, type: OrderType) => {
     if (type === 'ranged' || type === 'close') {
       setActiveAttack({ instanceKey, draftUnit, orderType: type })
       return
     }
     if (type === 'move' || type === 'vent') {
+      logOrderEvent(instanceKey, draftUnit.name, type)
       setUnitOrder(viewedPlayerId, instanceKey, type)
     }
   }
@@ -98,8 +114,26 @@ export default function ArmyGrid({ draft, viewedPlayerId, page }: ArmyGridProps)
               instanceKey={instanceKey}
               damageClicks={dialState.damageClicks}
               heatClicks={dialState.heatClicks}
-              onDamageChange={clicks => setDialClicks(viewedPlayerId, instanceKey, { damageClicks: clicks })}
-              onHeatChange={clicks => setDialClicks(viewedPlayerId, instanceKey, { heatClicks: clicks })}
+              onDamageChange={clicks => {
+                appendEvent({
+                  turn: session.turn,
+                  stage: session.stage,
+                  playerId: viewedPlayerId,
+                  type: 'dial_adjusted',
+                  payload: { unitName: draftUnit.name, field: 'damage', before: dialState.damageClicks, after: clicks },
+                })
+                setDialClicks(viewedPlayerId, instanceKey, { damageClicks: clicks })
+              }}
+              onHeatChange={clicks => {
+                appendEvent({
+                  turn: session.turn,
+                  stage: session.stage,
+                  playerId: viewedPlayerId,
+                  type: 'dial_adjusted',
+                  payload: { unitName: draftUnit.name, field: 'heat', before: dialState.heatClicks, after: clicks },
+                })
+                setDialClicks(viewedPlayerId, instanceKey, { heatClicks: clicks })
+              }}
               headerRight={
                 <OrderTypeMenu
                   orderState={orderState}
@@ -121,8 +155,28 @@ export default function ArmyGrid({ draft, viewedPlayerId, page }: ArmyGridProps)
           orderType={activeAttack.orderType}
           getDialState={(playerId, instanceKey) => getPlayerState(playerId).units[instanceKey] ?? { damageClicks: 0, heatClicks: 0 }}
           setDialClicks={setDialClicks}
-          onOrderMarked={() => setUnitOrder(viewedPlayerId, activeAttack.instanceKey, activeAttack.orderType)}
-          onComplete={() => setActiveAttack(null)}
+          onOrderMarked={() => {
+            logOrderEvent(activeAttack.instanceKey, activeAttack.draftUnit.name, activeAttack.orderType)
+            setUnitOrder(viewedPlayerId, activeAttack.instanceKey, activeAttack.orderType)
+          }}
+          onComplete={(result: AttackResolutionResult) => {
+            appendEvent({
+              turn: session.turn,
+              stage: session.stage,
+              playerId: viewedPlayerId,
+              type: 'attack_resolved',
+              payload: {
+                attackerName: result.attacker.name,
+                targetNames: result.targets.map(t => t.name),
+                orderType: result.orderType,
+                damageDelta: result.targets.reduce((sum, t) => sum + Math.max(0, t.damageDelta), 0),
+                heatDelta: result.targets.reduce((sum, t) => sum + Math.max(0, t.heatDelta), 0),
+                attackerPushDamage: result.attacker.damageDelta,
+                attackerHeatGain: result.attacker.heatDelta,
+              },
+            })
+            setActiveAttack(null)
+          }}
           onClose={() => setActiveAttack(null)}
         />
       )}

@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { safeLocalStorage } from '@/lib/storage'
 import type { Draft } from '@/lib/api'
 import DraftPicker from '@/components/game-mode/DraftPicker'
+import ControlPanel from '@/components/game-mode/ControlPanel'
 
 function GameModeContent() {
   const searchParams = useSearchParams()
@@ -57,8 +58,7 @@ function GameModeContent() {
     return <div className="p-8 font-mono text-xs" style={{ color: '#7a9a5a' }}>Log view placeholder</div>
   }
 
-  // TODO(Task 6): render <ControlPanel draft={draft} />
-  return <div className="p-8 font-mono text-xs" style={{ color: '#7a9a5a' }}>Control panel placeholder for draft &quot;{draft.name}&quot;</div>
+  return <ControlPanel draft={draft} />
 }
 
 export default function GameModePage() {

@@ -1236,16 +1236,25 @@ export default function DraftsPage() {
                       <span>/ {selectedDraft.availableUnits?.length || 0} unidades</span>
                     </div>
                   </div>
-                  <button
-                    onClick={() => regenerateDraft(selectedDraft)}
-                    disabled={isGenerating}
-                    className="px-3 py-1.5 font-mono text-xs corner-clip-sm transition-colors disabled:opacity-50"
-                    style={{background:'rgba(201,168,76,0.15)',border:'1px solid #c9a84c',color:'#c9a84c'}}
-                  >
-                    {isGenerating ? 'GERANDO...' : 'REGENERAR'}
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => router.push(`/game-mode?draftId=${selectedDraft.id}`)}
+                      className="px-3 py-1.5 font-mono text-xs corner-clip-sm transition-colors"
+                      style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}
+                    >
+                      MODO JOGO
+                    </button>
+                    <button
+                      onClick={() => regenerateDraft(selectedDraft)}
+                      disabled={isGenerating}
+                      className="px-3 py-1.5 font-mono text-xs corner-clip-sm transition-colors disabled:opacity-50"
+                      style={{background:'rgba(201,168,76,0.15)',border:'1px solid #c9a84c',color:'#c9a84c'}}
+                    >
+                      {isGenerating ? 'GERANDO...' : 'REGENERAR'}
+                    </button>
+                  </div>
                 </div>
-                
+
                 <div className="p-4">
                   {!selectedDraft.results || selectedDraft.results.length === 0 ? (
                     <div className="text-center py-12">

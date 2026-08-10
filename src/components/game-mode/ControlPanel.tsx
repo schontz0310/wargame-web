@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Draft } from '@/lib/api'
 import { useGameSession } from '@/hooks/useGameSession'
-import { computeOrdersTotal, ORDER_STAGES, type OrderStage } from '@/lib/gameMode'
+import { computeOrdersTotal, nextStage, ORDER_STAGES, type OrderStage } from '@/lib/gameMode'
 import { useBattleLog } from '@/hooks/useBattleLog'
 
 const STAGE_LABELS: Record<OrderStage, string> = {
@@ -44,9 +44,7 @@ export default function ControlPanel({ draft }: ControlPanelProps) {
 
   const handleAdvanceStage = () => {
     if (!session) return
-    const stages: typeof session.stage[] = ['command', 'order', 'cleanup']
-    const currentIdx = stages.indexOf(session.stage)
-    const toStage = stages[(currentIdx + 1) % stages.length]
+    const toStage = nextStage(session.stage)
     appendEvent({
       turn: session.turn,
       stage: session.stage,

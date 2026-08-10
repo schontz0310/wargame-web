@@ -30,18 +30,27 @@ export default function GameDialCard({
   headerRight,
 }: GameDialCardProps) {
   const [unit, setUnit] = useState<Unit | null>(null)
+  const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>('loading')
+  const [retryToken, setRetryToken] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(1)
 
   useEffect(() => {
     let cancelled = false
+    setStatus('loading')
     apiService.getUnit(draftUnit.id).then(u => {
-      if (!cancelled) setUnit(u)
+      if (cancelled) return
+      if (u) {
+        setUnit(u)
+        setStatus('loaded')
+      } else {
+        setStatus('error')
+      }
     }).catch(() => {
-      if (!cancelled) setUnit(null)
+      if (!cancelled) setStatus('error')
     })
     return () => { cancelled = true }
-  }, [draftUnit.id])
+  }, [draftUnit.id, retryToken])
 
   useEffect(() => {
     const el = containerRef.current
@@ -55,7 +64,7 @@ export default function GameDialCard({
     return () => observer.disconnect()
   }, [])
 
-  const dialKind = unit ? getDialKind(unit) : 'none'
+  const dialKind = status === 'loaded' && unit ? getDialKind(unit) : 'none'
 
   const handleDamageChange = (newClicks: number) => {
     if (newClicks > damageClicks) {
@@ -94,6 +103,27 @@ export default function GameDialCard({
       </div>
 
       <div ref={containerRef} className="flex-1 min-h-0 flex items-center justify-center" style={{ background: '#d8d0c0' }}>
+        {status === 'loading' && (
+          <div className="text-center px-2">
+            <div className="font-mono text-[10px] uppercase tracking-widest animate-pulse" style={{ color: '#7a9a5a' }}>
+              [ CARREGANDO... ]
+            </div>
+          </div>
+        )}
+        {status === 'error' && (
+          <div className="text-center px-2 flex flex-col items-center gap-1.5">
+            <div className="font-mono text-[10px] uppercase tracking-widest" style={{ color: '#c06060' }}>
+              Falha ao carregar unidade
+            </div>
+            <button
+              onClick={() => setRetryToken(t => t + 1)}
+              className="px-2 py-1 font-mono text-[10px] corner-clip-sm"
+              style={{ background: 'rgba(150,50,50,0.15)', border: '1px solid #5a2a2a', color: '#c06060' }}
+            >
+              TENTAR NOVAMENTE
+            </button>
+          </div>
+        )}
         {dialKind === 'mech' && (
           <div style={{ width: DIAL_INTRINSIC_SIZE, height: DIAL_INTRINSIC_SIZE, transform: `scale(${scale})`, transformOrigin: 'center center' }}>
             <AppDial
@@ -116,7 +146,7 @@ export default function GameDialCard({
             />
           </div>
         )}
-        {dialKind === 'none' && (
+        {status === 'loaded' && dialKind === 'none' && (
           <div className="text-center px-2">
             <div className="font-mono text-[10px] uppercase tracking-widest" style={{ color: '#7a9a5a' }}>
               {draftUnit.isCard ? 'Card secreto' : 'Dial em desenvolvimento'}

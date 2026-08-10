@@ -47,11 +47,17 @@ function GameModeContent() {
     return <DraftPicker drafts={drafts} invalidDraftId={draftId} />
   }
 
-  const viewedPlayerId = playerParam ? Number(playerParam) : draft.results[0]?.playerId
-  const page = pageParam ? Math.max(1, Number(pageParam)) : 1
+  const requestedPlayerId = playerParam ? Number(playerParam) : null
+  const viewedPlayerId =
+    requestedPlayerId !== null && draft.results.some(r => r.playerId === requestedPlayerId)
+      ? requestedPlayerId
+      : draft.results[0]?.playerId ?? 1
+
+  const requestedPage = pageParam ? Number(pageParam) : 1
+  const page = Number.isFinite(requestedPage) && requestedPage >= 1 ? requestedPage : 1
 
   if (view === 'army') {
-    return <ArmyGrid draft={draft} viewedPlayerId={viewedPlayerId ?? draft.results[0]?.playerId ?? 1} page={page} />
+    return <ArmyGrid draft={draft} viewedPlayerId={viewedPlayerId} page={page} />
   }
 
   if (view === 'log') {

@@ -26,6 +26,17 @@ function storageKey(draftId: string): string {
   return `wargame_game_log_${draftId}`
 }
 
+function generateEventId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    try {
+      return crypto.randomUUID()
+    } catch {
+      // fall through to the manual fallback below (e.g. insecure context)
+    }
+  }
+  return `evt-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+}
+
 export function useBattleLog(draftId: string | null) {
   const [events, setEvents] = useState<BattleLogEvent[]>([])
 
@@ -50,7 +61,7 @@ export function useBattleLog(draftId: string | null) {
     if (!draftId) return
     const full: BattleLogEvent = {
       ...event,
-      id: crypto.randomUUID(),
+      id: generateEventId(),
       timestamp: new Date().toISOString(),
     }
     setEvents(prev => {
@@ -99,9 +110,13 @@ export function eventToNarrativeLine(event: BattleLogEvent, playerName: string):
       const orderType = event.payload.orderType as OrderType
       const damageDelta = event.payload.damageDelta as number
       const heatDelta = event.payload.heatDelta as number
+      const attackerPushDamage = event.payload.attackerPushDamage as number
+      const attackerHeatGain = event.payload.attackerHeatGain as number
       const parts = [
         damageDelta > 0 ? `dano +${damageDelta}` : null,
         heatDelta > 0 ? `calor +${heatDelta}` : null,
+        attackerPushDamage > 0 ? `atacante sofreu push +${attackerPushDamage}` : null,
+        attackerHeatGain > 0 ? `atacante ganhou calor +${attackerHeatGain}` : null,
       ].filter((part): part is string => part !== null)
       const deltaText = parts.length > 0 ? parts.join(', ') : 'sem alteração registrada'
       return `${prefix} deu ordem de ${ORDER_TYPE_LABELS[orderType]} à ${attackerName} contra ${targetNames}. ${deltaText}.`

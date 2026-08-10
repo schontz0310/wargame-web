@@ -7,6 +7,7 @@ import type { Draft } from '@/lib/api'
 import DraftPicker from '@/components/game-mode/DraftPicker'
 import ControlPanel from '@/components/game-mode/ControlPanel'
 import ArmyGrid from '@/components/game-mode/ArmyGrid'
+import BattleLogView from '@/components/game-mode/BattleLogView'
 
 function GameModeContent() {
   const searchParams = useSearchParams()
@@ -54,8 +55,7 @@ function GameModeContent() {
   }
 
   if (view === 'log') {
-    // TODO(Task 10): render <BattleLogView draft={draft} />
-    return <div className="p-8 font-mono text-xs" style={{ color: '#7a9a5a' }}>Log view placeholder</div>
+    return <BattleLogView draft={draft} />
   }
 
   return <ControlPanel draft={draft} />

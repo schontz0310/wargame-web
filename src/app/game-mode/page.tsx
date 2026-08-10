@@ -6,6 +6,7 @@ import { safeLocalStorage } from '@/lib/storage'
 import type { Draft } from '@/lib/api'
 import DraftPicker from '@/components/game-mode/DraftPicker'
 import ControlPanel from '@/components/game-mode/ControlPanel'
+import ArmyGrid from '@/components/game-mode/ArmyGrid'
 
 function GameModeContent() {
   const searchParams = useSearchParams()
@@ -49,8 +50,7 @@ function GameModeContent() {
   const page = pageParam ? Math.max(1, Number(pageParam)) : 1
 
   if (view === 'army') {
-    // TODO(Task 7): render <ArmyGrid draft={draft} viewedPlayerId={viewedPlayerId} page={page} />
-    return <div className="p-8 font-mono text-xs" style={{ color: '#7a9a5a' }}>Army view placeholder — player {viewedPlayerId}, page {page}</div>
+    return <ArmyGrid draft={draft} viewedPlayerId={viewedPlayerId ?? draft.results[0]?.playerId ?? 1} page={page} />
   }
 
   if (view === 'log') {

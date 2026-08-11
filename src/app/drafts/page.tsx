@@ -152,8 +152,8 @@ export default function DraftsPage() {
     const loadAllCards = async () => {
       try {
         console.log('Loading cards from API...')
-        const factionPrides = await apiService.getFactionPrides({ limit: 1000 })
-        const mercenaryContracts = await apiService.getMercenaryContracts({ limit: 1000 })
+        const factionPrides = await apiService.getFactionPrides({ limit: 100 })
+        const mercenaryContracts = await apiService.getMercenaryContracts({ limit: 100 })
         
         const allCards: Card[] = []
         

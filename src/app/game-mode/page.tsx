@@ -8,6 +8,7 @@ import DraftPicker from '@/components/game-mode/DraftPicker'
 import ControlPanel from '@/components/game-mode/ControlPanel'
 import ArmyGrid from '@/components/game-mode/ArmyGrid'
 import BattleLogView from '@/components/game-mode/BattleLogView'
+import PreparationPhase from '@/components/game-mode/preparation/PreparationPhase'
 
 function GameModeContent() {
   const searchParams = useSearchParams()
@@ -47,6 +48,28 @@ function GameModeContent() {
     return <DraftPicker drafts={drafts} invalidDraftId={draftId} />
   }
 
+  // Preparation phase - automatically show if not completed
+  if (!draft.preparationCompleted) {
+    return <PreparationPhase draft={draft} onUpdateDraft={(updatedDraft) => {
+      const updatedDrafts = drafts.map(d => d.id === updatedDraft.id ? updatedDraft : d)
+      setDrafts(updatedDrafts)
+      if (isClient) {
+        safeLocalStorage.setItem('myDrafts', JSON.stringify(updatedDrafts))
+      }
+    }} onComplete={() => {
+      // Mark preparation as completed and redirect to control panel
+      const updatedDrafts = drafts.map(d => 
+        d.id === draft.id ? { ...d, preparationCompleted: true } : d
+      )
+      setDrafts(updatedDrafts)
+      if (isClient) {
+        safeLocalStorage.setItem('myDrafts', JSON.stringify(updatedDrafts))
+      }
+      window.location.href = `/game-mode?draftId=${draft.id}&view=control`
+    }} />
+  }
+
+  // If preparation is completed, ignore the view parameter and go to control
   const requestedPlayerId = playerParam ? Number(playerParam) : null
   const viewedPlayerId =
     requestedPlayerId !== null && draft.results.some(r => r.playerId === requestedPlayerId)

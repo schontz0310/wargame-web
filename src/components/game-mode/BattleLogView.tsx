@@ -23,7 +23,7 @@ interface BattleLogViewProps {
 export default function BattleLogView({ draft }: BattleLogViewProps) {
   const router = useRouter()
   const { events } = useBattleLog(draft.id)
-  const playerNameById = Object.fromEntries(draft.results.map(r => [r.playerId, r.playerName]))
+  const playerNameById = Object.fromEntries(draft.results.map(r => [r.playerId, r.playerAlias || r.playerName]))
   const orderedEvents = [...events].reverse()
 
   const exportJson = () => {

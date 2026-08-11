@@ -76,7 +76,7 @@ export default function ArmyGrid({ draft, viewedPlayerId, page }: ArmyGridProps)
       setActiveArtillery({ instanceKey, draftUnit })
       return
     }
-    if (type === 'move' || type === 'vent') {
+    if (type === 'move' || type === 'run' || type === 'vent' || type === 'charge' || type === 'death_from_above' || type === 'ram') {
       logOrderEvent(instanceKey, draftUnit.name, type)
       setUnitOrder(viewedPlayerId, instanceKey, type)
     }
@@ -159,11 +159,27 @@ export default function ArmyGrid({ draft, viewedPlayerId, page }: ArmyGridProps)
                 setDialClicks(viewedPlayerId, instanceKey, { heatClicks: clicks })
               }}
               headerRight={
-                <OrderTypeMenu
-                  orderState={orderState}
-                  interactive={isActivePlayerOrderStage}
-                  onSelect={type => handleSelectOrderType(instanceKey, draftUnit, type)}
-                />
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    onClick={() => setDialClicks(viewedPlayerId, instanceKey, { hasArtillery: !dialState.hasArtillery })}
+                    title="Marcar se esta unidade tem a característica Artilharia (número entre parênteses no alcance máximo)"
+                    className="font-mono text-[9px] uppercase tracking-widest px-1.5 py-0.5 corner-clip-sm"
+                    style={{
+                      background: dialState.hasArtillery ? 'rgba(201,168,76,0.2)' : 'rgba(0,0,0,0.3)',
+                      border: '1px solid #3a4a2a',
+                      color: dialState.hasArtillery ? '#c9a84c' : '#4a5e3a',
+                    }}
+                  >
+                    ART
+                  </button>
+                  <OrderTypeMenu
+                    unitType={draftUnit.type}
+                    hasArtillery={dialState.hasArtillery ?? false}
+                    orderState={orderState}
+                    interactive={isActivePlayerOrderStage}
+                    onSelect={type => handleSelectOrderType(instanceKey, draftUnit, type)}
+                  />
+                </div>
               }
             />
           )

@@ -2,17 +2,20 @@
 'use client'
 
 import { useState } from 'react'
-import { ORDER_TYPES, ORDER_TYPE_LABELS, DISABLED_ORDER_TYPES, type OrderType } from '@/lib/gameMode'
+import { ORDER_TYPE_LABELS, getEligibleOrderTypes, type OrderType } from '@/lib/gameMode'
 import type { UnitOrderState } from '@/hooks/useGameSession'
 
 interface OrderTypeMenuProps {
+  unitType: string
+  hasArtillery: boolean
   orderState: UnitOrderState
   interactive: boolean
   onSelect: (type: OrderType) => void
 }
 
-export default function OrderTypeMenu({ orderState, interactive, onSelect }: OrderTypeMenuProps) {
+export default function OrderTypeMenu({ unitType, hasArtillery, orderState, interactive, onSelect }: OrderTypeMenuProps) {
   const [open, setOpen] = useState(false)
+  const eligibleTypes = getEligibleOrderTypes(unitType, hasArtillery)
 
   if (!interactive) {
     if (orderState.status === 'none') return null
@@ -43,21 +46,17 @@ export default function OrderTypeMenu({ orderState, interactive, onSelect }: Ord
         {orderState.status === 'none' ? 'ORDEM' : orderState.status === 'pushed' ? 'EMPURRADA' : ORDER_TYPE_LABELS[orderState.orderType ?? 'move']}
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1 z-20 corner-clip-sm overflow-hidden" style={{ background: '#111608', border: '1px solid #3a4a2a', minWidth: 150 }}>
-          {ORDER_TYPES.map(type => {
-            const isDisabled = DISABLED_ORDER_TYPES.includes(type)
-            return (
-              <button
-                key={type}
-                disabled={isDisabled}
-                onClick={() => { onSelect(type); setOpen(false) }}
-                className="w-full text-left px-2 py-1.5 font-mono text-[10px] disabled:opacity-30"
-                style={{ color: '#c9a84c' }}
-              >
-                {ORDER_TYPE_LABELS[type]}{isDisabled ? ' (em breve)' : ''}
-              </button>
-            )
-          })}
+        <div className="absolute right-0 top-full mt-1 z-20 corner-clip-sm overflow-hidden" style={{ background: '#111608', border: '1px solid #3a4a2a', minWidth: 170 }}>
+          {eligibleTypes.map(type => (
+            <button
+              key={type}
+              onClick={() => { onSelect(type); setOpen(false) }}
+              className="w-full text-left px-2 py-1.5 font-mono text-[10px]"
+              style={{ color: '#c9a84c' }}
+            >
+              {ORDER_TYPE_LABELS[type]}
+            </button>
+          ))}
         </div>
       )}
     </div>

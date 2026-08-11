@@ -15,6 +15,11 @@ export interface UnitOrderState {
 export interface UnitDialState {
   damageClicks: number
   heatClicks: number
+  // Manually set by the player: the unit data model has no field indicating the
+  // Artillery special ability (rulebook p.25: "a unit is an artillery unit if it
+  // has a number in parentheses printed after its maximum range value"), so this
+  // gates the Artillery order option instead of trying to infer it.
+  hasArtillery?: boolean
 }
 
 // Free-text reminder for a Command-stage effect (SEC/pilot card/faction ability, etc.)

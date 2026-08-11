@@ -9,8 +9,10 @@ import { getInstanceKey, type OrderType } from '@/lib/gameMode'
 import GameDialCard from './GameDialCard'
 import OrderTypeMenu from './OrderTypeMenu'
 import AttackSequenceOverlay from './AttackSequenceOverlay'
+import ArtilleryOrderOverlay from './ArtilleryOrderOverlay'
 import { useBattleLog } from '@/hooks/useBattleLog'
 import type { AttackResolutionResult } from './AttackSequenceOverlay'
+import type { PendingArtilleryAttack } from '@/lib/gameMode'
 
 const PAGE_SIZE = 6
 
@@ -28,9 +30,10 @@ interface ActiveAttack {
 
 export default function ArmyGrid({ draft, viewedPlayerId, page }: ArmyGridProps) {
   const router = useRouter()
-  const { session, getPlayerState, setDialClicks, setUnitOrder } = useGameSession(draft.id, draft.results)
+  const { session, getPlayerState, setDialClicks, setUnitOrder, placeArtilleryOrder } = useGameSession(draft.id, draft.results)
   const { appendEvent } = useBattleLog(draft.id)
   const [activeAttack, setActiveAttack] = useState<ActiveAttack | null>(null)
+  const [activeArtillery, setActiveArtillery] = useState<{ instanceKey: string; draftUnit: DraftUnit } | null>(null)
   const result = draft.results.find(r => r.playerId === viewedPlayerId)
 
   if (!session || !result) {
@@ -69,10 +72,31 @@ export default function ArmyGrid({ draft, viewedPlayerId, page }: ArmyGridProps)
       setActiveAttack({ instanceKey, draftUnit, orderType: type })
       return
     }
+    if (type === 'artillery') {
+      setActiveArtillery({ instanceKey, draftUnit })
+      return
+    }
     if (type === 'move' || type === 'vent') {
       logOrderEvent(instanceKey, draftUnit.name, type)
       setUnitOrder(viewedPlayerId, instanceKey, type)
     }
+  }
+
+  const handleArtilleryConfirm = (attack: Omit<PendingArtilleryAttack, 'id'>) => {
+    if (!session || !activeArtillery) return
+    placeArtilleryOrder(attack, viewedPlayerId, activeArtillery.instanceKey)
+    logOrderEvent(activeArtillery.instanceKey, activeArtillery.draftUnit.name, 'artillery')
+    appendEvent({
+      turn: session.turn,
+      stage: session.stage,
+      playerId: viewedPlayerId,
+      type: 'artillery_placed',
+      payload: {
+        unitName: activeArtillery.draftUnit.name,
+        markerDescription: attack.markerDescription,
+      },
+    })
+    setActiveArtillery(null)
   }
 
   if (armyUnits.length === 0) {
@@ -178,6 +202,17 @@ export default function ArmyGrid({ draft, viewedPlayerId, page }: ArmyGridProps)
             setActiveAttack(null)
           }}
           onClose={() => setActiveAttack(null)}
+        />
+      )}
+
+      {activeArtillery && session && (
+        <ArtilleryOrderOverlay
+          attackerPlayerId={viewedPlayerId}
+          attackerUnit={activeArtillery.draftUnit}
+          attackerInstanceKey={activeArtillery.instanceKey}
+          currentTurn={session.turn}
+          onConfirm={handleArtilleryConfirm}
+          onClose={() => setActiveArtillery(null)}
         />
       )}
     </div>

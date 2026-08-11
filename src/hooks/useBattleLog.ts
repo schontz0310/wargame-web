@@ -9,6 +9,9 @@ export type BattleLogEventType =
   | 'order_given'
   | 'order_pushed'
   | 'attack_resolved'
+  | 'artillery_placed'
+  | 'artillery_resolved'
+  | 'vp_scored'
   | 'dial_adjusted'
   | 'game_reset'
 
@@ -120,6 +123,25 @@ export function eventToNarrativeLine(event: BattleLogEvent, playerName: string):
       ].filter((part): part is string => part !== null)
       const deltaText = parts.length > 0 ? parts.join(', ') : 'sem alteração registrada'
       return `${prefix} deu ordem de ${ORDER_TYPE_LABELS[orderType]} à ${attackerName} contra ${targetNames}. ${deltaText}.`
+    }
+    case 'artillery_placed': {
+      const unitName = event.payload.unitName as string
+      const marker = event.payload.markerDescription as string
+      return `${prefix}: ${unitName} posicionou marcador de artilharia — ${marker}. Ataque resolve no próximo Comando.`
+    }
+    case 'artillery_resolved': {
+      const unitName = event.payload.attackerUnitName as string
+      const hit = event.payload.hit as boolean
+      const damageDelta = event.payload.damageDelta as number
+      const drifted = event.payload.drifted as boolean
+      if (!hit) return `${prefix}: artilharia de ${unitName} falhou (desvio).`
+      const driftNote = drifted ? ' (com desvio)' : ''
+      return `${prefix}: artilharia de ${unitName} acertou${driftNote}. Dano total aplicado: ${damageDelta}.`
+    }
+    case 'vp_scored': {
+      const vp = event.payload.points as number
+      const reason = event.payload.reason as string
+      return `${prefix} marcou ${vp} VP — ${reason}.`
     }
     case 'dial_adjusted': {
       const unitName = event.payload.unitName as string

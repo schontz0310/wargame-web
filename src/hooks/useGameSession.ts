@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { safeLocalStorage } from '@/lib/storage'
-import { nextStage as computeNextStage, nextPlayerId, type OrderStage, type OrderType } from '@/lib/gameMode'
+import { nextStage as computeNextStage, nextPlayerId, type OrderStage, type OrderType, type PendingArtilleryAttack } from '@/lib/gameMode'
 import type { DraftResult } from '@/lib/api'
 
 export type UnitOrderStatus = 'none' | 'ordered' | 'pushed'
@@ -19,6 +19,7 @@ export interface UnitDialState {
 
 export interface PlayerSessionState {
   ordersUsed: number
+  ordersTotal?: number       // override for this player's order total this turn
   unitOrders: Record<string, UnitOrderState>
   units: Record<string, UnitDialState>
 }
@@ -27,7 +28,10 @@ export interface GameSessionState {
   turn: number
   stage: OrderStage
   activePlayerId: number
-  buildTotalOverride: Record<number, number>
+  buildTotal: number                          // agreed game build total (rulebook p.13)
+  buildTotalOverride: Record<number, number>  // legacy per-player override, kept for compat
+  victoryPoints: Record<number, number>       // playerId -> cumulative VP
+  pendingArtillery: PendingArtilleryAttack[]  // placed in Order stage, resolved in Command
   players: Record<number, PlayerSessionState>
 }
 
@@ -43,12 +47,15 @@ function firstPlayerId(results: DraftResult[]): number {
   return [...results.map(r => r.playerId)].sort((a, b) => a - b)[0] ?? 1
 }
 
-function createInitialState(results: DraftResult[]): GameSessionState {
+function createInitialState(results: DraftResult[], buildTotal = 300): GameSessionState {
   return {
     turn: 1,
     stage: 'command',
     activePlayerId: firstPlayerId(results),
+    buildTotal,
     buildTotalOverride: {},
+    victoryPoints: {},
+    pendingArtillery: [],
     players: {},
   }
 }
@@ -64,7 +71,15 @@ export function useGameSession(draftId: string | null, results: DraftResult[]) {
     const raw = safeLocalStorage.getItem(storageKey(draftId))
     if (raw) {
       try {
-        setState(JSON.parse(raw) as GameSessionState)
+        const parsed = JSON.parse(raw) as GameSessionState
+        // Normalize: backfill fields added after initial release so old sessions don't break
+        setState({
+          ...parsed,
+          buildTotal: parsed.buildTotal ?? 300,
+          buildTotalOverride: parsed.buildTotalOverride ?? {},
+          victoryPoints: parsed.victoryPoints ?? {},
+          pendingArtillery: parsed.pendingArtillery ?? [],
+        })
         return
       } catch {
         // fall through to a fresh session
@@ -128,10 +143,58 @@ export function useGameSession(draftId: string | null, results: DraftResult[]) {
     persist({ ...state, buildTotalOverride: { ...state.buildTotalOverride, [playerId]: value } })
   }, [state, persist])
 
-  const resetSession = useCallback(() => {
+  const setBuildTotal = useCallback((value: number) => {
+    if (!state) return
+    persist({ ...state, buildTotal: value })
+  }, [state, persist])
+
+  const addVictoryPoints = useCallback((playerId: number, points: number) => {
+    if (!state) return
+    const current = state.victoryPoints[playerId] ?? 0
+    persist({ ...state, victoryPoints: { ...state.victoryPoints, [playerId]: current + points } })
+  }, [state, persist])
+
+  const addArtilleryAttack = useCallback((attack: Omit<PendingArtilleryAttack, 'id'>) => {
+    if (!state) return
+    const id = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `art-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    persist({ ...state, pendingArtillery: [...(state.pendingArtillery ?? []), { ...attack, id }] })
+  }, [state, persist])
+
+  // Atomic: add artillery + mark unit order in a single persist to avoid state overwrites
+  const placeArtilleryOrder = useCallback((
+    attack: Omit<PendingArtilleryAttack, 'id'>,
+    playerId: number,
+    instanceKey: string,
+  ) => {
+    if (!state) return
+    const id = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `art-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const player = state.players[playerId] ?? emptyPlayerState()
+    const existing = player.unitOrders[instanceKey]
+    const alreadyHadOrder = existing?.status === 'ordered' || existing?.status === 'pushed'
+    const nextStatus: UnitOrderStatus = alreadyHadOrder ? 'pushed' : 'ordered'
+    const unitOrders = { ...player.unitOrders, [instanceKey]: { status: nextStatus, orderType: 'artillery' as OrderType } }
+    const ordersUsed = alreadyHadOrder ? player.ordersUsed : player.ordersUsed + 1
+    const players = { ...state.players, [playerId]: { ...player, unitOrders, ordersUsed } }
+    persist({
+      ...state,
+      pendingArtillery: [...(state.pendingArtillery ?? []), { ...attack, id }],
+      players,
+    })
+  }, [state, persist])
+
+  const resolveArtilleryAttack = useCallback((attackId: string) => {
+    if (!state) return
+    persist({ ...state, pendingArtillery: (state.pendingArtillery ?? []).filter(a => a.id !== attackId) })
+  }, [state, persist])
+
+  const resetSession = useCallback((buildTotal?: number) => {
     if (!draftId || results.length === 0) return
-    persist(createInitialState(results))
-  }, [draftId, results, persist])
+    persist(createInitialState(results, buildTotal ?? state?.buildTotal ?? 300))
+  }, [draftId, results, persist, state])
 
   return {
     session: state,
@@ -139,7 +202,12 @@ export function useGameSession(draftId: string | null, results: DraftResult[]) {
     advanceStage,
     setUnitOrder,
     setDialClicks,
+    setBuildTotal,
     setBuildTotalOverride,
+    addVictoryPoints,
+    addArtilleryAttack,
+    placeArtilleryOrder,
+    resolveArtilleryAttack,
     resetSession,
   }
 }

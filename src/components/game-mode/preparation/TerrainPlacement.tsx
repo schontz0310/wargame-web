@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import type { Draft } from '@/lib/api'
-import { TERRAIN_CATEGORIES, type TerrainModel, type TerrainFeature, type PreparationState } from '@/lib/gameMode'
+import { TERRAIN_CATEGORIES, terrainPdfUrl, type TerrainModel, type TerrainFeature, type PreparationState } from '@/lib/gameMode'
 
 interface TerrainPlacementProps {
   draft: Draft
@@ -198,20 +198,32 @@ export default function TerrainPlacement({ draft, preparationState, onUpdateStat
                       </h3>
                       <div className="grid grid-cols-2 gap-3">
                         {models.map((model) => (
-                          <button
+                          <div
                             key={model.code}
-                            onClick={() => handlePlaceTerrain(model)}
-                            disabled={placedTerrain >= maxTerrain}
-                            className="p-4 font-mono text-sm text-left transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                            style={{
-                              background: 'rgba(122,154,90,0.1)',
-                              border: '1px solid #3a4a2a',
-                              color: '#e8d5a0'
-                            }}
+                            className="flex items-stretch"
+                            style={{ border: '1px solid #3a4a2a', background: 'rgba(122,154,90,0.1)' }}
                           >
-                            <span className="font-bold mr-2" style={{ color: '#c9a84c' }}>{model.code}</span>
-                            {model.name}
-                          </button>
+                            <button
+                              onClick={() => handlePlaceTerrain(model)}
+                              disabled={placedTerrain >= maxTerrain}
+                              className="flex-1 p-4 font-mono text-sm text-left transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                              style={{ color: '#e8d5a0' }}
+                            >
+                              <span className="font-bold mr-2" style={{ color: '#c9a84c' }}>{model.code}</span>
+                              {model.name}
+                            </button>
+                            <a
+                              href={terrainPdfUrl(model.code)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              title="Ver ficha oficial (PDF)"
+                              className="flex items-center px-3 font-mono text-xs"
+                              style={{ color: '#5a7a4a', borderLeft: '1px solid #3a4a2a' }}
+                            >
+                              PDF
+                            </a>
+                          </div>
                         ))}
                       </div>
                     </div>
@@ -244,6 +256,15 @@ export default function TerrainPlacement({ draft, preparationState, onUpdateStat
                           <span className="font-mono text-xs" style={{ color: '#5a7a4a' }}>
                             por {getPlayerDisplayName(terrain.playerId)}
                           </span>
+                          <a
+                            href={terrainPdfUrl(terrain.code)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-mono text-xs underline"
+                            style={{ color: '#5a7a4a' }}
+                          >
+                            PDF
+                          </a>
                         </div>
                         <button
                           onClick={() => {

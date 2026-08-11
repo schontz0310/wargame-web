@@ -140,6 +140,12 @@ export interface TerrainCategory {
   models: TerrainModel[]
 }
 
+// Official reference sheet PDF for a terrain model, keyed by its control code
+// (matches the warrenborn.com file naming: MWDATerrain<code>hi.pdf).
+export function terrainPdfUrl(code: string): string {
+  return `https://www.warrenborn.com/Files/Terrain/MWDATerrain${code}hi.pdf`
+}
+
 export const TERRAIN_CATEGORIES: TerrainCategory[] = [
   {
     category: 'Abrupt Terrain',

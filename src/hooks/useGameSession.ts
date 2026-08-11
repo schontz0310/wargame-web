@@ -17,11 +17,21 @@ export interface UnitDialState {
   heatClicks: number
 }
 
+// Free-text reminder for a Command-stage effect (SEC/pilot card/faction ability, etc.)
+// the player wants to remember to resolve. Checked state resets each time this
+// player's Command stage begins again; the item itself persists across turns.
+export interface CommandReminder {
+  id: string
+  text: string
+  checked: boolean
+}
+
 export interface PlayerSessionState {
   ordersUsed: number
   ordersTotal?: number       // override for this player's order total this turn
   unitOrders: Record<string, UnitOrderState>
   units: Record<string, UnitDialState>
+  commandReminders: CommandReminder[]
 }
 
 export interface GameSessionState {
@@ -40,7 +50,7 @@ function storageKey(draftId: string): string {
 }
 
 function emptyPlayerState(): PlayerSessionState {
-  return { ordersUsed: 0, unitOrders: {}, units: {} }
+  return { ordersUsed: 0, unitOrders: {}, units: {}, commandReminders: [] }
 }
 
 function firstPlayerId(results: DraftResult[]): number {
@@ -98,19 +108,31 @@ export function useGameSession(draftId: string | null, results: DraftResult[]) {
   }, [draftId])
 
   const getPlayerState = useCallback((playerId: number): PlayerSessionState => {
-    return state?.players[playerId] ?? emptyPlayerState()
+    // Spread over emptyPlayerState() so sessions saved before a field existed
+    // (e.g. commandReminders) still get a safe default instead of undefined.
+    return { ...emptyPlayerState(), ...(state?.players[playerId] ?? {}) }
   }, [state])
 
   const advanceStage = useCallback(() => {
     if (!state) return
+    const leavingCommand = state.stage === 'command'
     const leavingCleanup = state.stage === 'cleanup'
     const newStage = computeNextStage(state.stage)
     const newActivePlayerId = leavingCleanup ? nextPlayerId(results, state.activePlayerId) : state.activePlayerId
     const newTurn = leavingCleanup ? state.turn + 1 : state.turn
 
     const players = { ...state.players }
+    if (leavingCommand) {
+      // Command reminders are a recurring checklist: uncheck everything when this
+      // player's Command stage ends, but keep the items themselves for next time.
+      const current = { ...emptyPlayerState(), ...(players[state.activePlayerId] ?? {}) }
+      players[state.activePlayerId] = {
+        ...current,
+        commandReminders: current.commandReminders.map(r => ({ ...r, checked: false })),
+      }
+    }
     if (leavingCleanup) {
-      const current = players[state.activePlayerId] ?? emptyPlayerState()
+      const current = { ...emptyPlayerState(), ...(players[state.activePlayerId] ?? {}) }
       players[state.activePlayerId] = { ...current, ordersUsed: 0, unitOrders: {} }
     }
 
@@ -135,6 +157,37 @@ export function useGameSession(draftId: string | null, results: DraftResult[]) {
     const current = player.units[instanceKey] ?? { damageClicks: 0, heatClicks: 0 }
     const units = { ...player.units, [instanceKey]: { ...current, ...clicks } }
     const players = { ...state.players, [playerId]: { ...player, units } }
+    persist({ ...state, players })
+  }, [state, persist])
+
+  const addCommandReminder = useCallback((playerId: number, text: string) => {
+    if (!state) return
+    const trimmed = text.trim()
+    if (!trimmed) return
+    const player = { ...emptyPlayerState(), ...(state.players[playerId] ?? {}) }
+    const id = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `rem-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const commandReminders = [...player.commandReminders, { id, text: trimmed, checked: false }]
+    const players = { ...state.players, [playerId]: { ...player, commandReminders } }
+    persist({ ...state, players })
+  }, [state, persist])
+
+  const toggleCommandReminder = useCallback((playerId: number, reminderId: string) => {
+    if (!state) return
+    const player = { ...emptyPlayerState(), ...(state.players[playerId] ?? {}) }
+    const commandReminders = player.commandReminders.map(r =>
+      r.id === reminderId ? { ...r, checked: !r.checked } : r
+    )
+    const players = { ...state.players, [playerId]: { ...player, commandReminders } }
+    persist({ ...state, players })
+  }, [state, persist])
+
+  const removeCommandReminder = useCallback((playerId: number, reminderId: string) => {
+    if (!state) return
+    const player = { ...emptyPlayerState(), ...(state.players[playerId] ?? {}) }
+    const commandReminders = player.commandReminders.filter(r => r.id !== reminderId)
+    const players = { ...state.players, [playerId]: { ...player, commandReminders } }
     persist({ ...state, players })
   }, [state, persist])
 
@@ -202,6 +255,9 @@ export function useGameSession(draftId: string | null, results: DraftResult[]) {
     advanceStage,
     setUnitOrder,
     setDialClicks,
+    addCommandReminder,
+    toggleCommandReminder,
+    removeCommandReminder,
     setBuildTotal,
     setBuildTotalOverride,
     addVictoryPoints,

@@ -28,6 +28,9 @@ export default function ControlPanel({ draft }: ControlPanelProps) {
     setBuildTotal,
     addVictoryPoints,
     resolveArtilleryAttack,
+    addCommandReminder,
+    toggleCommandReminder,
+    removeCommandReminder,
     resetSession,
   } = useGameSession(draft.id, draft.results)
   const { appendEvent, clearLog } = useBattleLog(draft.id)
@@ -228,6 +231,10 @@ export default function ControlPanel({ draft }: ControlPanelProps) {
           onResolveArtillery={handleResolveArtillery}
           onAddVictoryPoints={handleAddVP}
           onProceedToOrders={handleProceedToOrders}
+          reminders={activePlayerState.commandReminders}
+          onAddReminder={text => addCommandReminder(session.activePlayerId, text)}
+          onToggleReminder={id => toggleCommandReminder(session.activePlayerId, id)}
+          onRemoveReminder={id => removeCommandReminder(session.activePlayerId, id)}
         />
       ) : (
         <>

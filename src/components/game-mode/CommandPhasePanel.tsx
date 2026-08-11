@@ -3,7 +3,7 @@
 
 import { useState } from 'react'
 import type { Draft } from '@/lib/api'
-import type { GameSessionState } from '@/hooks/useGameSession'
+import type { CommandReminder, GameSessionState } from '@/hooks/useGameSession'
 import { FACTION_COMMAND_ABILITIES, type PendingArtilleryAttack } from '@/lib/gameMode'
 import ArtilleryResolutionOverlay from './ArtilleryResolutionOverlay'
 
@@ -14,6 +14,10 @@ interface CommandPhasePanelProps {
   onResolveArtillery: (attackId: string) => void
   onAddVictoryPoints: (playerId: number, points: number) => void
   onProceedToOrders: () => void
+  reminders: CommandReminder[]
+  onAddReminder: (text: string) => void
+  onToggleReminder: (id: string) => void
+  onRemoveReminder: (id: string) => void
 }
 
 export default function CommandPhasePanel({
@@ -23,11 +27,16 @@ export default function CommandPhasePanel({
   onResolveArtillery,
   onAddVictoryPoints,
   onProceedToOrders,
+  reminders,
+  onAddReminder,
+  onToggleReminder,
+  onRemoveReminder,
 }: CommandPhasePanelProps) {
   const [resolvingAttack, setResolvingAttack] = useState<PendingArtilleryAttack | null>(null)
   const [deploymentUnitCount, setDeploymentUnitCount] = useState(0)
   const [vpApplied, setVpApplied] = useState(false)
   const [appliedFactionAbilities, setAppliedFactionAbilities] = useState<Set<string>>(new Set())
+  const [newReminderText, setNewReminderText] = useState('')
 
   // Artillery pending for the active player this command stage
   const myPendingArtillery = session.pendingArtillery.filter(
@@ -42,6 +51,13 @@ export default function CommandPhasePanel({
     const abilities = FACTION_COMMAND_ABILITIES[faction] ?? []
     return abilities.map(a => ({ faction, ...a }))
   })
+
+  const handleAddReminder = () => {
+    const trimmed = newReminderText.trim()
+    if (!trimmed) return
+    onAddReminder(trimmed)
+    setNewReminderText('')
+  }
 
   const handleVpApply = () => {
     if (deploymentUnitCount > 0) {
@@ -218,6 +234,83 @@ export default function CommandPhasePanel({
             </div>
           </section>
         )}
+
+        {/* ④ Command reminders */}
+        <section className="corner-clip-sm" style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid #2a3a1a' }}>
+          <div className="px-3 py-2" style={{ borderBottom: '1px solid #1a2a0a' }}>
+            <span className="font-mono text-[10px] tracking-widest uppercase font-bold" style={{ color: '#c9a84c' }}>
+              ④ Lembretes de Comando
+            </span>
+          </div>
+
+          <div className="p-3 space-y-3">
+            <p className="font-mono text-[10px]" style={{ color: '#5a7a4a' }}>
+              Anote efeitos de SEC, Faction Pride, Pilot ou outros que você precisa lembrar de resolver nesta fase.
+              Os itens ficam marcados só nesta fase — na próxima fase de Comando eles voltam desmarcados.
+            </p>
+
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newReminderText}
+                onChange={e => setNewReminderText(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleAddReminder() }}
+                placeholder="Ex: Resolver habilidade do Pilot X"
+                className="flex-1 px-2 py-1.5 font-mono text-xs"
+                style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid #3a4a2a', color: '#e8d5a0' }}
+              />
+              <button
+                onClick={handleAddReminder}
+                disabled={!newReminderText.trim()}
+                className="px-3 py-1.5 font-mono text-xs corner-clip-sm disabled:opacity-40"
+                style={{ background: 'rgba(122,154,90,0.15)', border: '1px solid #3a4a2a', color: '#7a9a5a' }}
+              >
+                ADICIONAR
+              </button>
+            </div>
+
+            {reminders.length === 0 ? (
+              <p className="font-mono text-[10px]" style={{ color: '#3a5a2a' }}>
+                Nenhum lembrete adicionado.
+              </p>
+            ) : (
+              <div className="space-y-1.5">
+                {reminders.map(reminder => (
+                  <div key={reminder.id} className="flex items-center gap-2 p-2" style={{ background: 'rgba(0,0,0,0.2)' }}>
+                    <button
+                      onClick={() => onToggleReminder(reminder.id)}
+                      className="w-5 h-5 flex-shrink-0 flex items-center justify-center font-mono text-xs corner-clip-sm"
+                      style={{
+                        background: reminder.checked ? 'rgba(122,154,90,0.3)' : 'rgba(0,0,0,0.3)',
+                        border: reminder.checked ? '1px solid #7a9a5a' : '1px solid #3a4a2a',
+                        color: '#c9a84c',
+                      }}
+                    >
+                      {reminder.checked ? '✓' : ''}
+                    </button>
+                    <span
+                      className="flex-1 font-mono text-xs"
+                      style={{
+                        color: reminder.checked ? '#4a5e3a' : '#e8d5a0',
+                        textDecoration: reminder.checked ? 'line-through' : 'none',
+                      }}
+                    >
+                      {reminder.text}
+                    </span>
+                    <button
+                      onClick={() => onRemoveReminder(reminder.id)}
+                      className="px-1.5 font-mono text-xs flex-shrink-0"
+                      style={{ color: '#6a3a3a' }}
+                      title="Remover lembrete"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
       </div>
 
       {/* Proceed button */}

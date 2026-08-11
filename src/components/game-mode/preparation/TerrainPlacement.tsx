@@ -16,7 +16,6 @@ export default function TerrainPlacement({ draft, preparationState, onUpdateStat
     // Initialize with first player immediately
     return preparationState.firstPlayerId ?? draft.results[0]?.playerId ?? 1
   })
-  const [selectedTerrain, setSelectedTerrain] = useState<string | null>(null)
 
   // Helper to get display name (alias or original name)
   const getPlayerDisplayName = (playerId: number) => {
@@ -142,7 +141,7 @@ export default function TerrainPlacement({ draft, preparationState, onUpdateStat
                 Instruções
               </h2>
               <p className="font-mono text-sm mb-2" style={{ color: '#a0a090' }}>
-                Cada característica de terreno deve ser colocada a pelo menos 3" de qualquer outra característica de terreno
+                Cada característica de terreno deve ser colocada a pelo menos 3&quot; de qualquer outra característica de terreno
                 já no campo de batalha, de qualquer borda do campo de batalha e de qualquer zona de deploy do jogador.
               </p>
               <p className="font-mono text-sm" style={{ color: '#a0a090' }}>
@@ -198,7 +197,7 @@ export default function TerrainPlacement({ draft, preparationState, onUpdateStat
                       disabled={placedTerrain >= maxTerrain}
                       className="p-4 font-mono text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       style={{
-                        background: selectedTerrain === terrain ? 'rgba(201,168,76,0.2)' : 'rgba(122,154,90,0.1)',
+                        background: 'rgba(122,154,90,0.1)',
                         border: '1px solid #3a4a2a',
                         color: '#e8d5a0'
                       }}

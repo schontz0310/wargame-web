@@ -29,13 +29,17 @@ export default function PreparationPhase({ draft, onComplete, onUpdateDraft }: P
     const saved = safeLocalStorage.getItem(STORAGE_KEY(draft.id))
     if (saved) {
       try {
-        const parsed = JSON.parse(saved) as any
+        const parsed = JSON.parse(saved) as Omit<PreparationState, 'terrainPile' | 'diceRolls' | 'deployedUnits'> & {
+          terrainPile?: Record<string, number>
+          diceRolls?: Record<string, number>
+          deployedUnits?: Record<string, string[]>
+        }
         // Reconstruct Maps from plain objects
         return {
           ...parsed,
-          terrainPile: new Map(Object.entries(parsed.terrainPile || {}).map(([k, v]) => [parseInt(k), v as number])),
-          diceRolls: new Map(Object.entries(parsed.diceRolls || {}).map(([k, v]) => [parseInt(k), v as number])),
-          deployedUnits: new Map(Object.entries(parsed.deployedUnits || {}).map(([k, v]) => [parseInt(k), v as string[]]))
+          terrainPile: new Map(Object.entries(parsed.terrainPile ?? {}).map(([k, v]) => [parseInt(k), v])),
+          diceRolls: new Map(Object.entries(parsed.diceRolls ?? {}).map(([k, v]) => [parseInt(k), v])),
+          deployedUnits: new Map(Object.entries(parsed.deployedUnits ?? {}).map(([k, v]) => [parseInt(k), v]))
         }
       } catch {
         // If invalid, return default

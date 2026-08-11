@@ -52,14 +52,14 @@ export default function BattlefieldSetup({ draft, preparationState, onUpdateStat
               1. Tamanho do Campo de Batalha
             </h2>
             <p className="font-mono text-sm mb-4" style={{ color: '#a0a090' }}>
-              Encontre uma área plana e quadrada de aproximadamente 3' (36 polegadas) de cada lado.
+              Encontre uma área plana e quadrada de aproximadamente 3&apos; (36 polegadas) de cada lado.
             </p>
             <div className="flex items-center gap-4">
               <span className="font-mono text-sm" style={{ color: '#5a7a4a' }}>
                 Tamanho padrão:
               </span>
               <span className="font-mono text-lg font-bold" style={{ color: '#c9a84c' }}>
-                36" x 36"
+                36&quot; x 36&quot;
               </span>
             </div>
           </div>
@@ -94,8 +94,8 @@ export default function BattlefieldSetup({ draft, preparationState, onUpdateStat
             </h2>
             <p className="font-mono text-sm mb-4" style={{ color: '#a0a090' }}>
               Ao longo da borda de início de cada jogador está uma zona retangular imaginária chamada zona de deploy.
-              Sua zona de deploy começa na sua borda de início e se estende 3" para dentro do campo de batalha.
-              Sua zona de deploy deve estar a pelo menos 8" de qualquer outra borda do campo de batalha.
+              Sua zona de deploy começa na sua borda de início e se estende 3&quot; para dentro do campo de batalha.
+              Sua zona de deploy deve estar a pelo menos 8&quot; de qualquer outra borda do campo de batalha.
             </p>
             <div className="grid grid-cols-2 gap-4">
               <div className="p-3 text-center" style={{ background: 'rgba(122,154,90,0.1)' }}>
@@ -103,7 +103,7 @@ export default function BattlefieldSetup({ draft, preparationState, onUpdateStat
                   Profundidade da Zona
                 </div>
                 <div className="font-mono text-xl font-bold" style={{ color: '#c9a84c' }}>
-                  3"
+                  3&quot;
                 </div>
               </div>
               <div className="p-3 text-center" style={{ background: 'rgba(122,154,90,0.1)' }}>
@@ -111,7 +111,7 @@ export default function BattlefieldSetup({ draft, preparationState, onUpdateStat
                   Distância Mínima das Bordas
                 </div>
                 <div className="font-mono text-xl font-bold" style={{ color: '#c9a84c' }}>
-                  8"
+                  8&quot;
                 </div>
               </div>
             </div>

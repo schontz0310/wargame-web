@@ -117,8 +117,7 @@ export default function FirstPlayerRoll({ draft, preparationState, onUpdateState
   }
 
   const allPlayersRolled = draft.results.every(r => preparationState.diceRolls.has(r.playerId))
-  const firstPlayerId = determineFirstPlayer()
-  const isTie = Array.from(preparationState.diceRolls.values()).filter((roll, _, arr) => 
+  const isTie = Array.from(preparationState.diceRolls.values()).filter((roll, _, arr) =>
     arr.indexOf(roll) !== arr.lastIndexOf(roll)
   ).length > 0
 

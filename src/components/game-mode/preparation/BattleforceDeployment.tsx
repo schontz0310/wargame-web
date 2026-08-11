@@ -93,8 +93,8 @@ export default function BattleforceDeployment({ draft, preparationState, onUpdat
                 para que o marcador inicial (seta verde) apareça no slot de estatísticas de cada unidade.
               </p>
               <p className="font-mono text-sm mb-4" style={{ color: '#a0a090' }}>
-                'Mechs devem ter seus dials de calor girados para que três quadrados verdes estejam visíveis.
-                Esta é a posição inicial de calor do 'Mech.
+                &apos;Mechs devem ter seus dials de calor girados para que três quadrados verdes estejam visíveis.
+                Esta é a posição inicial de calor do &apos;Mech.
               </p>
               <div className="flex justify-center">
                 <button

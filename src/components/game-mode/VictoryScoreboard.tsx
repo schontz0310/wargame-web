@@ -83,8 +83,8 @@ export default function VictoryScoreboard({ draft, victoryPoints, getPlayerDispl
                               if (Number.isFinite(parsed) && parsed >= 0) onSetVP(result.playerId, vc, parsed)
                             }}
                             onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
-                            className="font-mono text-sm font-bold text-center"
-                            style={{ color: '#c9a84c', width: 34, background: 'rgba(0,0,0,0.3)', border: '1px solid #3a4a2a' }}
+                            className="font-mono text-sm font-bold text-center px-1 py-0.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            style={{ color: '#c9a84c', width: 56, background: 'rgba(0,0,0,0.3)', border: '1px solid #3a4a2a' }}
                           />
                           <button
                             onClick={() => onAdjustVP(result.playerId, vc, 1)}

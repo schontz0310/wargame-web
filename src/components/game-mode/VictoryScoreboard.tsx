@@ -10,6 +10,7 @@ interface VictoryScoreboardProps {
   victoryPoints: Record<number, VictoryPointsBreakdown>
   getPlayerDisplayName: (playerId: number) => string
   onAdjustVP: (playerId: number, vc: VictoryCondition, delta: number) => void
+  onSetVP: (playerId: number, vc: VictoryCondition, value: number) => void
 }
 
 const ALL_VCS: VictoryCondition[] = [1, 2, 3]
@@ -19,7 +20,7 @@ function emptyBreakdown(): VictoryPointsBreakdown {
   return { vc1: 0, vc2: 0, vc3: 0 }
 }
 
-export default function VictoryScoreboard({ draft, victoryPoints, getPlayerDisplayName, onAdjustVP }: VictoryScoreboardProps) {
+export default function VictoryScoreboard({ draft, victoryPoints, getPlayerDisplayName, onAdjustVP, onSetVP }: VictoryScoreboardProps) {
   return (
     <div className="corner-clip-sm flex-shrink-0" style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid #2a3a1a' }}>
       <div className="px-3 py-2" style={{ borderBottom: '1px solid #1a2a0a' }}>
@@ -72,9 +73,19 @@ export default function VictoryScoreboard({ draft, victoryPoints, getPlayerDispl
                           >
                             −
                           </button>
-                          <span className="font-mono text-sm font-bold" style={{ color: '#c9a84c', minWidth: 18, textAlign: 'center' }}>
-                            {value}
-                          </span>
+                          <input
+                            key={`${result.playerId}-${vc}-${value}`}
+                            type="number"
+                            min={0}
+                            defaultValue={value}
+                            onBlur={e => {
+                              const parsed = Number(e.target.value)
+                              if (Number.isFinite(parsed) && parsed >= 0) onSetVP(result.playerId, vc, parsed)
+                            }}
+                            onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
+                            className="font-mono text-sm font-bold text-center"
+                            style={{ color: '#c9a84c', width: 34, background: 'rgba(0,0,0,0.3)', border: '1px solid #3a4a2a' }}
+                          />
                           <button
                             onClick={() => onAdjustVP(result.playerId, vc, 1)}
                             className="w-5 h-5 font-mono text-sm corner-clip-sm"

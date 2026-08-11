@@ -34,6 +34,7 @@ export default function ControlPanel({ draft }: ControlPanelProps) {
     advanceStage,
     setBuildTotal,
     addVictoryPoints,
+    setVictoryPoints,
     resolveArtilleryAttack,
     addCommandReminder,
     toggleCommandReminder,
@@ -166,6 +167,21 @@ export default function ControlPanel({ draft }: ControlPanelProps) {
     })
   }
 
+  const handleSetVP = (playerId: number, vc: VictoryCondition, value: number) => {
+    const key = `vc${vc}` as 'vc1' | 'vc2' | 'vc3'
+    const current = session.victoryPoints[playerId]?.[key] ?? 0
+    const delta = value - current
+    if (delta === 0) return
+    setVictoryPoints(playerId, vc, value)
+    appendEvent({
+      turn: session.turn,
+      stage: session.stage,
+      playerId,
+      type: 'vp_scored',
+      payload: { points: delta, vc, reason: VC_REASON_LABELS[vc] },
+    })
+  }
+
   return (
     <div
       className="h-screen overflow-hidden flex flex-col p-4 sm:p-6 gap-4"
@@ -213,6 +229,7 @@ export default function ControlPanel({ draft }: ControlPanelProps) {
         victoryPoints={session.victoryPoints}
         getPlayerDisplayName={getPlayerDisplayName}
         onAdjustVP={(playerId, vc, delta) => handleAddVP(playerId, vc, delta)}
+        onSetVP={(playerId, vc, value) => handleSetVP(playerId, vc, value)}
       />
 
       {/* Stage indicator */}

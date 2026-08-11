@@ -239,6 +239,14 @@ export function useGameSession(draftId: string | null, results: DraftResult[]) {
     persist({ ...state, victoryPoints: { ...state.victoryPoints, [playerId]: updated } })
   }, [state, persist])
 
+  const setVictoryPoints = useCallback((playerId: number, vc: VictoryCondition, value: number) => {
+    if (!state) return
+    const current = state.victoryPoints[playerId] ?? emptyVictoryPoints()
+    const key = `vc${vc}` as keyof VictoryPointsBreakdown
+    const updated = { ...current, [key]: Math.max(0, value) }
+    persist({ ...state, victoryPoints: { ...state.victoryPoints, [playerId]: updated } })
+  }, [state, persist])
+
   const addArtilleryAttack = useCallback((attack: Omit<PendingArtilleryAttack, 'id'>) => {
     if (!state) return
     const id = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
@@ -293,6 +301,7 @@ export function useGameSession(draftId: string | null, results: DraftResult[]) {
     setBuildTotal,
     setBuildTotalOverride,
     addVictoryPoints,
+    setVictoryPoints,
     addArtilleryAttack,
     placeArtilleryOrder,
     resolveArtilleryAttack,

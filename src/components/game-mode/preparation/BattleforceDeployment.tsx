@@ -38,6 +38,12 @@ export default function BattleforceDeployment({ draft, preparationState, onUpdat
     }
   }
 
+  const handleDeployAll = (playerId: number, unitIds: string[]) => {
+    const deployedUnits = new Map(preparationState.deployedUnits)
+    deployedUnits.set(playerId, unitIds)
+    onUpdateState({ deployedUnits })
+  }
+
   const handleUndeployUnit = (playerId: number, unitId: string) => {
     const deployedUnits = new Map(preparationState.deployedUnits)
     const playerDeployed = deployedUnits.get(playerId) ?? []
@@ -144,9 +150,20 @@ export default function BattleforceDeployment({ draft, preparationState, onUpdat
               {/* Current Player's Units */}
               {currentPlayer && (
                 <div className="p-4 border" style={{ background: 'rgba(0,0,0,0.3)', borderColor: '#3a4a2a' }}>
-                  <h2 className="font-mono text-lg mb-3" style={{ color: '#7a9a5a' }}>
-                    Unidades de {getPlayerDisplayName(currentPlayer.playerId)}
-                  </h2>
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="font-mono text-lg" style={{ color: '#7a9a5a' }}>
+                      Unidades de {getPlayerDisplayName(currentPlayer.playerId)}
+                    </h2>
+                    {!isCurrentPlayerFinished && (
+                      <button
+                        onClick={() => handleDeployAll(currentDeployingPlayer, currentPlayerArmy.map(unit => unit.id))}
+                        className="px-3 py-1 font-mono text-xs"
+                        style={{ background: 'rgba(122,154,90,0.2)', border: '1px solid #3a4a2a', color: '#7a9a5a' }}
+                      >
+                        Deploy Todos
+                      </button>
+                    )}
+                  </div>
                   <div className="space-y-2">
                     {currentPlayerArmy.map((unit) => {
                       const isDeployed = currentPlayerDeployed.includes(unit.id)

@@ -41,13 +41,18 @@ export default function DraftPicker({ drafts, invalidDraftId }: DraftPickerProps
           drafts.map(draft => (
             <button
               key={draft.id}
-              onClick={() => router.push(`/game-mode?draftId=${draft.id}&view=control`)}
+              onClick={() => router.push(`/game-mode?draftId=${draft.id}`)}
               className="w-full text-left p-3 corner-clip-sm transition-colors"
               style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid #3a4a2a' }}
             >
               <div className="font-mono text-sm font-bold" style={{ color: '#e8d5a0' }}>{draft.name}</div>
               <div className="font-mono text-xs mt-0.5" style={{ color: '#5a7a4a' }}>
                 {draft.results?.length || 0} jogadores
+                {draft.preparationCompleted && (
+                  <span className="ml-2 px-2 py-0.5 text-xs" style={{ background: 'rgba(122,154,90,0.2)', color: '#7a9a5a' }}>
+                    Preparação completa
+                  </span>
+                )}
               </div>
             </button>
           ))

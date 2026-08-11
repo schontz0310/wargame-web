@@ -91,12 +91,13 @@ export interface DraftSettings {
 export interface DraftResult {
   playerId: number;
   playerName: string;
-  playerAlias?: string; // Optional custom display name, falls back to playerName
+  playerAlias?: string; // Custom display alias for the player, falls back to playerName
   units: DraftUnit[]; // Units drafted
   armyUnits: DraftUnit[]; // Units actually in the army (can be modified)
   secretCards: DraftUnit[]; // Cards added manually (only value shown, revealed in game)
   totalPoints: number;
   armyPoints: number; // Points of army units
+  armyPointsLimit?: number; // Optional point limit for the army
 }
 
 export interface DraftUnitWithQuantity {
@@ -118,6 +119,7 @@ export interface Draft {
   availableCards?: DraftCardWithQuantity[]; // Cards that can be drafted with quantities
   results: DraftResult[];
   sourceFilters?: Record<string, unknown>; // Store the filters used when generating
+  preparationCompleted?: boolean; // Whether the preparation phase has been completed
   createdAt: string;
   updatedAt: string;
 }

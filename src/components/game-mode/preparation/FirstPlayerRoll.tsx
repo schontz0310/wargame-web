@@ -14,6 +14,7 @@ interface FirstPlayerRollProps {
 export default function FirstPlayerRoll({ draft, preparationState, onUpdateState, onNextStage }: FirstPlayerRollProps) {
   const [rolling, setRolling] = useState(false)
   const [currentRollingPlayer, setCurrentRollingPlayer] = useState<number | null>(null)
+  const [manualRollInputs, setManualRollInputs] = useState<Record<number, string>>({})
 
   // Helper to get display name (alias or original name)
   const getPlayerDisplayName = (playerId: number) => {
@@ -25,7 +26,11 @@ export default function FirstPlayerRoll({ draft, preparationState, onUpdateState
     setRolling(true)
     setCurrentRollingPlayer(playerId)
 
-    // Simulate dice rolling animation
+    // Snapshot rolls once, mutate this local accumulator for the whole animation
+    // instead of re-reading the (possibly stale) preparationState prop on every
+    // tick — see rollAllDice for why that matters once multiple players are involved.
+    const rollsAccumulator = new Map(preparationState.diceRolls)
+
     let rollCount = 0
     const maxRolls = 10
     const rollInterval = setInterval(() => {
@@ -34,9 +39,8 @@ export default function FirstPlayerRoll({ draft, preparationState, onUpdateState
       const dice3 = Math.floor(Math.random() * 6) + 1
       const total = dice1 + dice2 + dice3
 
-      const updatedRolls = new Map(preparationState.diceRolls)
-      updatedRolls.set(playerId, total)
-      onUpdateState({ diceRolls: updatedRolls })
+      rollsAccumulator.set(playerId, total)
+      onUpdateState({ diceRolls: new Map(rollsAccumulator) })
 
       rollCount++
       if (rollCount >= maxRolls) {
@@ -51,9 +55,18 @@ export default function FirstPlayerRoll({ draft, preparationState, onUpdateState
     setRolling(true)
     let playerIndex = 0
 
+    // Accumulate all players' rolls in this single local Map across the whole
+    // sequence. Reading preparationState.diceRolls again for each player would
+    // use the stale snapshot from when rollAllDice was first called — onUpdateState
+    // triggers a re-render with a new preparationState, but this closure never
+    // sees it, so every player after the first would silently wipe out the
+    // previous players' already-rolled totals.
+    const rollsAccumulator = new Map(preparationState.diceRolls)
+
     const rollNextPlayer = () => {
       if (playerIndex >= draft.results.length) {
         setRolling(false)
+        setCurrentRollingPlayer(null)
         return
       }
 
@@ -68,9 +81,8 @@ export default function FirstPlayerRoll({ draft, preparationState, onUpdateState
         const dice3 = Math.floor(Math.random() * 6) + 1
         const total = dice1 + dice2 + dice3
 
-        const updatedRolls = new Map(preparationState.diceRolls)
-        updatedRolls.set(player.playerId, total)
-        onUpdateState({ diceRolls: updatedRolls })
+        rollsAccumulator.set(player.playerId, total)
+        onUpdateState({ diceRolls: new Map(rollsAccumulator) })
 
         rollCount++
         if (rollCount >= maxRolls) {
@@ -82,6 +94,20 @@ export default function FirstPlayerRoll({ draft, preparationState, onUpdateState
     }
 
     rollNextPlayer()
+  }
+
+  const handleManualRollSubmit = (playerId: number) => {
+    const raw = manualRollInputs[playerId]
+    const value = Number(raw)
+    if (!raw || !Number.isFinite(value) || value < 3 || value > 18) return
+    const updatedRolls = new Map(preparationState.diceRolls)
+    updatedRolls.set(playerId, value)
+    onUpdateState({ diceRolls: updatedRolls })
+    setManualRollInputs(prev => {
+      const next = { ...prev }
+      delete next[playerId]
+      return next
+    })
   }
 
   const determineFirstPlayer = () => {
@@ -142,19 +168,17 @@ export default function FirstPlayerRoll({ draft, preparationState, onUpdateState
             </p>
           </div>
 
-          {/* Roll All Button */}
-          {!allPlayersRolled && (
-            <div className="flex justify-center">
-              <button
-                onClick={rollAllDice}
-                disabled={rolling}
-                className="px-8 py-3 font-mono text-lg disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ background: 'rgba(122,154,90,0.3)', border: '1px solid #3a4a2a', color: '#7a9a5a' }}
-              >
-                {rolling ? 'Rolando...' : 'Rolar Todos os Dados'}
-              </button>
-            </div>
-          )}
+          {/* Roll All Button — stays visible after rolling so ties can be rerolled */}
+          <div className="flex justify-center">
+            <button
+              onClick={rollAllDice}
+              disabled={rolling}
+              className="px-8 py-3 font-mono text-lg disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ background: 'rgba(122,154,90,0.3)', border: '1px solid #3a4a2a', color: '#7a9a5a' }}
+            >
+              {rolling ? 'Rolando...' : allPlayersRolled ? 'Rolar Todos Novamente' : 'Rolar Todos os Dados'}
+            </button>
+          </div>
 
           {/* Player Rolls */}
           <div className="space-y-3">
@@ -184,20 +208,42 @@ export default function FirstPlayerRoll({ draft, preparationState, onUpdateState
                       )}
                     </div>
                     <div className="flex items-center gap-4">
-                      {roll !== undefined ? (
+                      {roll !== undefined && (
                         <div className="font-mono text-2xl font-bold" style={{ color: '#c9a84c' }}>
                           {roll}
                         </div>
-                      ) : (
-                        <button
-                          onClick={() => rollDice(result.playerId)}
-                          disabled={rolling}
-                          className="px-4 py-2 font-mono text-sm disabled:opacity-40 disabled:cursor-not-allowed"
-                          style={{ background: 'rgba(122,154,90,0.3)', border: '1px solid #3a4a2a', color: '#7a9a5a' }}
-                        >
-                          Rolar
-                        </button>
                       )}
+                      <button
+                        onClick={() => rollDice(result.playerId)}
+                        disabled={rolling}
+                        className="px-4 py-2 font-mono text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                        style={{ background: 'rgba(122,154,90,0.3)', border: '1px solid #3a4a2a', color: '#7a9a5a' }}
+                      >
+                        {roll !== undefined ? 'Rerolar' : 'Rolar'}
+                      </button>
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          min={3}
+                          max={18}
+                          value={manualRollInputs[result.playerId] ?? ''}
+                          onChange={e => setManualRollInputs(prev => ({ ...prev, [result.playerId]: e.target.value }))}
+                          onKeyDown={e => { if (e.key === 'Enter') handleManualRollSubmit(result.playerId) }}
+                          placeholder="3-18"
+                          disabled={rolling}
+                          className="w-16 px-2 py-2 font-mono text-sm disabled:opacity-40"
+                          style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid #3a4a2a', color: '#e8d5a0' }}
+                        />
+                        <button
+                          onClick={() => handleManualRollSubmit(result.playerId)}
+                          disabled={rolling || !manualRollInputs[result.playerId]}
+                          className="px-3 py-2 font-mono text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                          style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid #3a4a2a', color: '#7a9a5a' }}
+                          title="Usar valor rolado manualmente (dados físicos)"
+                        >
+                          Definir
+                        </button>
+                      </div>
                       {isRolling && (
                         <div className="flex gap-1">
                           {[1, 2, 3].map((i) => (

@@ -153,30 +153,30 @@ export default function ControlPanel({ draft }: ControlPanelProps) {
 
   return (
     <div
-      className="min-h-screen flex flex-col p-4 sm:p-6 gap-4"
+      className="h-screen overflow-hidden flex flex-col p-4 sm:p-6 gap-4"
       style={{ background: 'linear-gradient(160deg,#080c05 0%,#0d1208 60%,#0a0f06 100%)' }}
     >
       {/* Header */}
       <div className="flex items-center justify-between flex-shrink-0">
         <div>
-          <h1 className="text-lg font-bold font-mono tracking-widest uppercase" style={{ color: '#e8d5a0' }}>
+          <h1 className="text-xl font-bold font-mono tracking-widest uppercase" style={{ color: '#e8d5a0' }}>
             {draft.name}
           </h1>
-          <p className="font-mono text-xs mt-0.5" style={{ color: '#5a7a4a' }}>
+          <p className="font-mono text-sm mt-0.5" style={{ color: '#5a7a4a' }}>
             Turno {session.turn} · Rodada {round}
           </p>
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => router.push(`/game-mode?draftId=${draft.id}&view=log`)}
-            className="px-3 py-1.5 font-mono text-xs corner-clip-sm"
+            className="px-3 py-1.5 font-mono text-sm corner-clip-sm"
             style={{ background: 'rgba(122,154,90,0.15)', border: '1px solid #3a4a2a', color: '#7a9a5a' }}
           >
             VER LOG
           </button>
           <button
             onClick={() => setConfirmingReset(true)}
-            className="px-3 py-1.5 font-mono text-xs corner-clip-sm"
+            className="px-3 py-1.5 font-mono text-sm corner-clip-sm"
             style={{ background: 'rgba(150,50,50,0.15)', border: '1px solid #5a2a2a', color: '#c06060' }}
           >
             RESETAR
@@ -197,7 +197,7 @@ export default function ControlPanel({ draft }: ControlPanelProps) {
         {ORDER_STAGES.map(stage => (
           <div
             key={stage}
-            className="flex-1 text-center py-2 font-mono text-xs tracking-widest uppercase corner-clip-sm"
+            className="flex-1 text-center py-2 font-mono text-sm tracking-widest uppercase corner-clip-sm"
             style={{
               background: session.stage === stage ? 'rgba(201,168,76,0.15)' : 'rgba(0,0,0,0.3)',
               border: session.stage === stage ? '1px solid #c9a84c' : '1px solid #2a3a1a',
@@ -221,7 +221,7 @@ export default function ControlPanel({ draft }: ControlPanelProps) {
             <button
               key={result.playerId}
               onClick={() => setViewedPlayerId(result.playerId)}
-              className="px-4 py-2 font-mono text-xs corner-clip-sm transition-colors text-left"
+              className="px-4 py-2 font-mono text-sm corner-clip-sm transition-colors text-left"
               style={{
                 background: isActive ? 'rgba(201,168,76,0.15)' : isViewed ? 'rgba(122,154,90,0.1)' : 'rgba(0,0,0,0.3)',
                 border: isActive ? '1px solid #c9a84c' : '1px solid #3a4a2a',
@@ -231,7 +231,7 @@ export default function ControlPanel({ draft }: ControlPanelProps) {
             >
               <div>{displayName}</div>
               {vp > 0 && (
-                <div className="font-mono text-[9px] opacity-70">{vp} VP</div>
+                <div className="font-mono text-[10px] opacity-70">{vp} VP</div>
               )}
             </button>
           )
@@ -253,81 +253,83 @@ export default function ControlPanel({ draft }: ControlPanelProps) {
           onRemoveReminder={id => removeCommandReminder(session.activePlayerId, id)}
         />
       ) : (
-        <>
-          {/* Orders counter */}
-          {session.stage === 'order' && (
-            <div
-              className="p-3 corner-clip-sm flex items-center gap-3"
-              style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid #2a3a1a' }}
-            >
-              <span className="font-mono text-xs" style={{ color: '#5a7a4a' }}>ORDENS</span>
-              <span className="font-mono text-sm font-bold" style={{ color: '#c9a84c' }}>
-                {activePlayerState.ordersUsed}/{ordersTotal}
-              </span>
-              <span className="font-mono text-[10px] ml-auto" style={{ color: '#3a5a2a' }}>build total</span>
-              <input
-                type="number"
-                min={150}
-                step={150}
-                placeholder="300"
-                defaultValue={session.buildTotal}
-                className="w-24 px-2 py-1 text-xs font-mono"
-                style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid #3a4a2a', color: '#c9a84c' }}
-                onBlur={e => {
-                  const value = Number(e.target.value)
-                  if (value > 0) setBuildTotal(value)
-                }}
-              />
-            </div>
-          )}
-
-          {/* Cleanup info */}
-          {session.stage === 'cleanup' && (
-            <div
-              className="p-3 corner-clip-sm space-y-1"
-              style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid #2a3a1a' }}
-            >
-              <div className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: '#c9a84c' }}>
-                Fase de Limpeza
+        <div className="flex-1 min-h-0 flex flex-col gap-4">
+          <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-4">
+            {/* Orders counter */}
+            {session.stage === 'order' && (
+              <div
+                className="p-3 corner-clip-sm flex items-center gap-3 flex-shrink-0"
+                style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid #2a3a1a' }}
+              >
+                <span className="font-mono text-sm" style={{ color: '#5a7a4a' }}>ORDENS</span>
+                <span className="font-mono text-base font-bold" style={{ color: '#c9a84c' }}>
+                  {activePlayerState.ordersUsed}/{ordersTotal}
+                </span>
+                <span className="font-mono text-xs ml-auto" style={{ color: '#3a5a2a' }}>build total</span>
+                <input
+                  type="number"
+                  min={150}
+                  step={150}
+                  placeholder="300"
+                  defaultValue={session.buildTotal}
+                  className="w-24 px-2 py-1 text-sm font-mono"
+                  style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid #3a4a2a', color: '#c9a84c' }}
+                  onBlur={e => {
+                    const value = Number(e.target.value)
+                    if (value > 0) setBuildTotal(value)
+                  }}
+                />
               </div>
-              <ul className="font-mono text-[10px] space-y-1 mt-2" style={{ color: '#7a9a5a' }}>
-                <li>• Remova tokens de ordem de unidades que não receberam ordens</li>
-                <li>• Mechs sem ordem perdem 1 calor (gire o dial de calor)</li>
-                <li>• Mechs em água rasa sem ordem no início/fim perdem 1 calor adicional</li>
-                <li>• Ordens não usadas são perdidas</li>
-              </ul>
-            </div>
-          )}
+            )}
+
+            {/* Cleanup info */}
+            {session.stage === 'cleanup' && (
+              <div
+                className="p-3 corner-clip-sm space-y-1 flex-shrink-0"
+                style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid #2a3a1a' }}
+              >
+                <div className="font-mono text-sm font-bold uppercase tracking-widest" style={{ color: '#c9a84c' }}>
+                  Fase de Limpeza
+                </div>
+                <ul className="font-mono text-xs space-y-1 mt-2" style={{ color: '#7a9a5a' }}>
+                  <li>• Remova tokens de ordem de unidades que não receberam ordens</li>
+                  <li>• Mechs sem ordem perdem 1 calor (gire o dial de calor)</li>
+                  <li>• Mechs em água rasa sem ordem no início/fim perdem 1 calor adicional</li>
+                  <li>• Ordens não usadas são perdidas</li>
+                </ul>
+              </div>
+            )}
+          </div>
 
           {/* Action buttons */}
-          <div className="flex gap-3 flex-wrap mt-auto">
+          <div className="flex gap-3 flex-wrap flex-shrink-0">
             <button
               onClick={handleAdvanceStage}
-              className="px-4 py-2 font-mono text-xs corner-clip-sm"
+              className="px-4 py-2 font-mono text-sm corner-clip-sm"
               style={{ background: 'rgba(201,168,76,0.15)', border: '1px solid #c9a84c', color: '#c9a84c' }}
             >
               {session.stage === 'order' ? 'INICIAR LIMPEZA →' : 'PRÓXIMO TURNO →'}
             </button>
             <button
               onClick={() => goToArmy(viewedPlayerId)}
-              className="px-4 py-2 font-mono text-xs corner-clip-sm"
+              className="px-4 py-2 font-mono text-sm corner-clip-sm"
               style={{ background: 'rgba(122,154,90,0.15)', border: '1px solid #3a4a2a', color: '#7a9a5a' }}
             >
               VER ARMY
             </button>
           </div>
-        </>
+        </div>
       )}
 
       {/* Reset dialog */}
       {confirmingReset && (
         <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(0,0,0,0.7)' }}>
           <div className="p-6 corner-clip-sm max-w-sm w-full mx-4" style={{ background: '#111608', border: '1px solid #5a2a2a' }}>
-            <p className="font-mono text-sm mb-4" style={{ color: '#e8d5a0' }}>Escolha o tipo de reset:</p>
+            <p className="font-mono text-base mb-4" style={{ color: '#e8d5a0' }}>Escolha o tipo de reset:</p>
             <div className="space-y-3 mb-4">
               <button
                 onClick={handleResetToPreparation}
-                className="w-full p-3 font-mono text-xs corner-clip-sm text-left"
+                className="w-full p-3 font-mono text-sm corner-clip-sm text-left"
                 style={{ background: 'rgba(201,168,76,0.1)', border: '1px solid #c9a84c', color: '#c9a84c' }}
               >
                 <div className="font-bold mb-1">RESETAR PARA FASE PREPARATÓRIA</div>
@@ -335,7 +337,7 @@ export default function ControlPanel({ draft }: ControlPanelProps) {
               </button>
               <button
                 onClick={handleResetBattleOnly}
-                className="w-full p-3 font-mono text-xs corner-clip-sm text-left"
+                className="w-full p-3 font-mono text-sm corner-clip-sm text-left"
                 style={{ background: 'rgba(150,50,50,0.1)', border: '1px solid #5a2a2a', color: '#c06060' }}
               >
                 <div className="font-bold mb-1">RESETAR APENAS BATALHA</div>
@@ -345,7 +347,7 @@ export default function ControlPanel({ draft }: ControlPanelProps) {
             <div className="flex justify-end">
               <button
                 onClick={() => setConfirmingReset(false)}
-                className="px-3 py-1.5 font-mono text-xs"
+                className="px-3 py-1.5 font-mono text-sm"
                 style={{ color: '#7a9a5a' }}
               >
                 CANCELAR

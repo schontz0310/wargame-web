@@ -23,7 +23,7 @@ export default function VictoryScoreboard({ draft, victoryPoints, getPlayerDispl
   return (
     <div className="corner-clip-sm flex-shrink-0" style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid #2a3a1a' }}>
       <div className="px-3 py-2" style={{ borderBottom: '1px solid #1a2a0a' }}>
-        <span className="font-mono text-[10px] tracking-widest uppercase font-bold" style={{ color: '#c9a84c' }}>
+        <span className="font-mono text-xs tracking-widest uppercase font-bold" style={{ color: '#c9a84c' }}>
           Placar da Partida
         </span>
       </div>
@@ -32,20 +32,20 @@ export default function VictoryScoreboard({ draft, victoryPoints, getPlayerDispl
         <table className="w-full" style={{ borderCollapse: 'collapse' }}>
           <thead>
             <tr>
-              <th className="text-left font-mono text-[9px] uppercase tracking-widest px-2 py-1" style={{ color: '#5a7a4a' }}>
+              <th className="text-left font-mono text-[10px] uppercase tracking-widest px-2 py-1" style={{ color: '#5a7a4a' }}>
                 Jogador
               </th>
               {ALL_VCS.map(vc => (
                 <th
                   key={vc}
-                  className="text-center font-mono text-[9px] uppercase tracking-widest px-2 py-1 whitespace-nowrap"
+                  className="text-center font-mono text-[10px] uppercase tracking-widest px-2 py-1 whitespace-nowrap"
                   style={{ color: '#5a7a4a', cursor: 'help' }}
                   title={VICTORY_CONDITION_DESCRIPTIONS[vc]}
                 >
                   {VICTORY_CONDITION_LABELS[vc]}
                 </th>
               ))}
-              <th className="text-center font-mono text-[9px] uppercase tracking-widest px-2 py-1" style={{ color: '#c9a84c' }}>
+              <th className="text-center font-mono text-[10px] uppercase tracking-widest px-2 py-1" style={{ color: '#c9a84c' }}>
                 Total
               </th>
             </tr>
@@ -56,7 +56,7 @@ export default function VictoryScoreboard({ draft, victoryPoints, getPlayerDispl
               const total = vp.vc1 + vp.vc2 + vp.vc3
               return (
                 <tr key={result.playerId} style={{ borderTop: '1px solid #1a2a0a' }}>
-                  <td className="font-mono text-xs px-2 py-1.5 truncate max-w-[140px]" style={{ color: '#e8d5a0' }}>
+                  <td className="font-mono text-sm px-2 py-1.5 truncate max-w-[140px]" style={{ color: '#e8d5a0' }}>
                     {getPlayerDisplayName(result.playerId)}
                   </td>
                   {MANUAL_VCS.map(vc => {
@@ -67,17 +67,17 @@ export default function VictoryScoreboard({ draft, victoryPoints, getPlayerDispl
                           <button
                             onClick={() => onAdjustVP(result.playerId, vc, -1)}
                             disabled={value <= 0}
-                            className="w-5 h-5 font-mono text-xs corner-clip-sm disabled:opacity-30"
+                            className="w-5 h-5 font-mono text-sm corner-clip-sm disabled:opacity-30"
                             style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid #3a4a2a', color: '#7a9a5a' }}
                           >
                             −
                           </button>
-                          <span className="font-mono text-xs font-bold" style={{ color: '#c9a84c', minWidth: 18, textAlign: 'center' }}>
+                          <span className="font-mono text-sm font-bold" style={{ color: '#c9a84c', minWidth: 18, textAlign: 'center' }}>
                             {value}
                           </span>
                           <button
                             onClick={() => onAdjustVP(result.playerId, vc, 1)}
-                            className="w-5 h-5 font-mono text-xs corner-clip-sm"
+                            className="w-5 h-5 font-mono text-sm corner-clip-sm"
                             style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid #3a4a2a', color: '#7a9a5a' }}
                           >
                             +
@@ -86,10 +86,10 @@ export default function VictoryScoreboard({ draft, victoryPoints, getPlayerDispl
                       </td>
                     )
                   })}
-                  <td className="text-center font-mono text-xs px-2 py-1.5" style={{ color: '#7a9a5a' }}>
+                  <td className="text-center font-mono text-sm px-2 py-1.5" style={{ color: '#7a9a5a' }}>
                     {vp.vc3}
                   </td>
-                  <td className="text-center font-mono text-sm font-bold px-2 py-1.5" style={{ color: '#c9a84c' }}>
+                  <td className="text-center font-mono text-base font-bold px-2 py-1.5" style={{ color: '#c9a84c' }}>
                     {total}
                   </td>
                 </tr>

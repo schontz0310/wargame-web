@@ -45,8 +45,23 @@ export default function ControlPanel({ draft }: ControlPanelProps) {
   const [confirmingReset, setConfirmingReset] = useState(false)
   const [drafts, setDrafts] = useState<Draft[]>([])
   const [isClient, setIsClient] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
 
   useEffect(() => { setIsClient(true) }, [])
+
+  useEffect(() => {
+    const handleFullscreenChange = () => setIsFullscreen(document.fullscreenElement !== null)
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  }, [])
+
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen()
+    } else {
+      document.documentElement.requestFullscreen().catch(() => {})
+    }
+  }
 
   useEffect(() => {
     if (!isClient) return
@@ -167,6 +182,14 @@ export default function ControlPanel({ draft }: ControlPanelProps) {
           </p>
         </div>
         <div className="flex gap-2">
+          <button
+            onClick={toggleFullscreen}
+            className="px-3 py-1.5 font-mono text-sm corner-clip-sm"
+            style={{ background: 'rgba(122,154,90,0.15)', border: '1px solid #3a4a2a', color: '#7a9a5a' }}
+            title={isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
+          >
+            {isFullscreen ? '⤡ SAIR' : '⤢ TELA CHEIA'}
+          </button>
           <button
             onClick={() => router.push(`/game-mode?draftId=${draft.id}&view=log`)}
             className="px-3 py-1.5 font-mono text-sm corner-clip-sm"

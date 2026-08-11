@@ -120,9 +120,76 @@ export interface TerrainFeature {
   id: string
   playerId: number
   name: string
+  code: string
   x: number
   y: number
 }
+
+// Official WizKids-approved terrain models (warrenborn.com/Terrain.html), grouped
+// by the same 5 categories the rulebook uses. Each model carries its official
+// control code (from the product PDF filenames, e.g. MWDATerrainC1hi.pdf → "C1").
+// The two "Combined Terrain" pieces that share the "Blocking / Hindering" name
+// are distinct physical pieces — their codes (C1 / C3) are what disambiguates them.
+export interface TerrainModel {
+  code: string
+  name: string
+}
+
+export interface TerrainCategory {
+  category: string
+  models: TerrainModel[]
+}
+
+export const TERRAIN_CATEGORIES: TerrainCategory[] = [
+  {
+    category: 'Abrupt Terrain',
+    models: [
+      { code: 'A1', name: 'Abrupt Elevated' },
+    ],
+  },
+  {
+    category: 'Blocking Terrain',
+    models: [
+      { code: 'B1', name: 'Office Building' },
+      { code: 'B2', name: 'City Block A' },
+      { code: 'B3', name: 'City Block B' },
+      { code: 'B4', name: 'City Block C' },
+      { code: 'B5', name: 'Industrial Complex' },
+      { code: 'B6', name: 'Industrial Tower' },
+      { code: 'B7', name: 'Butte' },
+      { code: 'B8', name: 'Fortification Wall' },
+    ],
+  },
+  {
+    category: 'Combined Terrain',
+    models: [
+      { code: 'C1', name: 'Blocking / Hindering' },
+      { code: 'C2', name: 'Water / Hindering' },
+      { code: 'C3', name: 'Blocking / Hindering' },
+      { code: 'C4', name: 'Abrupt / Hindering / Water' },
+    ],
+  },
+  {
+    category: 'Hindering Terrain',
+    models: [
+      { code: 'h1', name: 'Woodland' },
+      { code: 'h2', name: 'Orchard' },
+      { code: 'h4', name: 'Brush' },
+    ],
+  },
+  {
+    category: 'Water Terrain',
+    models: [
+      { code: 'W1', name: 'Lagoon' },
+      { code: 'W2', name: 'Pool' },
+      { code: 'W3', name: 'Canal' },
+      { code: 'W4', name: 'Tarn' },
+      { code: 'W5', name: 'Watercourse' },
+      { code: 'W6', name: 'Watercourse Bend' },
+      { code: 'W7', name: 'Canal Bend' },
+    ],
+  },
+]
 
 export interface BattlefieldSetup {
   battlefieldSize: number // 3 feet = 36 inches

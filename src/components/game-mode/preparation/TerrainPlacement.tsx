@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import type { Draft } from '@/lib/api'
-import { type TerrainFeature, type PreparationState } from '@/lib/gameMode'
+import { TERRAIN_CATEGORIES, type TerrainModel, type TerrainFeature, type PreparationState } from '@/lib/gameMode'
 
 interface TerrainPlacementProps {
   draft: Draft
@@ -36,7 +36,7 @@ export default function TerrainPlacement({ draft, preparationState, onUpdateStat
     return playerIds[nextIndex]
   }
 
-  const handlePlaceTerrain = (terrainName: string) => {
+  const handlePlaceTerrain = (terrain: TerrainModel) => {
     // Ensure we have a current player
     let placingPlayerId = currentPlacingPlayer
     if (placingPlayerId === null) {
@@ -63,7 +63,8 @@ export default function TerrainPlacement({ draft, preparationState, onUpdateStat
     const newTerrain: TerrainFeature = {
       id: `terrain-${Date.now()}`,
       playerId: placingPlayerId,
-      name: terrainName,
+      name: terrain.name,
+      code: terrain.code,
       x: 0, // Will be set by user on battlefield
       y: 0  // Will be set by user on battlefield
     }
@@ -189,21 +190,31 @@ export default function TerrainPlacement({ draft, preparationState, onUpdateStat
                 <h2 className="font-mono text-lg mb-3" style={{ color: '#7a9a5a' }}>
                   Selecione o Terreno
                 </h2>
-                <div className="grid grid-cols-2 gap-3">
-                  {['Bloco', 'Árvore', 'Edifício', 'Água', 'Colina', 'Ruína'].map((terrain) => (
-                    <button
-                      key={terrain}
-                      onClick={() => handlePlaceTerrain(terrain)}
-                      disabled={placedTerrain >= maxTerrain}
-                      className="p-4 font-mono text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                      style={{
-                        background: 'rgba(122,154,90,0.1)',
-                        border: '1px solid #3a4a2a',
-                        color: '#e8d5a0'
-                      }}
-                    >
-                      {terrain}
-                    </button>
+                <div className="space-y-4">
+                  {TERRAIN_CATEGORIES.map(({ category, models }) => (
+                    <div key={category}>
+                      <h3 className="font-mono text-xs uppercase tracking-widest mb-2" style={{ color: '#5a7a4a' }}>
+                        {category}
+                      </h3>
+                      <div className="grid grid-cols-2 gap-3">
+                        {models.map((model) => (
+                          <button
+                            key={model.code}
+                            onClick={() => handlePlaceTerrain(model)}
+                            disabled={placedTerrain >= maxTerrain}
+                            className="p-4 font-mono text-sm text-left transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            style={{
+                              background: 'rgba(122,154,90,0.1)',
+                              border: '1px solid #3a4a2a',
+                              color: '#e8d5a0'
+                            }}
+                          >
+                            <span className="font-bold mr-2" style={{ color: '#c9a84c' }}>{model.code}</span>
+                            {model.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -224,6 +235,9 @@ export default function TerrainPlacement({ draft, preparationState, onUpdateStat
                         style={{ background: 'rgba(122,154,90,0.1)' }}
                       >
                         <div className="flex items-center gap-3">
+                          <span className="font-mono text-xs font-bold" style={{ color: '#c9a84c' }}>
+                            {terrain.code}
+                          </span>
                           <span className="font-mono text-sm" style={{ color: '#e8d5a0' }}>
                             {terrain.name}
                           </span>

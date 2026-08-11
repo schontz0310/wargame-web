@@ -36,6 +36,22 @@ export const VICTORY_CONDITION_DESCRIPTIONS: Record<VictoryCondition, string> = 
   3: 'No início de cada uma das suas fases de Comando: 1 VP por unidade sua que ocupa a zona de deployment do oponente.',
 }
 
+// Rulebook p.40 "Determining the Winner": each VC is scored separately — whoever
+// has the single highest total for a VC wins that VC (a tie means nobody wins
+// it). The game winner is whoever wins the most VCs — NOT the sum of raw VC
+// points, since VC1/VC2 are point-values and VC3 is a per-turn counter, so
+// adding them together mixes incompatible scales.
+export function vcWinner(playerIds: number[], valueOf: (playerId: number) => number): number | null {
+  let max = -Infinity
+  let winners: number[] = []
+  for (const pid of playerIds) {
+    const v = valueOf(pid)
+    if (v > max) { max = v; winners = [pid] }
+    else if (v === max) { winners.push(pid) }
+  }
+  return winners.length === 1 ? winners[0] : null
+}
+
 // Order types not supported yet — shown disabled in the picker.
 export const DISABLED_ORDER_TYPES: OrderType[] = ['assault']
 

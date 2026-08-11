@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Draft } from '@/lib/api'
 import { useGameSession } from '@/hooks/useGameSession'
-import { computeOrdersTotal, nextStage, ORDER_STAGES, VICTORY_CONDITION_LABELS, type OrderStage, type VictoryCondition } from '@/lib/gameMode'
+import { computeOrdersTotal, nextStage, ORDER_STAGES, vcWinner, VICTORY_CONDITION_LABELS, type OrderStage, type VictoryCondition } from '@/lib/gameMode'
 import { useBattleLog } from '@/hooks/useBattleLog'
 import { safeLocalStorage } from '@/lib/storage'
 import CommandPhasePanel from './CommandPhasePanel'
@@ -251,31 +251,39 @@ export default function ControlPanel({ draft }: ControlPanelProps) {
 
       {/* Player tabs */}
       <div className="flex gap-2 flex-wrap flex-shrink-0">
-        {draft.results.map(result => {
-          const isActive = result.playerId === session.activePlayerId
-          const isViewed = result.playerId === viewedPlayerId
-          const vpBreakdown = session.victoryPoints[result.playerId]
-          const vp = vpBreakdown ? vpBreakdown.vc1 + vpBreakdown.vc2 + vpBreakdown.vc3 : 0
-          const displayName = getPlayerDisplayName(result.playerId)
-          return (
-            <button
-              key={result.playerId}
-              onClick={() => setViewedPlayerId(result.playerId)}
-              className="px-4 py-2 font-mono text-sm corner-clip-sm transition-colors text-left"
-              style={{
-                background: isActive ? 'rgba(201,168,76,0.15)' : isViewed ? 'rgba(122,154,90,0.1)' : 'rgba(0,0,0,0.3)',
-                border: isActive ? '1px solid #c9a84c' : '1px solid #3a4a2a',
-                color: isActive ? '#c9a84c' : '#7a9a5a',
-                boxShadow: isActive ? '0 0 8px rgba(201,168,76,0.4)' : 'none',
-              }}
-            >
-              <div>{displayName}</div>
-              {vp > 0 && (
-                <div className="font-mono text-[10px] opacity-70">{vp} VP</div>
-              )}
-            </button>
-          )
-        })}
+        {(() => {
+          const playerIds = draft.results.map(r => r.playerId)
+          const vpOf = (playerId: number) => session.victoryPoints[playerId]
+          const winnerByVc: Record<VictoryCondition, number | null> = {
+            1: vcWinner(playerIds, pid => vpOf(pid)?.vc1 ?? 0),
+            2: vcWinner(playerIds, pid => vpOf(pid)?.vc2 ?? 0),
+            3: vcWinner(playerIds, pid => vpOf(pid)?.vc3 ?? 0),
+          }
+          return draft.results.map(result => {
+            const isActive = result.playerId === session.activePlayerId
+            const isViewed = result.playerId === viewedPlayerId
+            const vcsWon = ([1, 2, 3] as VictoryCondition[]).filter(vc => winnerByVc[vc] === result.playerId).length
+            const displayName = getPlayerDisplayName(result.playerId)
+            return (
+              <button
+                key={result.playerId}
+                onClick={() => setViewedPlayerId(result.playerId)}
+                className="px-4 py-2 font-mono text-sm corner-clip-sm transition-colors text-left"
+                style={{
+                  background: isActive ? 'rgba(201,168,76,0.15)' : isViewed ? 'rgba(122,154,90,0.1)' : 'rgba(0,0,0,0.3)',
+                  border: isActive ? '1px solid #c9a84c' : '1px solid #3a4a2a',
+                  color: isActive ? '#c9a84c' : '#7a9a5a',
+                  boxShadow: isActive ? '0 0 8px rgba(201,168,76,0.4)' : 'none',
+                }}
+              >
+                <div>{displayName}</div>
+                {vcsWon > 0 && (
+                  <div className="font-mono text-[10px] opacity-70">{vcsWon}/3 VCs</div>
+                )}
+              </button>
+            )
+          })
+        })()}
       </div>
 
       {/* Stage-specific body */}

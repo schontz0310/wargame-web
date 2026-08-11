@@ -21,6 +21,21 @@ export const ORDER_TYPE_LABELS: Record<OrderType, string> = {
 // Order types that open the Attack Sequence checklist instead of marking the order immediately.
 export const COMBAT_ORDER_TYPES: OrderType[] = ['ranged', 'close']
 
+// The rulebook's 3 victory conditions (p.38-40).
+export type VictoryCondition = 1 | 2 | 3
+
+export const VICTORY_CONDITION_LABELS: Record<VictoryCondition, string> = {
+  1: 'VC1 · Eliminação',
+  2: 'VC2 · Controle de Campo',
+  3: 'VC3 · Zona Adversária',
+}
+
+export const VICTORY_CONDITION_DESCRIPTIONS: Record<VictoryCondition, string> = {
+  1: 'Elimine unidades inimigas: cada unidade inimiga eliminada vale pontos de vitória iguais ao seu valor em pontos.',
+  2: 'No fim do jogo: suas unidades sobreviventes valem seu valor em pontos; cativos na sua zona de deployment valem o dobro do valor; unidades inimigas com Salvage fora da zona de deployment do dono também contam.',
+  3: 'No início de cada uma das suas fases de Comando: 1 VP por unidade sua que ocupa a zona de deployment do oponente.',
+}
+
 // Order types not supported yet — shown disabled in the picker.
 export const DISABLED_ORDER_TYPES: OrderType[] = ['assault']
 

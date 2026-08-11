@@ -4,10 +4,17 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Draft } from '@/lib/api'
 import { useGameSession } from '@/hooks/useGameSession'
-import { computeOrdersTotal, nextStage, ORDER_STAGES, type OrderStage } from '@/lib/gameMode'
+import { computeOrdersTotal, nextStage, ORDER_STAGES, VICTORY_CONDITION_LABELS, type OrderStage, type VictoryCondition } from '@/lib/gameMode'
 import { useBattleLog } from '@/hooks/useBattleLog'
 import { safeLocalStorage } from '@/lib/storage'
 import CommandPhasePanel from './CommandPhasePanel'
+import VictoryScoreboard from './VictoryScoreboard'
+
+const VC_REASON_LABELS: Record<VictoryCondition, string> = {
+  1: `${VICTORY_CONDITION_LABELS[1]}: unidade inimiga eliminada`,
+  2: `${VICTORY_CONDITION_LABELS[2]}: apurado no fim de jogo`,
+  3: `${VICTORY_CONDITION_LABELS[3]}: unidade na zona de deployment do oponente`,
+}
 
 const STAGE_LABELS: Record<OrderStage, string> = {
   command: 'Comando',
@@ -132,15 +139,15 @@ export default function ControlPanel({ draft }: ControlPanelProps) {
     resolveArtilleryAttack(attackId)
   }
 
-  const handleAddVP = (playerId: number, points: number) => {
-    if (points <= 0) return
-    addVictoryPoints(playerId, points)
+  const handleAddVP = (playerId: number, vc: VictoryCondition, points: number) => {
+    if (points === 0) return
+    addVictoryPoints(playerId, vc, points)
     appendEvent({
       turn: session.turn,
-      stage: 'command',
+      stage: session.stage,
       playerId,
       type: 'vp_scored',
-      payload: { points, reason: `${points} unidade(s) na zona adversária (VC3)` },
+      payload: { points, vc, reason: VC_REASON_LABELS[vc] },
     })
   }
 
@@ -177,6 +184,14 @@ export default function ControlPanel({ draft }: ControlPanelProps) {
         </div>
       </div>
 
+      {/* Victory scoreboard — visible on every stage tab */}
+      <VictoryScoreboard
+        draft={draft}
+        victoryPoints={session.victoryPoints}
+        getPlayerDisplayName={getPlayerDisplayName}
+        onAdjustVP={(playerId, vc, delta) => handleAddVP(playerId, vc, delta)}
+      />
+
       {/* Stage indicator */}
       <div className="flex gap-2 flex-shrink-0">
         {ORDER_STAGES.map(stage => (
@@ -199,7 +214,8 @@ export default function ControlPanel({ draft }: ControlPanelProps) {
         {draft.results.map(result => {
           const isActive = result.playerId === session.activePlayerId
           const isViewed = result.playerId === viewedPlayerId
-          const vp = session.victoryPoints[result.playerId] ?? 0
+          const vpBreakdown = session.victoryPoints[result.playerId]
+          const vp = vpBreakdown ? vpBreakdown.vc1 + vpBreakdown.vc2 + vpBreakdown.vc3 : 0
           const displayName = getPlayerDisplayName(result.playerId)
           return (
             <button

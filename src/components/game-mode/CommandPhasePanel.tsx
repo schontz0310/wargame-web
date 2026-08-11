@@ -4,7 +4,7 @@
 import { useState } from 'react'
 import type { Draft } from '@/lib/api'
 import type { CommandReminder, GameSessionState } from '@/hooks/useGameSession'
-import { FACTION_COMMAND_ABILITIES, type PendingArtilleryAttack } from '@/lib/gameMode'
+import { FACTION_COMMAND_ABILITIES, type PendingArtilleryAttack, type VictoryCondition } from '@/lib/gameMode'
 import ArtilleryResolutionOverlay from './ArtilleryResolutionOverlay'
 
 interface CommandPhasePanelProps {
@@ -12,7 +12,7 @@ interface CommandPhasePanelProps {
   session: GameSessionState
   getPlayerDisplayName: (playerId: number) => string
   onResolveArtillery: (attackId: string) => void
-  onAddVictoryPoints: (playerId: number, points: number) => void
+  onAddVictoryPoints: (playerId: number, vc: VictoryCondition, points: number) => void
   onProceedToOrders: () => void
   reminders: CommandReminder[]
   onAddReminder: (text: string) => void
@@ -61,7 +61,7 @@ export default function CommandPhasePanel({
 
   const handleVpApply = () => {
     if (deploymentUnitCount > 0) {
-      onAddVictoryPoints(session.activePlayerId, deploymentUnitCount)
+      onAddVictoryPoints(session.activePlayerId, 3, deploymentUnitCount)
       setVpApplied(true)
     }
   }
@@ -161,7 +161,7 @@ export default function CommandPhasePanel({
                 >+</button>
               </div>
               <span className="font-mono text-[10px]" style={{ color: '#5a7a4a', minWidth: 52, textAlign: 'right' }}>
-                Total: {session.victoryPoints[session.activePlayerId] ?? 0} VP
+                Total VC3: {session.victoryPoints[session.activePlayerId]?.vc3 ?? 0} VP
               </span>
             </div>
 

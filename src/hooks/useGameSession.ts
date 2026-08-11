@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { safeLocalStorage } from '@/lib/storage'
-import { nextStage as computeNextStage, nextPlayerId, type OrderStage, type OrderType, type PendingArtilleryAttack } from '@/lib/gameMode'
+import { nextStage as computeNextStage, nextPlayerId, type OrderStage, type OrderType, type PendingArtilleryAttack, type VictoryCondition } from '@/lib/gameMode'
 import type { DraftResult } from '@/lib/api'
 
 export type UnitOrderStatus = 'none' | 'ordered' | 'pushed'
@@ -34,13 +34,26 @@ export interface PlayerSessionState {
   commandReminders: CommandReminder[]
 }
 
+// Per-player victory point totals, broken down by the rulebook's 3 victory
+// conditions (p.38-40): VC1 eliminating opposing units, VC2 controlling the
+// battlefield (scored at game end), VC3 controlling the opponent's deployment zone.
+export interface VictoryPointsBreakdown {
+  vc1: number
+  vc2: number
+  vc3: number
+}
+
+function emptyVictoryPoints(): VictoryPointsBreakdown {
+  return { vc1: 0, vc2: 0, vc3: 0 }
+}
+
 export interface GameSessionState {
   turn: number
   stage: OrderStage
   activePlayerId: number
   buildTotal: number                          // agreed game build total (rulebook p.13)
   buildTotalOverride: Record<number, number>  // legacy per-player override, kept for compat
-  victoryPoints: Record<number, number>       // playerId -> cumulative VP
+  victoryPoints: Record<number, VictoryPointsBreakdown>  // playerId -> VC1/VC2/VC3 totals
   pendingArtillery: PendingArtilleryAttack[]  // placed in Order stage, resolved in Command
   players: Record<number, PlayerSessionState>
 }
@@ -51,6 +64,23 @@ function storageKey(draftId: string): string {
 
 function emptyPlayerState(): PlayerSessionState {
   return { ordersUsed: 0, unitOrders: {}, units: {}, commandReminders: [] }
+}
+
+// Sessions saved before victoryPoints was broken down by VC stored a plain
+// number per player; treat that legacy value as VC3 (the only VC previously
+// scorable in the app) so old in-progress sessions don't lose their totals.
+function normalizeVictoryPoints(raw: unknown): Record<number, VictoryPointsBreakdown> {
+  if (!raw || typeof raw !== 'object') return {}
+  const result: Record<number, VictoryPointsBreakdown> = {}
+  for (const [playerIdStr, value] of Object.entries(raw as Record<string, unknown>)) {
+    const playerId = Number(playerIdStr)
+    if (typeof value === 'number') {
+      result[playerId] = { ...emptyVictoryPoints(), vc3: value }
+    } else if (value && typeof value === 'object') {
+      result[playerId] = { ...emptyVictoryPoints(), ...(value as Partial<VictoryPointsBreakdown>) }
+    }
+  }
+  return result
 }
 
 function firstPlayerId(results: DraftResult[]): number {
@@ -87,7 +117,7 @@ export function useGameSession(draftId: string | null, results: DraftResult[]) {
           ...parsed,
           buildTotal: parsed.buildTotal ?? 300,
           buildTotalOverride: parsed.buildTotalOverride ?? {},
-          victoryPoints: parsed.victoryPoints ?? {},
+          victoryPoints: normalizeVictoryPoints(parsed.victoryPoints),
           pendingArtillery: parsed.pendingArtillery ?? [],
         })
         return
@@ -201,10 +231,12 @@ export function useGameSession(draftId: string | null, results: DraftResult[]) {
     persist({ ...state, buildTotal: value })
   }, [state, persist])
 
-  const addVictoryPoints = useCallback((playerId: number, points: number) => {
+  const addVictoryPoints = useCallback((playerId: number, vc: VictoryCondition, points: number) => {
     if (!state) return
-    const current = state.victoryPoints[playerId] ?? 0
-    persist({ ...state, victoryPoints: { ...state.victoryPoints, [playerId]: current + points } })
+    const current = state.victoryPoints[playerId] ?? emptyVictoryPoints()
+    const key = `vc${vc}` as keyof VictoryPointsBreakdown
+    const updated = { ...current, [key]: current[key] + points }
+    persist({ ...state, victoryPoints: { ...state.victoryPoints, [playerId]: updated } })
   }, [state, persist])
 
   const addArtilleryAttack = useCallback((attack: Omit<PendingArtilleryAttack, 'id'>) => {

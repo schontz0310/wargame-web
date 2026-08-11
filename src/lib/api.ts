@@ -91,6 +91,7 @@ export interface DraftSettings {
 export interface DraftResult {
   playerId: number;
   playerName: string;
+  playerAlias?: string; // Optional custom display name, falls back to playerName
   units: DraftUnit[]; // Units drafted
   armyUnits: DraftUnit[]; // Units actually in the army (can be modified)
   secretCards: DraftUnit[]; // Cards added manually (only value shown, revealed in game)

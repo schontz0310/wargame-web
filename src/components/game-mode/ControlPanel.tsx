@@ -26,7 +26,6 @@ export default function ControlPanel({ draft }: ControlPanelProps) {
     getPlayerState,
     advanceStage,
     setBuildTotal,
-    setBuildTotalOverride,
     addVictoryPoints,
     resolveArtilleryAttack,
     resetSession,

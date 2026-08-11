@@ -25,7 +25,7 @@ export default function CommandPhasePanel({
   onProceedToOrders,
 }: CommandPhasePanelProps) {
   const [resolvingAttack, setResolvingAttack] = useState<PendingArtilleryAttack | null>(null)
-  const [deploymentUnitCounts, setDeploymentUnitCounts] = useState<Record<number, number>>({})
+  const [deploymentUnitCount, setDeploymentUnitCount] = useState(0)
   const [vpApplied, setVpApplied] = useState(false)
   const [appliedFactionAbilities, setAppliedFactionAbilities] = useState<Set<string>>(new Set())
 
@@ -44,15 +44,10 @@ export default function CommandPhasePanel({
   })
 
   const handleVpApply = () => {
-    let totalAdded = 0
-    for (const [playerIdStr, count] of Object.entries(deploymentUnitCounts)) {
-      const playerId = Number(playerIdStr)
-      if (count > 0) {
-        onAddVictoryPoints(playerId, count)
-        totalAdded += count
-      }
+    if (deploymentUnitCount > 0) {
+      onAddVictoryPoints(session.activePlayerId, deploymentUnitCount)
+      setVpApplied(true)
     }
-    if (totalAdded > 0) setVpApplied(true)
   }
 
   const allArtilleryResolved = myPendingArtillery.length === 0
@@ -129,40 +124,34 @@ export default function CommandPhasePanel({
 
           <div className="p-3 space-y-3">
             <p className="font-mono text-[10px]" style={{ color: '#5a7a4a' }}>
-              Marque 1 VP por unidade sua que ocupe a zona de deployment do oponente neste turno.
+              Marque 1 VP por unidade sua que ocupa a zona de deployment do oponente agora, no início desta fase de Comando.
             </p>
 
-            {draft.results.map(result => {
-              const vp = session.victoryPoints[result.playerId] ?? 0
-              const count = deploymentUnitCounts[result.playerId] ?? 0
-              return (
-                <div key={result.playerId} className="flex items-center gap-3">
-                  <span className="font-mono text-xs flex-1 truncate" style={{ color: '#e8d5a0' }}>
-                    {getPlayerDisplayName(result.playerId)}
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => setDeploymentUnitCounts(prev => ({ ...prev, [result.playerId]: Math.max(0, (prev[result.playerId] ?? 0) - 1) }))}
-                      className="w-6 h-6 font-mono text-sm corner-clip-sm"
-                      style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid #3a4a2a', color: '#7a9a5a' }}
-                    >−</button>
-                    <span className="font-mono text-sm font-bold" style={{ color: '#c9a84c', minWidth: 24, textAlign: 'center' }}>{count}</span>
-                    <button
-                      onClick={() => setDeploymentUnitCounts(prev => ({ ...prev, [result.playerId]: (prev[result.playerId] ?? 0) + 1 }))}
-                      className="w-6 h-6 font-mono text-sm corner-clip-sm"
-                      style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid #3a4a2a', color: '#7a9a5a' }}
-                    >+</button>
-                  </div>
-                  <span className="font-mono text-[10px]" style={{ color: '#5a7a4a', minWidth: 52, textAlign: 'right' }}>
-                    Total: {vp} VP
-                  </span>
-                </div>
-              )
-            })}
+            <div className="flex items-center gap-3">
+              <span className="font-mono text-xs flex-1 truncate" style={{ color: '#e8d5a0' }}>
+                {getPlayerDisplayName(session.activePlayerId)}
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setDeploymentUnitCount(prev => Math.max(0, prev - 1))}
+                  className="w-6 h-6 font-mono text-sm corner-clip-sm"
+                  style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid #3a4a2a', color: '#7a9a5a' }}
+                >−</button>
+                <span className="font-mono text-sm font-bold" style={{ color: '#c9a84c', minWidth: 24, textAlign: 'center' }}>{deploymentUnitCount}</span>
+                <button
+                  onClick={() => setDeploymentUnitCount(prev => prev + 1)}
+                  className="w-6 h-6 font-mono text-sm corner-clip-sm"
+                  style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid #3a4a2a', color: '#7a9a5a' }}
+                >+</button>
+              </div>
+              <span className="font-mono text-[10px]" style={{ color: '#5a7a4a', minWidth: 52, textAlign: 'right' }}>
+                Total: {session.victoryPoints[session.activePlayerId] ?? 0} VP
+              </span>
+            </div>
 
             <button
               onClick={handleVpApply}
-              disabled={vpApplied || Object.values(deploymentUnitCounts).every(c => c === 0)}
+              disabled={vpApplied || deploymentUnitCount === 0}
               className="px-3 py-1.5 font-mono text-xs corner-clip-sm disabled:opacity-40"
               style={{ background: 'rgba(122,154,90,0.15)', border: '1px solid #3a4a2a', color: '#7a9a5a' }}
             >

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import "@/lib/polyfills";
+import { LangProvider } from "@/hooks/useLang";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,7 +30,7 @@ export default function RootLayout({
         <meta charSet="utf-8" />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        {children}
+        <LangProvider>{children}</LangProvider>
       </body>
     </html>
   );

@@ -6,9 +6,11 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Unit, Draft, DraftSettings, DraftUnitWithQuantity, DraftCardWithQuantity, DraftResult, DraftUnit, apiService, Card } from '@/lib/api'
 import { safeLocalStorage } from '@/lib/storage'
+import { useT } from '@/hooks/useT'
 
 export default function DraftsPage() {
   const router = useRouter()
+  const t = useT()
   const [drafts, setDrafts] = useState<Draft[]>([])
   const [selectedDraft, setSelectedDraft] = useState<Draft | null>(null)
   const [isCreating, setIsCreating] = useState(false)
@@ -56,7 +58,8 @@ export default function DraftsPage() {
       { unitType: 'Card', quantity: 1 }
     ],
     useCollection: false,
-    respectFilters: false
+    respectFilters: false,
+    armyPointLimit: 300
   })
   const [isClient, setIsClient] = useState(false)
 
@@ -72,7 +75,7 @@ export default function DraftsPage() {
     try {
       const savedDrafts = safeLocalStorage.getItem('myDrafts')
       if (savedDrafts) {
-        const parsedDrafts = JSON.parse(savedDrafts)
+        const parsedDrafts = (JSON.parse(savedDrafts) as any[]).filter((d: any) => !d.id?.startsWith('std-'))
         // Migrate old drafts without availableUnits and new army fields
         const migratedDrafts = parsedDrafts.map((draft: any) => ({
           ...draft,
@@ -152,8 +155,8 @@ export default function DraftsPage() {
     const loadAllCards = async () => {
       try {
         console.log('Loading cards from API...')
-        const factionPrides = await apiService.getFactionPrides({ limit: 1000 })
-        const mercenaryContracts = await apiService.getMercenaryContracts({ limit: 1000 })
+        const factionPrides = await apiService.getFactionPrides({ limit: 100 })
+        const mercenaryContracts = await apiService.getMercenaryContracts({ limit: 100 })
         
         const allCards: Card[] = []
         
@@ -161,6 +164,7 @@ export default function DraftsPage() {
         factionPrides.factionPrides.forEach(fp => {
           allCards.push({
             id: fp.cardId,
+            dbId: fp.id,
             name: fp.faction,
             type: 'F',
             typeName: 'Faction Pride',
@@ -188,6 +192,7 @@ export default function DraftsPage() {
         mercenaryContracts.mercenaryContracts.forEach(mc => {
           allCards.push({
             id: mc.cardId,
+            dbId: mc.id,
             name: mc.faction,
             type: 'MC',
             typeName: 'Mercenary Contract',
@@ -351,12 +356,12 @@ export default function DraftsPage() {
     
     // Validate settings
     if (!settings || !settings.numberOfPlayers || !settings.boosterConfigs) {
-      alert('Configurações de draft inválidas')
+      alert(t('drafts.invalidSettings'))
       return
     }
-    
+
     if (selectedUnits.length === 0) {
-      alert('Selecione pelo menos uma unidade para o draft')
+      alert(t('drafts.selectUnitsFirst'))
       return
     }
     
@@ -385,12 +390,15 @@ export default function DraftsPage() {
     for (let i = 0; i < settings.numberOfPlayers; i++) {
       players.push({
         playerId: i + 1,
-        playerName: `Jogador ${i + 1}`,
+        playerName: `${t('control.player')} ${i + 1}`,
         units: [],
         armyUnits: [],
         secretCards: [],
         totalPoints: 0,
-        armyPoints: 0
+        armyPoints: 0,
+        ...(settings.armyPointLimit && settings.armyPointLimit > 0
+          ? { armyPointsLimit: settings.armyPointLimit }
+          : {})
       })
     }
     
@@ -455,7 +463,8 @@ export default function DraftsPage() {
                 collectionNumber: selectedCard.collectionNumber,
                 quantity: 1,
                 isCard: true,
-                cardType: selectedCard.type
+                cardType: selectedCard.type,
+                cardDbId: selectedCard.dbId
               })
               
               currentPlayer.totalPoints += cardPoints
@@ -586,7 +595,7 @@ export default function DraftsPage() {
       
     } catch (error) {
       console.error('Error regenerating draft:', error)
-      alert('Erro ao regenerar draft. Tente novamente.')
+      alert(t('drafts.regenErr'))
     } finally {
       setIsGenerating(false)
     }
@@ -690,12 +699,12 @@ export default function DraftsPage() {
         
         setCollectionUnits(unitsFromFile)
         setUseCollectionAsSource(true)
-        setImportMessage(`Coleção importada com sucesso! ${unitsFromFile.length} unidades carregadas.`)
+        setImportMessage(`${t('drafts.importOkPre')} ${unitsFromFile.length} ${t('drafts.importOkPost')}`)
         setImportSuccess(true)
         setShowImportModal(true)
       } catch (error) {
         console.error('Error importing collection:', error)
-        setImportMessage('Erro ao importar coleção. Verifique se o arquivo JSON está no formato correto.')
+        setImportMessage(t('drafts.importErrMsg'))
         setImportSuccess(false)
         setShowImportModal(true)
       }
@@ -767,7 +776,7 @@ export default function DraftsPage() {
           await writable.write(dataStr)
           await writable.close()
           
-          setConfigMessage('Configuração de draft exportada com sucesso!')
+          setConfigMessage(t('drafts.configExportOk'))
           setConfigSuccess(true)
           setShowConfigModal(true)
         } else {
@@ -781,7 +790,7 @@ export default function DraftsPage() {
           document.body.removeChild(link)
           URL.revokeObjectURL(url)
           
-          setConfigMessage('Configuração de draft exportada com sucesso!')
+          setConfigMessage(t('drafts.configExportOk'))
           setConfigSuccess(true)
           setShowConfigModal(true)
         }
@@ -791,18 +800,18 @@ export default function DraftsPage() {
           return
         }
         navigator.clipboard.writeText(dataStr).then(() => {
-          setConfigMessage('Não foi possível baixar o arquivo. Os dados foram copiados para a área de transferência.')
+          setConfigMessage(t('drafts.configExportClipboard'))
           setConfigSuccess(true)
           setShowConfigModal(true)
         }).catch(() => {
-          setConfigMessage('Erro ao exportar configuração. Tente novamente.')
+          setConfigMessage(t('drafts.configExportErr'))
           setConfigSuccess(false)
           setShowConfigModal(true)
         })
       }
     } catch (error) {
       console.error('Export config error:', error)
-      setConfigMessage('Erro ao exportar configuração. Verifique o console para mais detalhes.')
+      setConfigMessage(t('drafts.configExportErr'))
       setConfigSuccess(false)
       setShowConfigModal(true)
     }
@@ -837,17 +846,17 @@ export default function DraftsPage() {
             setUnitFilters(configData.unitFilters)
           }
           
-          setConfigMessage(`Configuração importada com sucesso! ${configData.selectedUnits?.length || 0} tipos de unidades carregados.`)
+          setConfigMessage(`${t('drafts.configOkPre')} ${configData.selectedUnits?.length || 0} ${t('drafts.configOkPost')}`)
           setConfigSuccess(true)
           setShowConfigModal(true)
         } else {
-          setConfigMessage('Arquivo de configuração inválido. Verifique se é um arquivo de configuração de draft válido.')
+          setConfigMessage(t('drafts.configErrMsg'))
           setConfigSuccess(false)
           setShowConfigModal(true)
         }
       } catch (error) {
         console.error('Error importing config:', error)
-        setConfigMessage('Erro ao importar configuração. Verifique se o arquivo JSON está no formato correto.')
+        setConfigMessage(t('drafts.importErrMsg'))
         setConfigSuccess(false)
         setShowConfigModal(true)
       }
@@ -880,23 +889,31 @@ export default function DraftsPage() {
   // Army management functions
   const moveUnitToArmy = (playerId: number, unit: DraftUnit) => {
     if (!selectedDraft) return
-    
+
     const updatedDraft = {
       ...selectedDraft,
       results: selectedDraft.results.map(result => {
         if (result.playerId === playerId) {
-          // Remove from draft units
-          const newDraftUnits = result.units.filter(u => u.id !== unit.id)
+          const secretCards = result.secretCards || []
+          const currentArmyPoints = (result.armyUnits || []).reduce((sum, u) => sum + u.points, 0) +
+                                    secretCards.reduce((sum, c) => sum + c.points, 0)
+          if (result.armyPointsLimit && result.armyPointsLimit > 0 &&
+              currentArmyPoints + unit.points > result.armyPointsLimit) {
+            return result
+          }
+          // Remove exactly one occurrence by reference
+          const pool = [...result.units]
+          const idx = pool.indexOf(unit)
+          if (idx !== -1) pool.splice(idx, 1)
           // Add to army units
           const newArmyUnits = [...(result.armyUnits || []), unit]
-          const secretCards = result.secretCards || []
-          const newArmyPoints = newArmyUnits.reduce((sum, u) => sum + u.points, 0) + 
+          const newArmyPoints = newArmyUnits.reduce((sum, u) => sum + u.points, 0) +
                                secretCards.reduce((sum, c) => sum + c.points, 0)
-          const newDraftPoints = newDraftUnits.reduce((sum, u) => sum + u.points, 0)
-          
+          const newDraftPoints = pool.reduce((sum, u) => sum + u.points, 0)
+
           return {
             ...result,
-            units: newDraftUnits,
+            units: pool,
             armyUnits: newArmyUnits,
             totalPoints: newDraftPoints,
             armyPoints: newArmyPoints
@@ -923,9 +940,12 @@ export default function DraftsPage() {
       ...selectedDraft,
       results: selectedDraft.results.map(result => {
         if (result.playerId === playerId) {
-          // Remove from army units
-          const newArmyUnits = (result.armyUnits || []).filter(u => u.id !== unit.id)
-          // Add to draft units
+          // Remove exactly one occurrence by reference
+          const armyPool = [...(result.armyUnits || [])]
+          const armyIdx = armyPool.indexOf(unit)
+          if (armyIdx !== -1) armyPool.splice(armyIdx, 1)
+          const newArmyUnits = armyPool
+          // Add back to draft units
           const newDraftUnits = [...result.units, unit]
           const secretCards = result.secretCards || []
           const newArmyPoints = newArmyUnits.reduce((sum, u) => sum + u.points, 0) + 
@@ -1147,25 +1167,33 @@ export default function DraftsPage() {
           <div className="flex justify-between items-center flex-wrap gap-3">
             <div>
               <h1 className="text-2xl font-bold font-mono tracking-widest uppercase" style={{color:'#e8d5a0'}}>Drafts</h1>
-              <p className="text-xs font-mono mt-1" style={{color:'#4a5e3a'}}>Crie e gerencie seus drafts de unidades</p>
+              <p className="text-xs font-mono mt-1" style={{color:'#4a5e3a'}}>{t('drafts.subtitle')}</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <button onClick={() => router.push('/search')} className="px-3 py-1.5 font-mono text-xs corner-clip-sm transition-colors" style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>
-                BUSCAR
+                {t('drafts.btnSearch')}
               </button>
               <label className="px-3 py-1.5 font-mono text-xs corner-clip-sm transition-colors cursor-pointer" style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>
-                IMP. COLEÇÃO
+                {t('drafts.btnImportCollection')}
                 <input type="file" accept=".json" onChange={importCollectionFromFile} className="hidden" />
               </label>
               <button onClick={exportDraftConfig} disabled={selectedUnits.length === 0 && drafts.length === 0} className="px-3 py-1.5 font-mono text-xs corner-clip-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed" style={{background:'rgba(201,168,76,0.1)',border:'1px solid #c9a84c55',color:'#c9a84c'}}>
-                EXP. CONFIG
+                {t('drafts.btnExportConfig')}
               </button>
-              <label className="px-3 py-1.5 font-mono text-xs corner-clip-sm transition-colors cursor-pointer" style={{background:'rgba(201,168,76,0.1)',border:'1px solid #c9a84c55',color:'#c9a84c'}}>
-                IMP. CONFIG
-                <input type="file" accept=".json" onChange={importDraftConfig} className="hidden" />
-              </label>
+              <div className="relative group">
+                <label className="px-3 py-1.5 font-mono text-xs corner-clip-sm transition-colors cursor-pointer block" style={{background:'rgba(201,168,76,0.1)',border:'1px solid #c9a84c55',color:'#c9a84c'}}>
+                  {t('drafts.btnImportConfig')}
+                  <input type="file" accept=".json" onChange={importDraftConfig} className="hidden" />
+                </label>
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 px-3 py-2 font-mono text-[10px] leading-snug pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50"
+                  style={{background:'#0d1208',border:'1px solid #c9a84c55',color:'#a89060'}}>
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent" style={{borderBottomColor:'#c9a84c55'}} />
+                  <div className="text-[#c9a84c] font-bold tracking-widest uppercase mb-1">{t('drafts.btnImportConfig')}</div>
+                  {t('drafts.tooltipImportConfig')}
+                </div>
+              </div>
               <button onClick={() => setIsCreating(true)} className="px-3 py-1.5 font-mono text-xs corner-clip-sm transition-colors" style={{background:'rgba(201,168,76,0.15)',border:'1px solid #c9a84c',color:'#c9a84c'}}>
-                + NOVO DRAFT
+                {t('drafts.btnNewDraft')}
               </button>
             </div>
           </div>
@@ -1181,8 +1209,8 @@ export default function DraftsPage() {
               <div className="p-3 space-y-2 max-h-96 overflow-y-auto">
                 {drafts.length === 0 ? (
                   <p className="font-mono text-xs text-center py-8" style={{color:'#3a5a2a'}}>
-                    Nenhum draft criado.<br />
-                    Clique em &quot;+ NOVO DRAFT&quot;
+                    {t('drafts.listEmpty')}<br />
+                    {t('drafts.listEmptyClick')}
                   </p>
                 ) : (
                   drafts.map(draft => (
@@ -1199,7 +1227,7 @@ export default function DraftsPage() {
                         <div className="flex-1">
                           <h3 className="font-mono text-xs font-bold truncate" style={{color: selectedDraft?.id === draft.id ? '#c9a84c' : '#e8d5a0'}}>{draft.name}</h3>
                           <p className="font-mono text-xs mt-0.5" style={{color:'#4a5e3a'}}>
-                            {draft.results?.length || 0} jogadores / {draft.settings?.numberOfPlayers || 0} slots
+                            {draft.results?.length || 0} {t('drafts.players')} / {draft.settings?.numberOfPlayers || 0} {t('drafts.slots')}
                           </p>
                           <p className="font-mono text-xs mt-0.5" style={{color:'#2a3a1a'}}>
                             {new Date(draft.updatedAt).toLocaleDateString('pt-BR')}
@@ -1208,9 +1236,9 @@ export default function DraftsPage() {
                         <button
                           onClick={(e) => showDeleteConfirmation(draft.id, e)}
                           className="font-mono text-xs ml-2 px-1" style={{color:'#6a3a3a'}}
-                          title="Excluir draft"
+                          title={t('drafts.excluirTitle')}
                         >
-                          DEL
+                          {t('drafts.excluir')}
                         </button>
                       </div>
                     </div>
@@ -1231,43 +1259,52 @@ export default function DraftsPage() {
                       <p className="text-xs font-mono mt-1" style={{color:'#5a7a4a'}}>{selectedDraft.description}</p>
                     )}
                     <div className="flex flex-wrap gap-3 mt-2 text-xs font-mono" style={{color:'#4a5e3a'}}>
-                      <span>{selectedDraft.settings?.numberOfPlayers || 0} jogadores</span>
-                      <span>/ {selectedDraft.settings?.boostersPerPlayer || 0} boosters</span>
-                      <span>/ {selectedDraft.availableUnits?.length || 0} unidades</span>
+                      <span>{selectedDraft.settings?.numberOfPlayers || 0} {t('drafts.players')}</span>
+                      <span>/ {selectedDraft.settings?.boostersPerPlayer || 0} {t('drafts.boosters')}</span>
+                      <span>/ {selectedDraft.availableUnits?.length || 0} {t('drafts.units')}</span>
                     </div>
                   </div>
-                  <button
-                    onClick={() => regenerateDraft(selectedDraft)}
-                    disabled={isGenerating}
-                    className="px-3 py-1.5 font-mono text-xs corner-clip-sm transition-colors disabled:opacity-50"
-                    style={{background:'rgba(201,168,76,0.15)',border:'1px solid #c9a84c',color:'#c9a84c'}}
-                  >
-                    {isGenerating ? 'GERANDO...' : 'REGENERAR'}
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => router.push(`/game-mode?draftId=${selectedDraft.id}`)}
+                      className="px-3 py-1.5 font-mono text-xs corner-clip-sm transition-colors"
+                      style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}
+                    >
+                      {t('drafts.btnGameMode')}
+                    </button>
+                    <button
+                      onClick={() => regenerateDraft(selectedDraft)}
+                      disabled={isGenerating}
+                      className="px-3 py-1.5 font-mono text-xs corner-clip-sm transition-colors disabled:opacity-50"
+                      style={{background:'rgba(201,168,76,0.15)',border:'1px solid #c9a84c',color:'#c9a84c'}}
+                    >
+                      {isGenerating ? t('drafts.regenerating') : t('drafts.btnRegenerate')}
+                    </button>
+                  </div>
                 </div>
-                
+
                 <div className="p-4">
                   {!selectedDraft.results || selectedDraft.results.length === 0 ? (
                     <div className="text-center py-12">
-                      <p className="font-mono text-xs mb-4" style={{color:'#4a5e3a'}}>Draft ainda não foi gerado.</p>
+                      <p className="font-mono text-xs mb-4" style={{color:'#4a5e3a'}}>{t('drafts.notGenerated')}</p>
                       <button
                         onClick={() => regenerateDraft(selectedDraft)}
                         className="px-6 py-2 font-mono text-xs corner-clip-sm transition-colors"
                         style={{background:'rgba(201,168,76,0.15)',border:'1px solid #c9a84c',color:'#c9a84c'}}
                       >
-                        GERAR DRAFT
+                        {t('drafts.btnGenerate')}
                       </button>
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      <h3 className="font-mono text-xs tracking-widest" style={{color:'#5a7a4a'}}>RESULTADOS DO DRAFT:</h3>
+                      <h3 className="font-mono text-xs tracking-widest" style={{color:'#5a7a4a'}}>{t('drafts.resultsLabel')}</h3>
                       {selectedDraft.results?.map(result => (
                         <div key={result.playerId} className="p-3" style={{border:'1px solid #2a3a1a',background:'rgba(0,0,0,0.2)'}}>
                           <div className="flex justify-between items-center mb-2">
                             <h4 className="font-mono text-xs font-bold" style={{color:'#c9a84c'}}>{result.playerName}</h4>
                             <div className="flex gap-4 text-xs font-mono">
-                              <span style={{color:'#7a9a5a'}}>Draft: {result.totalPoints} pts</span>
-                              <span style={{color:'#c9a84c'}}>Army: {result.armyPoints || 0} pts</span>
+                              <span style={{color:'#7a9a5a'}}>{t('drafts.draftPts')} {result.totalPoints} pts</span>
+                              <span style={{color:'#c9a84c'}}>{t('drafts.armyPts')} {result.armyPoints || 0} pts</span>
                             </div>
                           </div>
                           
@@ -1275,43 +1312,74 @@ export default function DraftsPage() {
                           <div className="grid grid-cols-2 gap-3">
                             {/* Draft Column */}
                             <div>
-                              <div className="flex justify-between items-center mb-1">
-                                <span className="font-mono text-xs" style={{color:'#5a7a4a'}}>DRAFT ({result.units.length})</span>
-                                <span className="font-mono text-xs" style={{color:'#7a7a6a'}}>{result.totalPoints} pts</span>
-                              </div>
-                              <div className="space-y-1" style={{minHeight:'100px'}}>
-                                {result.units.map((unit, index) => (
-                                  <div 
-                                    key={`${unit.id}-${index}`} 
-                                    className="flex items-center justify-between px-2 py-1 cursor-pointer hover:bg-opacity-10 transition-colors"
-                                    style={{background:'rgba(90,90,90,0.05)',border:'1px solid #1a1a10'}}
-                                    onClick={() => router.push(`/list?unitId=${unit.id}`)}
+                              {(() => {
+                                const draftedUnits = result.units.filter(u => !u.isCard)
+                                const draftedCards = result.units.filter(u => u.isCard)
+                                const armyPts = result.armyPoints || 0
+                                const limit = result.armyPointsLimit || 0
+                                const renderRow = (unit: DraftUnit, index: number) => {
+                                  const wouldExceed = limit > 0 && armyPts + unit.points > limit
+                                  return (
+                                  <div
+                                    key={`${unit.id}-${index}`}
+                                    className="flex items-center justify-between px-2 py-1 transition-colors"
+                                    style={{background: unit.isCard ? 'rgba(201,168,76,0.04)' : 'rgba(90,90,90,0.05)', border: `1px solid ${unit.isCard ? '#2a2010' : '#1a1a10'}`}}
                                   >
-                                    <div className="flex-1">
-                                      <div className="font-mono text-xs" style={{color:'#a0a090'}}>{unit.name}</div>
+                                    <div className="flex-1 cursor-pointer" onClick={() => {
+                                      if (unit.isCard) {
+                                        const base = unit.cardType === 'MC' ? '/cards/mercenary-contract/detail' : '/cards/faction-pride/detail'
+                                        const dbId = unit.cardDbId || availableCards.find(c => c.id === unit.id)?.dbId || unit.id
+                                        router.push(`${base}?id=${dbId}`)
+                                      } else {
+                                        router.push(`/list?unitId=${unit.id}`)
+                                      }
+                                    }}>
+                                      <div className="font-mono text-xs" style={{color: unit.isCard ? '#c9a84c' : '#a0a090'}}>{unit.name}</div>
                                       <div className="font-mono text-xs mt-0.5" style={{color:'#3a3a2a'}}>
-                                        {unit.type} / {unit.faction}
+                                        {unit.type}{unit.faction ? ` / ${unit.faction}` : ''}
                                       </div>
                                     </div>
                                     <div className="flex items-center gap-1">
-                                      <span className="font-mono text-xs font-bold" style={{color:'#7a7a6a'}}>{unit.points}</span>
-                                      <button 
+                                      <span className="font-mono text-xs font-bold" style={{color: wouldExceed ? '#c06060' : '#7a7a6a'}}>{unit.points}</span>
+                                      <button
                                         onClick={(e) => { e.stopPropagation(); moveUnitToArmy(result.playerId, unit) }}
-                                        className="px-1.5 py-0.5 font-mono text-xs"
+                                        disabled={wouldExceed}
+                                        className="px-1.5 py-0.5 font-mono text-xs disabled:opacity-30 disabled:cursor-not-allowed"
                                         style={{background:'rgba(122,154,90,0.2)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}
-                                        title="Mover para Army"
+                                        title={wouldExceed ? t('drafts.limitReached') : t('drafts.moveToArmy')}
                                       >
                                         →
                                       </button>
                                     </div>
                                   </div>
-                                ))}
-                                {result.units.length === 0 && (
-                                  <div className="font-mono text-xs px-2 py-1 text-center" style={{color:'#3a3a2a'}}>
-                                    Vazio
+                                  )
+                                }
+                                return (
+                                  <div>
+                                    <div className="flex justify-between items-center mb-1">
+                                      <span className="font-mono text-xs" style={{color:'#5a7a4a'}}>DRAFT ({result.units.length})</span>
+                                      <span className="font-mono text-xs" style={{color:'#7a7a6a'}}>{result.totalPoints} pts</span>
+                                    </div>
+                                    {draftedUnits.length > 0 && (
+                                      <div className="mb-1">
+                                        <div className="font-mono text-xs px-1 mb-0.5" style={{color:'#3a5a2a'}}>{t('drafts.draftedUnits')} ({draftedUnits.length})</div>
+                                        <div className="space-y-1">{draftedUnits.map((u, i) => renderRow(u, i))}</div>
+                                      </div>
+                                    )}
+                                    {draftedCards.length > 0 && (
+                                      <div>
+                                        <div className="font-mono text-xs px-1 mb-0.5" style={{color:'#6a5a2a'}}>{t('drafts.draftedCards')} ({draftedCards.length})</div>
+                                        <div className="space-y-1">{draftedCards.map((u, i) => renderRow(u, i))}</div>
+                                      </div>
+                                    )}
+                                    {result.units.length === 0 && (
+                                      <div className="font-mono text-xs px-2 py-1 text-center" style={{color:'#3a3a2a', minHeight:'100px'}}>
+                                        {t('drafts.empty')}
+                                      </div>
+                                    )}
                                   </div>
-                                )}
-                              </div>
+                                )
+                              })()}
                             </div>
                             
                             {/* Army Column */}
@@ -1319,13 +1387,19 @@ export default function DraftsPage() {
                               <div className="flex justify-between items-center mb-1">
                                 <span className="font-mono text-xs" style={{color:'#5a7a4a'}}>ARMY ({(result.armyUnits || []).length})</span>
                                 <div className="flex items-center gap-2">
-                                  <span className="font-mono text-xs" style={{color:'#c9a84c'}}>{result.armyPoints || 0} pts</span>
+                                  {result.armyPointsLimit && result.armyPointsLimit > 0 ? (
+                                    <span className="font-mono text-xs" style={{color: (result.armyPoints || 0) >= result.armyPointsLimit ? '#c06060' : '#c9a84c'}}>
+                                      {result.armyPoints || 0} / {result.armyPointsLimit} pts
+                                    </span>
+                                  ) : (
+                                    <span className="font-mono text-xs" style={{color:'#c9a84c'}}>{result.armyPoints || 0} pts</span>
+                                  )}
                                   <button 
                                     onClick={() => moveAllUnitsToDraft(result.playerId)}
                                     disabled={(result.armyUnits || []).length === 0}
                                     className="px-1.5 py-0.5 font-mono text-xs disabled:opacity-40 disabled:cursor-not-allowed"
                                     style={{background:'rgba(150,50,50,0.2)',border:'1px solid #5a2a2a',color:'#c06060'}}
-                                    title="Mover tudo para Draft"
+                                    title={t('drafts.moveAllToDraft')}
                                   >
                                     ←
                                   </button>
@@ -1351,7 +1425,7 @@ export default function DraftsPage() {
                                         onClick={(e) => { e.stopPropagation(); moveUnitToDraft(result.playerId, unit) }}
                                         className="px-1.5 py-0.5 font-mono text-xs"
                                         style={{background:'rgba(90,90,90,0.2)',border:'1px solid #3a3a2a',color:'#7a7a6a'}}
-                                        title="Mover para Draft"
+                                        title={t('drafts.moveToDraft')}
                                       >
                                         ←
                                       </button>
@@ -1360,7 +1434,7 @@ export default function DraftsPage() {
                                 ))}
                                 {(result.armyUnits || []).length === 0 && (
                                   <div className="font-mono text-xs px-2 py-1 text-center" style={{color:'#3a5a2a'}}>
-                                    Vazio
+                                    {t('drafts.empty')}
                                   </div>
                                 )}
                               </div>
@@ -1370,13 +1444,13 @@ export default function DraftsPage() {
                           {/* Secret Cards */}
                           <div>
                             <div className="flex justify-between items-center mb-1">
-                              <span className="font-mono text-xs" style={{color:'#5a7a4a'}}>CARDS SECRETOS:</span>
-                              <button 
+                              <span className="font-mono text-xs" style={{color:'#5a7a4a'}}>{t('drafts.secretCardsTitle')}</span>
+                              <button
                                 onClick={() => { setEditingPlayerId(result.playerId); setSecretCardValue(''); setShowSecretCardModal(true) }}
                                 className="px-2 py-0.5 font-mono text-xs"
                                 style={{background:'rgba(201,168,76,0.15)',border:'1px solid #c9a84c',color:'#c9a84c'}}
                               >
-                                + ADICIONAR CARD
+                                {t('drafts.btnAddCard')}
                               </button>
                             </div>
                             <div className="space-y-1">
@@ -1387,9 +1461,9 @@ export default function DraftsPage() {
                                   style={{background:'rgba(201,168,76,0.05)',border:'1px solid #3a2a1a'}}
                                 >
                                   <div className="flex-1">
-                                    <div className="font-mono text-xs" style={{color:'#e8d5a0'}}>Card Secreto #{index + 1}</div>
+                                    <div className="font-mono text-xs" style={{color:'#e8d5a0'}}>{t('drafts.secretCardN')}{index + 1}</div>
                                     <div className="font-mono text-xs mt-0.5" style={{color:'#4a5e3a'}}>
-                                      Valor: {card.points} pts
+                                      {t('drafts.valueLabel')} {card.points} pts
                                     </div>
                                   </div>
                                   <button 
@@ -1403,7 +1477,7 @@ export default function DraftsPage() {
                               ))}
                               {(result.secretCards || []).length === 0 && (
                                 <div className="font-mono text-xs px-2 py-1" style={{color:'#3a5a2a'}}>
-                                  Nenhum card secreto adicionado
+                                  {t('drafts.noSecretCards')}
                                 </div>
                               )}
                             </div>
@@ -1416,7 +1490,7 @@ export default function DraftsPage() {
               </div>
             ) : (
               <div className="p-12 text-center" style={{background:'rgba(0,0,0,0.2)',border:'1px dashed #2a3a1a'}}>
-                <p className="font-mono text-xs" style={{color:'#3a5a2a'}}>Selecione um draft para ver os detalhes</p>
+                <p className="font-mono text-xs" style={{color:'#3a5a2a'}}>{t('drafts.selectDraft')}</p>
               </div>
             )}
           </div>
@@ -1427,11 +1501,11 @@ export default function DraftsPage() {
           <div className="fixed inset-0 flex items-center justify-center z-50" style={{background:'rgba(0,0,0,0.85)'}}>
             <div className="p-8 max-w-2xl w-full mx-4" style={{background:'#0d1208',border:'1px solid #3a4a2a',boxShadow:'0 0 40px rgba(201,168,76,0.1)'}}>
               <div className="text-center">
-                <h2 className="text-lg font-bold font-mono tracking-widest uppercase mb-6" style={{color:'#c9a84c'}}>SORTEANDO DRAFT...</h2>
-                
+                <h2 className="text-lg font-bold font-mono tracking-widest uppercase mb-6" style={{color:'#c9a84c'}}>{t('drafts.drawing')}</h2>
+
                 <div className="mb-6">
                   <div className="font-mono text-xs mb-2" style={{color:'#7a9a5a'}}>
-                    BOOSTER {currentBooster} / JOGADOR {currentPlayer}
+                    {t('drafts.boosterN')} {currentBooster} / {t('drafts.playerN')} {currentPlayer}
                   </div>
                   <div className="w-full h-1" style={{background:'#1a2a10'}}>
                     <div 
@@ -1443,19 +1517,19 @@ export default function DraftsPage() {
 
                 {draftAnimation && (
                   <div className="p-6 mb-4 animate-pulse" style={{background:'rgba(201,168,76,0.08)',border:'1px solid #c9a84c55'}}>
-                    <div className="font-mono text-xs mb-2" style={{color:'#7a9a5a'}}>UNIDADE SORTEADA</div>
+                    <div className="font-mono text-xs mb-2" style={{color:'#7a9a5a'}}>{t('drafts.unitDrawn')}</div>
                     <div className="font-bold font-mono text-lg" style={{color:'#e8d5a0'}}>{draftAnimation.unit.name}</div>
                     <div className="font-mono text-xs mt-1" style={{color:'#5a7a4a'}}>
                       {draftAnimation.unit.type} / {draftAnimation.unit.faction} / {draftAnimation.unit.points}pts
                     </div>
                     <div className="font-mono text-xs mt-2" style={{color:'#c9a84c'}}>
-                      → JOGADOR {draftAnimation.player}
+                      {t('drafts.toPlayerN')} {draftAnimation.player}
                     </div>
                   </div>
                 )}
 
                 <div className="font-mono text-xs" style={{color:'#3a5a2a'}}>
-                  Aguarde enquanto o draft é gerado...
+                  {t('drafts.waiting')}
                 </div>
               </div>
             </div>
@@ -1466,16 +1540,16 @@ export default function DraftsPage() {
         {showDeleteModal && (
           <div className="fixed inset-0 flex items-center justify-center z-50" style={{background:'rgba(0,0,0,0.85)'}}>
             <div className="p-6 max-w-md w-full mx-4" style={{background:'#0d1208',border:'1px solid #5a2a2a'}}>
-              <h3 className="font-mono text-sm font-bold tracking-widest uppercase mb-3" style={{color:'#c06060'}}>CONFIRMAR EXCLUSÃO</h3>
+              <h3 className="font-mono text-sm font-bold tracking-widest uppercase mb-3" style={{color:'#c06060'}}>{t('drafts.confirmDelete')}</h3>
               <p className="font-mono text-xs mb-6" style={{color:'#5a7a4a'}}>
-                Tem certeza? Esta ação não pode ser desfeita.
+                {t('drafts.deleteWarning')}
               </p>
               <div className="flex gap-3">
                 <button onClick={cancelDelete} className="flex-1 px-4 py-2 font-mono text-xs corner-clip-sm transition-colors" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>
-                  CANCELAR
+                  {t('common.cancel')}
                 </button>
                 <button onClick={confirmDeleteDraft} className="flex-1 px-4 py-2 font-mono text-xs corner-clip-sm transition-colors" style={{background:'rgba(150,50,50,0.2)',border:'1px solid #7a2a2a',color:'#c06060'}}>
-                  EXCLUIR
+                  {t('drafts.excluir')}
                 </button>
               </div>
             </div>
@@ -1490,7 +1564,7 @@ export default function DraftsPage() {
                 {importSuccess ? '[ OK ]' : '[ ERRO ]'}
               </div>
               <h3 className="font-mono text-sm font-bold uppercase tracking-widest mb-3" style={{color: importSuccess ? '#c9a84c' : '#c06060'}}>
-                {importSuccess ? 'IMPORTAÇÃO CONCLUÍDA' : 'ERRO NA IMPORTAÇÃO'}
+                {importSuccess ? t('drafts.importSuccessTitle') : t('drafts.importErrorTitle')}
               </h3>
               <p className="font-mono text-xs mb-6" style={{color:'#5a7a4a'}}>{importMessage}</p>
               <button onClick={() => setShowImportModal(false)} className="w-full px-4 py-2 font-mono text-xs corner-clip-sm transition-colors" style={{background: importSuccess ? 'rgba(122,154,90,0.15)' : 'rgba(150,50,50,0.2)', border:`1px solid ${importSuccess ? '#3a5a2a' : '#7a2a2a'}`, color: importSuccess ? '#7a9a5a' : '#c06060'}}>
@@ -1508,7 +1582,7 @@ export default function DraftsPage() {
                 {configSuccess ? '[ OK ]' : '[ ERRO ]'}
               </div>
               <h3 className="font-mono text-sm font-bold uppercase tracking-widest mb-3" style={{color: configSuccess ? '#c9a84c' : '#c06060'}}>
-                {configSuccess ? 'OPERAÇÃO CONCLUÍDA' : 'ERRO NA OPERAÇÃO'}
+                {configSuccess ? t('drafts.opSuccessTitle') : t('drafts.opErrorTitle')}
               </h3>
               <p className="font-mono text-xs mb-6" style={{color:'#5a7a4a'}}>{configMessage}</p>
               <button onClick={() => setShowConfigModal(false)} className="w-full px-4 py-2 font-mono text-xs corner-clip-sm transition-colors" style={{background: configSuccess ? 'rgba(122,154,90,0.15)' : 'rgba(150,50,50,0.2)', border:`1px solid ${configSuccess ? '#3a5a2a' : '#7a2a2a'}`, color: configSuccess ? '#7a9a5a' : '#c06060'}}>
@@ -1523,67 +1597,96 @@ export default function DraftsPage() {
           <div className="fixed inset-0 flex items-center justify-center z-50" style={{background:'rgba(0,0,0,0.85)'}}>
             <div className="w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto" style={{background:'#0d1208',border:'1px solid #3a4a2a'}}>
               <div className="px-6 py-3" style={{borderBottom:'1px solid #2a3a1a',background:'rgba(0,0,0,0.3)'}}>
-                <h3 className="font-mono text-sm font-bold tracking-widest uppercase" style={{color:'#c9a84c'}}>CRIAR NOVO DRAFT</h3>
+                <h3 className="font-mono text-sm font-bold tracking-widest uppercase" style={{color:'#c9a84c'}}>{t('drafts.createTitle')}</h3>
               </div>
               <div className="p-6 space-y-4">
                 <div>
-                  <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>NOME DO DRAFT *</label>
-                  <input type="text" value={newDraftName} onChange={(e) => setNewDraftName(e.target.value)} className="w-full px-3 py-2 text-xs font-mono" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c',outline:'none'}} placeholder="Ex: Draft Torneio 2024" autoFocus />
+                  <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>{t('drafts.nameLabel')}</label>
+                  <input type="text" value={newDraftName} onChange={(e) => setNewDraftName(e.target.value)} className="w-full px-3 py-2 text-xs font-mono" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c',outline:'none'}} placeholder={t('drafts.namePlaceholder')} autoFocus />
                 </div>
                 <div>
-                  <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>DESCRIÇÃO (opcional)</label>
-                  <textarea value={newDraftDescription} onChange={(e) => setNewDraftDescription(e.target.value)} className="w-full px-3 py-2 text-xs font-mono" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c',outline:'none'}} placeholder="Descrição do draft..." rows={2} />
+                  <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>{t('drafts.descLabel')}</label>
+                  <textarea value={newDraftDescription} onChange={(e) => setNewDraftDescription(e.target.value)} className="w-full px-3 py-2 text-xs font-mono" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c',outline:'none'}} placeholder={t('drafts.descPlaceholder')} rows={2} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>Nº JOGADORES</label>
+                    <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>{t('drafts.numPlayersLabel')}</label>
                     <input type="number" min="1" max="8" value={draftSettings.numberOfPlayers} onChange={(e) => setDraftSettings({...draftSettings, numberOfPlayers: parseInt(e.target.value) || 1})} className="w-full px-3 py-2 text-xs font-mono" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c',outline:'none'}} />
                   </div>
                   <div>
-                    <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>BOOSTERS/JOGADOR</label>
+                    <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>{t('drafts.boostersPlayerLabel')}</label>
                     <input type="number" min="1" max="10" value={draftSettings.boostersPerPlayer} onChange={(e) => setDraftSettings({...draftSettings, boostersPerPlayer: parseInt(e.target.value) || 1})} className="w-full px-3 py-2 text-xs font-mono" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c',outline:'none'}} />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>{t('drafts.armyPointLimitLabel')}</label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setDraftSettings({...draftSettings, armyPointLimit: (draftSettings.armyPointLimit ?? 300) > 0 ? 0 : 300})}
+                      className="px-3 py-1.5 font-mono text-xs corner-clip-sm"
+                      style={{background: !(draftSettings.armyPointLimit ?? 300) ? 'rgba(201,168,76,0.2)' : 'rgba(0,0,0,0.3)', border: !(draftSettings.armyPointLimit ?? 300) ? '1px solid #c9a84c' : '1px solid #3a4a2a', color: !(draftSettings.armyPointLimit ?? 300) ? '#c9a84c' : '#5a7a4a'}}
+                    >
+                      {t('drafts.noLimit')}
+                    </button>
+                    {(draftSettings.armyPointLimit ?? 300) > 0 && (
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => setDraftSettings({...draftSettings, armyPointLimit: Math.max(150, (draftSettings.armyPointLimit ?? 300) - 150)})}
+                          className="px-2 py-1.5 font-mono text-xs"
+                          style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}
+                        >−</button>
+                        <span className="px-3 py-1.5 font-mono text-xs text-center" style={{minWidth:'70px',background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c'}}>
+                          {draftSettings.armyPointLimit ?? 300} pts
+                        </span>
+                        <button
+                          onClick={() => setDraftSettings({...draftSettings, armyPointLimit: (draftSettings.armyPointLimit ?? 300) + 150})}
+                          className="px-2 py-1.5 font-mono text-xs"
+                          style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}
+                        >+</button>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-mono mb-2" style={{color:'#5a7a4a'}}>FONTE DAS UNIDADES</label>
+                  <label className="block text-xs font-mono mb-2" style={{color:'#5a7a4a'}}>{t('drafts.sourceLabel')}</label>
                   <div className="flex gap-2 mb-2">
                     <button onClick={() => setUseCollectionAsSource(false)} className="flex-1 px-3 py-1.5 font-mono text-xs corner-clip-sm transition-colors" style={{background: !useCollectionAsSource ? 'rgba(201,168,76,0.2)' : 'rgba(0,0,0,0.3)', border: !useCollectionAsSource ? '1px solid #c9a84c' : '1px solid #3a4a2a', color: !useCollectionAsSource ? '#c9a84c' : '#5a7a4a'}}>
                       API ({availableUnits.length})
                     </button>
                     <button onClick={() => setUseCollectionAsSource(true)} disabled={collectionUnits.length === 0} className="flex-1 px-3 py-1.5 font-mono text-xs corner-clip-sm transition-colors disabled:opacity-40" style={{background: useCollectionAsSource ? 'rgba(201,168,76,0.2)' : 'rgba(0,0,0,0.3)', border: useCollectionAsSource ? '1px solid #c9a84c' : '1px solid #3a4a2a', color: useCollectionAsSource ? '#c9a84c' : '#5a7a4a'}}>
-                      COLEÇÃO ({collectionUnits.length})
+                      {t('drafts.collection')} ({collectionUnits.length})
                     </button>
                   </div>
                   {useCollectionAsSource && collectionUnits.length === 0 && (
-                    <p className="font-mono text-xs mb-2" style={{color:'#c09060'}}>Use &quot;IMP. COLEÇÃO&quot; no cabeçalho primeiro.</p>
+                    <p className="font-mono text-xs mb-2" style={{color:'#c09060'}}>{t('drafts.useImportHint')}</p>
                   )}
                   <button onClick={() => setShowUnitSelector(true)} disabled={useCollectionAsSource && collectionUnits.length === 0} className="w-full px-4 py-2 font-mono text-xs corner-clip-sm transition-colors disabled:opacity-40" style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>
-                    SELECIONAR UNIDADES ({selectedUnits.length})
+                    {t('drafts.btnSelectUnits')} ({selectedUnits.length})
                   </button>
                   {selectedUnits.length > 0 && (
                     <div className="mt-1 font-mono text-xs" style={{color:'#4a5e3a'}}>
-                      Tipos: {[...new Set(selectedUnits.map(u => u.unit.type))].join(', ')}
+                      {t('drafts.typesLabel')} {[...new Set(selectedUnits.map(u => u.unit.type))].join(', ')}
                     </div>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-xs font-mono mb-2" style={{color:'#5a7a4a'}}>CARDS</label>
+                  <label className="block text-xs font-mono mb-2" style={{color:'#5a7a4a'}}>{t('drafts.cardsLabel')}</label>
                   <div className="font-mono text-xs" style={{color:'#4a5e3a'}}>
-                    {availableCards.length} cards disponíveis (incluídos automaticamente)
+                    {availableCards.length} {t('drafts.cardsAutoIncluded')}
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-mono mb-2" style={{color:'#5a7a4a'}}>CONFIG DO BOOSTER</label>
+                  <label className="block text-xs font-mono mb-2" style={{color:'#5a7a4a'}}>{t('drafts.boosterConfigLabel')}</label>
                   <div className="space-y-2">
                     {draftSettings.boosterConfigs.map((config, index) => (
                       <div key={index} className="flex items-center gap-3">
                         <input type="number" min="0" max="10" value={config.quantity} onChange={(e) => { const c = [...draftSettings.boosterConfigs]; c[index].quantity = parseInt(e.target.value) || 0; setDraftSettings({...draftSettings, boosterConfigs: c}) }} className="w-20 px-2 py-1 text-xs font-mono text-center" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c',outline:'none'}} />
                         <span className="font-mono text-xs" style={{color: config.unitType === 'Card' ? '#c9a84c' : '#7a9a5a'}}>{config.unitType}</span>
                         {config.unitType === 'Card' && (
-                          <span className="font-mono text-xs" style={{color:'#4a5e3a'}}>(cards disponíveis: {availableCards.length})</span>
+                          <span className="font-mono text-xs" style={{color:'#4a5e3a'}}>({t('drafts.cardsAvailableN')} {availableCards.length})</span>
                         )}
                       </div>
                     ))}
@@ -1593,10 +1696,10 @@ export default function DraftsPage() {
               
               <div className="flex gap-3 px-6 pb-6">
                 <button onClick={() => { setIsCreating(false); setNewDraftName(''); setNewDraftDescription('') }} className="flex-1 px-4 py-2 font-mono text-xs corner-clip-sm transition-colors" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#5a7a4a'}}>
-                  CANCELAR
+                  {t('common.cancel')}
                 </button>
                 <button onClick={() => generateDraft()} disabled={!newDraftName.trim()} className="flex-1 px-4 py-2 font-mono text-xs corner-clip-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed" style={{background:'rgba(201,168,76,0.15)',border:'1px solid #c9a84c',color:'#c9a84c'}}>
-                  CRIAR DRAFT
+                  {t('drafts.btnCreate')}
                 </button>
               </div>
             </div>
@@ -1608,7 +1711,7 @@ export default function DraftsPage() {
           <div className="fixed inset-0 flex items-center justify-center z-50" style={{background:'rgba(0,0,0,0.85)'}}>
             <div className="max-w-6xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col" style={{background:'#0d1208',border:'1px solid #3a4a2a'}}>
               <div className="px-4 py-3 flex justify-between items-center" style={{borderBottom:'1px solid #2a3a1a',background:'rgba(0,0,0,0.3)'}}>
-                <h3 className="font-mono text-xs tracking-widest uppercase" style={{color:'#c9a84c'}}>SELECIONAR UNIDADES ({filteredUnits.length})</h3>
+                <h3 className="font-mono text-xs tracking-widest uppercase" style={{color:'#c9a84c'}}>{t('drafts.selectorTitle')} ({filteredUnits.length})</h3>
                 <button onClick={() => setShowUnitSelector(false)} className="font-mono text-xs px-2" style={{color:'#5a7a4a'}}>✕</button>
               </div>
 
@@ -1616,30 +1719,30 @@ export default function DraftsPage() {
               <div className="p-4" style={{borderBottom:'1px solid #2a3a1a',background:'rgba(0,0,0,0.2)'}}>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>BUSCAR</label>
-                    <input type="text" placeholder="Nome da unidade..." value={unitFilters.search} onChange={(e) => setUnitFilters({...unitFilters, search: e.target.value})} className="w-full px-2 py-1.5 text-xs font-mono" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c',outline:'none'}} />
+                    <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>{t('drafts.btnSearch')}</label>
+                    <input type="text" placeholder={t('drafts.unitNamePlaceholder')} value={unitFilters.search} onChange={(e) => setUnitFilters({...unitFilters, search: e.target.value})} className="w-full px-2 py-1.5 text-xs font-mono" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c',outline:'none'}} />
                   </div>
                   <div>
-                    <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>TIPO</label>
+                    <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>{t('search.type')}</label>
                     <select value={unitFilters.type} onChange={(e) => setUnitFilters({...unitFilters, type: e.target.value})} className="w-full px-2 py-1.5 text-xs font-mono" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c'}}>
-                      <option value="">Todos</option>
+                      <option value="">{t('drafts.allTypes')}</option>
                       {[...new Set(availableUnits.map(u => u.type))].sort().map(type => <option key={type} value={type}>{type}</option>)}
                     </select>
                   </div>
                   <div className="flex gap-2">
                     <div className="flex-1">
-                      <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>PTS MIN</label>
+                      <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>{t('drafts.ptsMin')}</label>
                       <input type="number" placeholder="0" value={unitFilters.minPoints} onChange={(e) => setUnitFilters({...unitFilters, minPoints: e.target.value})} className="w-full px-2 py-1.5 text-xs font-mono" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c',outline:'none'}} />
                     </div>
                     <div className="flex-1">
-                      <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>PTS MAX</label>
+                      <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>{t('drafts.ptsMax')}</label>
                       <input type="number" placeholder="999" value={unitFilters.maxPoints} onChange={(e) => setUnitFilters({...unitFilters, maxPoints: e.target.value})} className="w-full px-2 py-1.5 text-xs font-mono" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c',outline:'none'}} />
                     </div>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3 mt-3">
                   <div>
-                    <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>FACÇÕES ({unitFilters.factions.length})</label>
+                    <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>{t('drafts.factionsLabel')} ({unitFilters.factions.length})</label>
                     <div className="max-h-24 overflow-y-auto p-2" style={{border:'1px solid #2a3a1a',background:'rgba(0,0,0,0.3)'}}>
                       {[...new Set(availableUnits.map(u => u.faction))].sort().map(faction => (
                         <label key={faction} className="flex items-center gap-2 py-0.5 cursor-pointer">
@@ -1650,7 +1753,7 @@ export default function DraftsPage() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>EXPANSÕES ({unitFilters.expansions.length})</label>
+                    <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>{t('drafts.expansionsLabel')} ({unitFilters.expansions.length})</label>
                     <div className="max-h-24 overflow-y-auto p-2" style={{border:'1px solid #2a3a1a',background:'rgba(0,0,0,0.3)'}}>
                       {[...new Set(availableUnits.map(u => u.expansion))].sort().map(expansion => (
                         <label key={expansion} className="flex items-center gap-2 py-0.5 cursor-pointer">
@@ -1662,8 +1765,8 @@ export default function DraftsPage() {
                   </div>
                 </div>
                 <div className="flex gap-2 mt-3">
-                  <button onClick={() => setUnitFilters({factions:[],expansions:[],type:'',minPoints:'',maxPoints:'',search:''})} className="px-3 py-1 font-mono text-xs corner-clip-sm" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#5a7a4a'}}>LIMPAR</button>
-                  <button onClick={() => setSelectedUnits([...selectedUnits, ...filteredUnits.filter(u => !selectedUnits.some(s => s.unit.id === u.id)).map(u => ({unit:u, quantity:1}))])} className="px-3 py-1 font-mono text-xs corner-clip-sm" style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>SELECIONAR TODOS</button>
+                  <button onClick={() => setUnitFilters({factions:[],expansions:[],type:'',minPoints:'',maxPoints:'',search:''})} className="px-3 py-1 font-mono text-xs corner-clip-sm" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#5a7a4a'}}>{t('drafts.btnClear')}</button>
+                  <button onClick={() => setSelectedUnits([...selectedUnits, ...filteredUnits.filter(u => !selectedUnits.some(s => s.unit.id === u.id)).map(u => ({unit:u, quantity:1}))])} className="px-3 py-1 font-mono text-xs corner-clip-sm" style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>{t('drafts.btnSelectAll')}</button>
                 </div>
               </div>
               
@@ -1671,12 +1774,12 @@ export default function DraftsPage() {
                 <table className="w-full table-fixed">
                   <thead className="sticky top-0 z-10" style={{background:'rgba(10,15,6,0.97)',borderBottom:'1px solid #2a3a1a'}}>
                     <tr>
-                      <th className="px-2 py-2 w-8 text-xs font-mono" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>SEL</th>
-                      <th className="px-2 py-2 w-32 text-left text-xs font-mono" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>NOME</th>
-                      <th className="px-2 py-2 w-16 text-center text-xs font-mono" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>TIPO</th>
-                      <th className="px-2 py-2 w-20 text-center text-xs font-mono" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>FACÇÃO</th>
+                      <th className="px-2 py-2 w-8 text-xs font-mono" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>{t('drafts.colSel')}</th>
+                      <th className="px-2 py-2 w-32 text-left text-xs font-mono" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>{t('search.colName')}</th>
+                      <th className="px-2 py-2 w-16 text-center text-xs font-mono" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>{t('search.colType')}</th>
+                      <th className="px-2 py-2 w-20 text-center text-xs font-mono" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>{t('drafts.colFaction')}</th>
                       <th className="px-2 py-2 w-12 text-center text-xs font-mono" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>PTS</th>
-                      <th className="px-2 py-2 w-24 text-center text-xs font-mono" style={{color:'#5a7a4a'}}>QTD</th>
+                      <th className="px-2 py-2 w-24 text-center text-xs font-mono" style={{color:'#5a7a4a'}}>{t('drafts.colQty')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1714,10 +1817,10 @@ export default function DraftsPage() {
               </div>
               
               <div className="px-4 py-3 flex justify-between items-center" style={{borderTop:'1px solid #2a3a1a',background:'rgba(0,0,0,0.3)'}}>
-                <div className="font-mono text-xs" style={{color:'#4a5e3a'}}>{selectedUnits.length} SELECIONADAS</div>
+                <div className="font-mono text-xs" style={{color:'#4a5e3a'}}>{selectedUnits.length} {t('drafts.nSelected')}</div>
                 <div className="flex gap-2">
-                  <button onClick={() => setSelectedUnits([])} className="px-4 py-1.5 font-mono text-xs corner-clip-sm" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#5a7a4a'}}>LIMPAR</button>
-                  <button onClick={() => setShowUnitSelector(false)} className="px-4 py-1.5 font-mono text-xs corner-clip-sm" style={{background:'rgba(201,168,76,0.15)',border:'1px solid #c9a84c',color:'#c9a84c'}}>CONFIRMAR</button>
+                  <button onClick={() => setSelectedUnits([])} className="px-4 py-1.5 font-mono text-xs corner-clip-sm" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#5a7a4a'}}>{t('drafts.btnClear')}</button>
+                  <button onClick={() => setShowUnitSelector(false)} className="px-4 py-1.5 font-mono text-xs corner-clip-sm" style={{background:'rgba(201,168,76,0.15)',border:'1px solid #c9a84c',color:'#c9a84c'}}>{t('drafts.btnConfirm')}</button>
                 </div>
               </div>
             </div>
@@ -1729,7 +1832,7 @@ export default function DraftsPage() {
           <div className="fixed inset-0 flex items-center justify-center z-50" style={{background:'rgba(0,0,0,0.85)'}}>
             <div className="max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col" style={{background:'#0d1208',border:'1px solid #3a4a2a'}}>
               <div className="px-4 py-3 flex justify-between items-center" style={{borderBottom:'1px solid #2a3a1a',background:'rgba(0,0,0,0.3)'}}>
-                <h3 className="font-mono text-xs tracking-widest uppercase" style={{color:'#c9a84c'}}>ADICIONAR UNIDADE AO ARMY - JOGADOR {editingPlayerId}</h3>
+                <h3 className="font-mono text-xs tracking-widest uppercase" style={{color:'#c9a84c'}}>{t('drafts.armySelectorTitle')} {editingPlayerId}</h3>
                 <button onClick={() => { setShowArmyUnitSelector(false); setEditingPlayerId(null) }} className="font-mono text-xs px-2" style={{color:'#5a7a4a'}}>✕</button>
               </div>
 
@@ -1737,11 +1840,11 @@ export default function DraftsPage() {
                 <table className="w-full text-xs font-mono">
                   <thead>
                     <tr style={{background:'rgba(0,0,0,0.3)'}}>
-                      <th className="px-2 py-2 text-left" style={{borderBottom:'1px solid #2a3a1a',borderRight:'1px solid #2a3a1a',color:'#5a7a4a'}}>NOME</th>
-                      <th className="px-2 py-2 text-center" style={{borderBottom:'1px solid #2a3a1a',borderRight:'1px solid #2a3a1a',color:'#5a7a4a'}}>TIPO</th>
-                      <th className="px-2 py-2 text-center" style={{borderBottom:'1px solid #2a3a1a',borderRight:'1px solid #2a3a1a',color:'#5a7a4a'}}>FACÇÃO</th>
-                      <th className="px-2 py-2 text-center" style={{borderBottom:'1px solid #2a3a1a',color:'#5a7a4a'}}>CUSTO</th>
-                      <th className="px-2 py-2 text-center" style={{borderBottom:'1px solid #2a3a1a',color:'#5a7a4a'}}>AÇÃO</th>
+                      <th className="px-2 py-2 text-left" style={{borderBottom:'1px solid #2a3a1a',borderRight:'1px solid #2a3a1a',color:'#5a7a4a'}}>{t('search.colName')}</th>
+                      <th className="px-2 py-2 text-center" style={{borderBottom:'1px solid #2a3a1a',borderRight:'1px solid #2a3a1a',color:'#5a7a4a'}}>{t('search.colType')}</th>
+                      <th className="px-2 py-2 text-center" style={{borderBottom:'1px solid #2a3a1a',borderRight:'1px solid #2a3a1a',color:'#5a7a4a'}}>{t('drafts.colFaction')}</th>
+                      <th className="px-2 py-2 text-center" style={{borderBottom:'1px solid #2a3a1a',color:'#5a7a4a'}}>{t('drafts.colCost')}</th>
+                      <th className="px-2 py-2 text-center" style={{borderBottom:'1px solid #2a3a1a',color:'#5a7a4a'}}>{t('drafts.colAction')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1755,12 +1858,12 @@ export default function DraftsPage() {
                         <td className="px-2 py-1.5 text-xs font-mono text-center truncate" style={{color:'#7a9a5a',borderRight:'1px solid #1a2a10'}}>{unit.faction}</td>
                         <td className="px-2 py-1.5 text-xs font-mono font-bold text-center" style={{color:'#c9a84c',borderRight:'1px solid #1a2a10'}}>{unit.points}</td>
                         <td className="px-2 py-1.5 text-center">
-                          <button 
+                          <button
                             onClick={() => addUnitToArmy(editingPlayerId, unit)}
                             className="px-2 py-1 font-mono text-xs"
                             style={{background:'rgba(122,154,90,0.2)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}
                           >
-                            ADICIONAR
+                            {t('drafts.btnAdd')}
                           </button>
                         </td>
                       </tr>
@@ -1770,7 +1873,7 @@ export default function DraftsPage() {
               </div>
               
               <div className="px-4 py-3 flex justify-end" style={{borderTop:'1px solid #2a3a1a',background:'rgba(0,0,0,0.3)'}}>
-                <button onClick={() => { setShowArmyUnitSelector(false); setEditingPlayerId(null) }} className="px-4 py-1.5 font-mono text-xs corner-clip-sm" style={{background:'rgba(201,168,76,0.15)',border:'1px solid #c9a84c',color:'#c9a84c'}}>FECHAR</button>
+                <button onClick={() => { setShowArmyUnitSelector(false); setEditingPlayerId(null) }} className="px-4 py-1.5 font-mono text-xs corner-clip-sm" style={{background:'rgba(201,168,76,0.15)',border:'1px solid #c9a84c',color:'#c9a84c'}}>{t('drafts.btnClose')}</button>
               </div>
             </div>
           </div>
@@ -1780,31 +1883,31 @@ export default function DraftsPage() {
         {showSecretCardModal && editingPlayerId && (
           <div className="fixed inset-0 flex items-center justify-center z-50" style={{background:'rgba(0,0,0,0.85)'}}>
             <div className="p-6 max-w-md w-full mx-4" style={{background:'#0d1208',border:'1px solid #3a2a1a'}}>
-              <h3 className="font-mono text-sm font-bold tracking-widest uppercase mb-4" style={{color:'#c9a84c'}}>ADICIONAR CARD SECRETO</h3>
-              <p className="font-mono text-xs mb-4" style={{color:'#5a7a4a'}}>Jogador {editingPlayerId}</p>
-              
+              <h3 className="font-mono text-sm font-bold tracking-widest uppercase mb-4" style={{color:'#c9a84c'}}>{t('drafts.secretCardTitle')}</h3>
+              <p className="font-mono text-xs mb-4" style={{color:'#5a7a4a'}}>{t('drafts.playerLabel')} {editingPlayerId}</p>
+
               <div className="mb-4">
-                <label className="block text-xs font-mono mb-2" style={{color:'#5a7a4a'}}>VALOR DO CARD (pontos)</label>
-                <input 
-                  type="number" 
-                  value={secretCardValue} 
+                <label className="block text-xs font-mono mb-2" style={{color:'#5a7a4a'}}>{t('drafts.cardValueLabel')}</label>
+                <input
+                  type="number"
+                  value={secretCardValue}
                   onChange={(e) => setSecretCardValue(e.target.value)}
-                  className="w-full px-3 py-2 text-xs font-mono" 
+                  className="w-full px-3 py-2 text-xs font-mono"
                   style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a2a1a',color:'#c9a84c',outline:'none'}}
-                  placeholder="Ex: 10"
+                  placeholder={t('drafts.valuePlaceholder')}
                   autoFocus
                 />
               </div>
-              
+
               <div className="flex gap-3 justify-end">
-                <button 
+                <button
                   onClick={() => { setShowSecretCardModal(false); setEditingPlayerId(null); setSecretCardValue('') }}
-                  className="px-4 py-2 font-mono text-xs corner-clip-sm transition-colors" 
+                  className="px-4 py-2 font-mono text-xs corner-clip-sm transition-colors"
                   style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a2a1a',color:'#7a9a5a'}}
                 >
-                  CANCELAR
+                  {t('common.cancel')}
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     const points = parseInt(secretCardValue)
                     if (points > 0) {
@@ -1815,10 +1918,10 @@ export default function DraftsPage() {
                     }
                   }}
                   disabled={!secretCardValue || parseInt(secretCardValue) <= 0}
-                  className="px-4 py-2 font-mono text-xs corner-clip-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed" 
+                  className="px-4 py-2 font-mono text-xs corner-clip-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   style={{background:'rgba(201,168,76,0.15)',border:'1px solid #c9a84c',color:'#c9a84c'}}
                 >
-                  ADICIONAR
+                  {t('drafts.btnAdd')}
                 </button>
               </div>
             </div>
@@ -1829,16 +1932,16 @@ export default function DraftsPage() {
         {showDeleteModal && (
           <div className="fixed inset-0 flex items-center justify-center z-50" style={{background:'rgba(0,0,0,0.85)'}}>
             <div className="p-6 max-w-md w-full mx-4" style={{background:'#0d1208',border:'1px solid #5a2a2a'}}>
-              <h3 className="font-mono text-sm font-bold tracking-widest uppercase mb-3" style={{color:'#c06060'}}>CONFIRMAR EXCLUSÃO</h3>
+              <h3 className="font-mono text-sm font-bold tracking-widest uppercase mb-3" style={{color:'#c06060'}}>{t('drafts.confirmDelete')}</h3>
               <p className="font-mono text-xs mb-6" style={{color:'#5a7a4a'}}>
-                Tem certeza? Esta ação não pode ser desfeita.
+                {t('drafts.deleteWarning')}
               </p>
               <div className="flex gap-3 justify-end">
                 <button onClick={cancelDelete} className="px-4 py-2 font-mono text-xs corner-clip-sm transition-colors" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>
-                  CANCELAR
+                  {t('common.cancel')}
                 </button>
                 <button onClick={confirmDeleteDraft} className="px-4 py-2 font-mono text-xs corner-clip-sm transition-colors" style={{background:'rgba(150,50,50,0.2)',border:'1px solid #7a2a2a',color:'#c06060'}}>
-                  EXCLUIR
+                  {t('drafts.excluir')}
                 </button>
               </div>
             </div>

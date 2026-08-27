@@ -12,6 +12,7 @@ import type { ScoreBreakdown } from '@/lib/computeScore'
 import { useColorMeanings } from '@/hooks/useColorMeanings'
 import { saveUnit, loadUnit } from '@/lib/unitStorage'
 import { useRouter } from 'next/navigation'
+import { useT } from '@/hooks/useT'
 
 // ── Defense validation rules (per class) ─────────────────────────────────────
 
@@ -290,6 +291,7 @@ type Tab = 'meta' | 'combat' | 'heat' | 'attacks'
 
 export default function UnitBuilderPage() {
   const router = useRouter()
+  const t = useT()
 
   const [meta, setMeta] = useState<UnitMeta>(DEFAULT_META)
   const [dialSteps, setDialSteps] = useState(9)
@@ -364,9 +366,13 @@ export default function UnitBuilderPage() {
     <div className="min-h-screen" style={{ background: 'linear-gradient(160deg, #080c05 0%, #0d1208 40%, #0a0f06 100%)' }}>
       {/* Top bar */}
       <div className="border-b border-[#3a4a2a] px-6 py-2 flex items-center justify-between" style={{ background: 'rgba(0,0,0,0.5)' }}>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
+          <button onClick={() => router.push('/')} className="font-mono text-xs tracking-widest uppercase transition-colors" style={{color:'#4a5e3a'}} onMouseEnter={e => (e.currentTarget.style.color='#c9a84c')} onMouseLeave={e => (e.currentTarget.style.color='#4a5e3a')}>
+            {t('common.backToHome')}
+          </button>
+          <span style={{color:'#2a3a1a'}}>|</span>
           <div className="w-2 h-2 rounded-full bg-[#7a9a5a] animate-pulse" />
-          <span className="font-mono text-xs text-[#7a9a5a] tracking-widest uppercase">Criador de Unidades</span>
+          <span className="font-mono text-xs text-[#7a9a5a] tracking-widest uppercase">{t('home.unitBuilder')}</span>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -378,14 +384,14 @@ export default function UnitBuilderPage() {
               color: savedFeedback ? '#7a9a5a' : '#c9a84c',
             }}
           >
-            {savedFeedback ? '✓ Salvo' : 'Salvar'}
+            {savedFeedback ? '✓' : t('common.save')}
           </button>
           <button
             onClick={handleView}
             className="font-mono text-xs tracking-widest uppercase px-4 py-1.5 rounded border transition-all hover:border-[#c9a84c]"
             style={{ background: 'rgba(201,168,76,0.15)', border: '1px solid #c9a84c', color: '#c9a84c' }}
           >
-            Ver Unidade →
+            {t('common.viewUnit')} →
           </button>
         </div>
       </div>

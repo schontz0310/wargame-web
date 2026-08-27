@@ -7,6 +7,7 @@ import elite from '@/images/patent-tree.png';
 import veteran from '@/images/patent-two.png'
 import green from '@/images/patent-one.png'
 import vent from '@/images/vent.png';
+import capacityIcon from '@/images/capacity.png';
 import ballisticIcon from '@/images/ballisticDamage.png'
 import energeticIcon from '@/images/energeticDamage.png'
 import meleeIcon from '@/images/meleeDamage.png'
@@ -16,6 +17,7 @@ import { CombatDialStep } from '@/lib/api';
 import useImage from 'use-image'
 import { useSelectedUnit } from '@/hooks/useSelectedUnit'
 import { useColorMeanings } from '@/hooks/useColorMeanings'
+import { useT } from '@/hooks/useT'
 import { useState, useEffect, useCallback, useRef } from 'react'
 
 const ANGLE_PER_CHARACTER = 4.5;
@@ -109,11 +111,15 @@ interface DialParams {
   externalDamageClicks?: number;
   onHeatChange?: (clicks: number) => void;
   onDamageChange?: (clicks: number) => void;
+  /** Compact layout: small edge-anchored controls instead of the stacked header above the dial. Used by GameDialCard so the full dial face fits inside a small grid cell. */
+  compact?: boolean;
+  onHeatEffectClick?: () => void;
 }
 
 export function AppDial(dialParams: DialParams) {
-  const { unitId, dialSide, externalHeatClicks, externalDamageClicks, onHeatChange, onDamageChange } = dialParams;
-  
+  const { unitId, dialSide, externalHeatClicks, externalDamageClicks, onHeatChange, onDamageChange, compact = false, onHeatEffectClick } = dialParams;
+  const t = useT();
+
   // Use dynamic color mapping from API
   const { getColorById, getTextColorForColor, loading: colorLoading, colorMapping } = useColorMeanings();
 
@@ -198,6 +204,7 @@ export function AppDial(dialParams: DialParams) {
   
   // Move all hooks to top before any conditional returns
   const [ventLogo] = useImage(vent.src, 'anonymous');
+const [capacityLogo] = useImage(capacityIcon.src, 'anonymous');
   const [ballisticDamage] = useImage(ballisticIcon.src, 'anonymous');
   const [energeticDamage] = useImage(energeticIcon.src, 'anonymous');
   const [meleeDamage] = useImage(meleeIcon.src, 'anonymous');
@@ -414,8 +421,8 @@ export function AppDial(dialParams: DialParams) {
     requestAnimationFrame(animate);
   }, [heatClicks]);
 
-  if (loading || colorLoading) return <div>Carregando...</div>;
-  if (error || !selectedUnit) return <div>Erro ao carregar unidade</div>;
+  if (loading || colorLoading) return <div>{t('common.loading')}</div>;
+  if (error || !selectedUnit) return <div>{t('common.loadUnitError')}</div>;
   
   // Get marker color based on marker type
   const getMarkerColor = (markerType: "none" | "black" | "green"): string => {
@@ -762,58 +769,119 @@ export function AppDial(dialParams: DialParams) {
 
   return (
     <>
-    {/* Damage Control Interface - Curved arrows around dial */}
-    <div className="relative flex justify-center items-center mb-6">
-      {/* Position indicator - centered above dial */}
-      <div className="absolute -top-16 left-1/2 transform -translate-x-1/2 px-5 py-3 bg-gradient-to-r from-slate-100 to-slate-200 border border-slate-300 rounded-xl text-sm font-semibold text-slate-700 shadow-md z-10">
-        <span className="flex items-center gap-2">
-          <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          Posição: {damageClicks + 1}/18
+    {compact ? (
+      /* Compact header: one small badge instead of the tall absolute-positioned indicator */
+      <div className="text-center mb-1">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-200 border border-slate-300 rounded text-[10px] font-semibold text-slate-700 whitespace-nowrap">
+          Posição: {damageClicks + 1}/18{maxHeatSteps > 0 ? ` · 🔥 ${heatClicks + 1}/${maxHeatSteps}` : ''}
         </span>
       </div>
-      
-    </div>
-    
-    {/* Centralized interaction buttons */}
-    <div className="flex justify-center items-center gap-6 mt-6">
-      {/* Left arrow button - Repair */}
-      <button
-        onClick={handleRepair}
-        disabled={damageClicks <= 0}
-        className="group bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-110 disabled:transform-none disabled:shadow-md z-10"
-        style={{
-          clipPath: 'polygon(25% 0%, 100% 0%, 75% 50%, 100% 100%, 25% 100%, 0% 50%)',
-          width: '60px',
-          height: '40px'
-        }}
-      >
-      </button>
-      
-      {/* Right arrow button - Apply Damage */}
-      <button
-        onClick={handleDamage}
-        disabled={damageClicks >= 17}
-        className="group bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-700 hover:to-red-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-110 disabled:transform-none disabled:shadow-md z-10"
-        style={{
-          clipPath: 'polygon(0% 0%, 75% 0%, 100% 50%, 75% 100%, 0% 100%, 25% 50%)',
-          width: '60px',
-          height: '40px'
-        }}
-      >
-      </button>
-    </div>
-    
-    {/* Button labels */}
-    <div className="flex justify-center items-center gap-6 mt-2">
-      <span className="text-xs font-semibold text-green-600 whitespace-nowrap">
-        REPARO
-      </span>
-      <span className="text-xs font-semibold text-red-600 whitespace-nowrap">
-        DANO
-      </span>
-    </div>
+    ) : (
+      <>
+      {/* Damage Control Interface - Curved arrows around dial */}
+      <div className="relative flex justify-center items-center mb-6">
+        {/* Position indicator - centered above dial */}
+        <div className="absolute -top-16 left-1/2 transform -translate-x-1/2 px-5 py-3 bg-gradient-to-r from-slate-100 to-slate-200 border border-slate-300 rounded-xl text-sm font-semibold text-slate-700 shadow-md z-10">
+          <span className="flex items-center gap-2">
+            <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Posição: {damageClicks + 1}/18
+          </span>
+        </div>
+
+      </div>
+
+      {/* Centralized interaction buttons */}
+      <div className="flex justify-center items-center gap-6 mt-6">
+        {/* Left arrow button - Repair */}
+        <button
+          onClick={handleRepair}
+          disabled={damageClicks <= 0}
+          className="group bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-110 disabled:transform-none disabled:shadow-md z-10"
+          style={{
+            clipPath: 'polygon(25% 0%, 100% 0%, 75% 50%, 100% 100%, 25% 100%, 0% 50%)',
+            width: '60px',
+            height: '40px'
+          }}
+        >
+        </button>
+
+        {/* Right arrow button - Apply Damage */}
+        <button
+          onClick={handleDamage}
+          disabled={damageClicks >= 17}
+          className="group bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-700 hover:to-red-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-110 disabled:transform-none disabled:shadow-md z-10"
+          style={{
+            clipPath: 'polygon(0% 0%, 75% 0%, 100% 50%, 75% 100%, 0% 100%, 25% 50%)',
+            width: '60px',
+            height: '40px'
+          }}
+        >
+        </button>
+      </div>
+
+      {/* Button labels */}
+      <div className="flex justify-center items-center gap-6 mt-2">
+        <span className="text-xs font-semibold text-green-600 whitespace-nowrap">
+          REPARO
+        </span>
+        <span className="text-xs font-semibold text-red-600 whitespace-nowrap">
+          DANO
+        </span>
+      </div>
+      </>
+    )}
+
+    <div className="relative">
+      {compact && (
+        <>
+          <button
+            onClick={handleRepair}
+            disabled={damageClicks <= 0}
+            className="absolute z-10 rounded font-mono text-[9px] font-bold text-white bg-gradient-to-b from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed shadow-md transition-colors"
+            style={{ left: 4, top: '50%', transform: 'translateY(-50%)', width: 34, height: 44 }}
+            title={t('common.repair')}
+          >
+            REP
+          </button>
+          <button
+            onClick={handleDamage}
+            disabled={damageClicks >= 17}
+            className="absolute z-10 rounded font-mono text-[9px] font-bold text-white bg-gradient-to-b from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed shadow-md transition-colors"
+            style={{ right: 4, top: '50%', transform: 'translateY(-50%)', width: 34, height: 44 }}
+            title={t('common.damage')}
+          >
+            DAN
+          </button>
+          {maxHeatSteps > 0 && (
+            <>
+              <button
+                onClick={handleCooldownWithSpin}
+                disabled={heatClicks <= 0}
+                className="absolute z-10 flex items-center justify-center rounded-full text-white bg-gradient-to-br from-blue-400 to-blue-600 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed shadow-md transition-colors"
+                style={{ left: 4, top: 4, width: 28, height: 28 }}
+                title={t('common.vent')}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={`w-4 h-4 ${ventSpinning ? 'animate-spin' : ''}`}>
+                  <path d="M12 2a1 1 0 0 1 1 1c0 1.5 1.5 2.5 3 2a1 1 0 0 1 .87 1.5C15.5 8 16 10 17.5 10.5a1 1 0 0 1 0 1.93C16 13 15.5 15 16.87 16.5A1 1 0 0 1 16 18c-1.5-.5-3 .5-3 2a1 1 0 0 1-2 0c0-1.5-1.5-2.5-3-2a1 1 0 0 1-.87-1.5C8.5 15 8 13 6.5 12.43a1 1 0 0 1 0-1.93C8 10 8.5 8 7.13 6.5A1 1 0 0 1 8 5c1.5.5 3-.5 3-2a1 1 0 0 1 1-1zm0 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/>
+                </svg>
+              </button>
+              <button
+                onClick={() => handleHeat(maxHeatSteps)}
+                disabled={heatClicks >= maxHeatSteps - 1}
+                className="absolute z-10 flex items-center justify-center rounded-full text-white bg-gradient-to-br from-orange-400 to-red-600 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed shadow-md transition-colors"
+                style={{ right: 4, top: 4, width: 28, height: 28 }}
+                title={t('common.heat')}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                  <path fillRule="evenodd" d="M12.963 2.286a.75.75 0 0 0-1.071-.136 9.742 9.742 0 0 0-3.539 6.176 7.547 7.547 0 0 1-1.705-1.715.75.75 0 0 0-1.152-.082A9 9 0 1 0 15.68 4.534a7.46 7.46 0 0 1-2.717-2.248ZM15.75 14.25a3.75 3.75 0 1 1-7.313-1.172c.628.465 1.35.81 2.133 1a5.99 5.99 0 0 1 1.925-3.546 3.75 3.75 0 0 1 3.255 3.718Z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </>
+          )}
+        </>
+      )}
 
     <Stage width={500} height={500} rotation={dialSide === 'name' ? 0 : 180} x={dialSide === 'name' ? 0 : DIAL_WIDTH} y={dialSide === 'name' ? 0 : DIAL_HEIGHT}>
       {/* Main dial layer - STATIC (no rotation) */}
@@ -1006,6 +1074,31 @@ export function AppDial(dialParams: DialParams) {
           offsetY={-60}
           offsetX={-1}
         />
+        {(selectedUnit?.cargoCapacity ?? 0) > 0 && (
+          <>
+            <Image
+              image={capacityLogo}
+              x={DIAL_CENTER_X}
+              y={DIAL_CENTER_Y}
+              width={40}
+              height={27}
+              rotation={180}
+              offsetX={18}
+              offsetY={-57}
+            />
+            <Text
+              x={DIAL_CENTER_X}
+              y={DIAL_CENTER_Y}
+              text={String(selectedUnit.cargoCapacity)}
+              fontSize={21}
+              fontStyle='bold'
+              fill="#000000"
+              rotation={180}
+              offsetY={-60}
+              offsetX={-1}
+            />
+          </>
+        )}
       </Layer>
       <Layer>
         <Arc
@@ -1113,6 +1206,9 @@ export function AppDial(dialParams: DialParams) {
             height={22}
             visible={isShutdown ? true : heatClick.movement.collor.hasColor}
             fill={isShutdown ? '#000000' : heatClick.movement.collor.hexValue}
+            onClick={() => { if (onHeatEffectClick && heatValues?.movementHeatColorMeaningId) onHeatEffectClick() }}
+            onMouseEnter={() => { if (heatValues?.movementHeatColorMeaningId) document.body.style.cursor = 'pointer' }}
+            onMouseLeave={() => { document.body.style.cursor = 'default' }}
           />
           <Text
             x={250}
@@ -1135,6 +1231,9 @@ export function AppDial(dialParams: DialParams) {
             height={22}
             visible={isShutdown ? true : heatClick.secondaryDamage.collor.hasColor}
             fill={isShutdown ? '#000000' : heatClick.secondaryDamage.collor.hexValue}
+            onClick={() => { if (onHeatEffectClick && heatValues?.secondaryHeatColorMeaningId) onHeatEffectClick() }}
+            onMouseEnter={() => { if (heatValues?.secondaryHeatColorMeaningId) document.body.style.cursor = 'pointer' }}
+            onMouseLeave={() => { document.body.style.cursor = 'default' }}
           />
           <Text
             x={250}
@@ -1158,6 +1257,9 @@ export function AppDial(dialParams: DialParams) {
             visible={isShutdown ? true : heatClick.primaryDamage.collor.hasColor}
             fill={isShutdown ? '#000000' : heatClick.primaryDamage.collor.hexValue}
             cornerRadius={[0, 0, 0, 0]}
+            onClick={() => { if (onHeatEffectClick && heatValues?.primaryHeatColorMeaningId) onHeatEffectClick() }}
+            onMouseEnter={() => { if (heatValues?.primaryHeatColorMeaningId) document.body.style.cursor = 'pointer' }}
+            onMouseLeave={() => { document.body.style.cursor = 'default' }}
           />
           <Text
             x={250}
@@ -1458,9 +1560,10 @@ export function AppDial(dialParams: DialParams) {
         />
       </Layer>
     </Stage>
+    </div>
 
-    {/* Heat Dial Controls - only shown if unit has heatDial */}
-    {maxHeatSteps > 0 && (
+    {/* Heat Dial Controls - only shown if unit has heatDial (compact mode has its own small edge buttons instead) */}
+    {!compact && maxHeatSteps > 0 && (
       <>
         <div className="flex justify-center items-center gap-8 mt-4">
           {/* Cooldown button - ventilador */}

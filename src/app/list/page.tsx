@@ -4,6 +4,7 @@ import { AppDial, HeatModifiersTable } from '@/components/app-dial';
 import { InfantryDial } from '@/components/infantry-dial';
 import { useSelectedUnit } from '@/hooks/useSelectedUnit';
 import { useColorMeanings } from '@/hooks/useColorMeanings';
+import { useT } from '@/hooks/useT';
 import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Unit3DModal from '@/components/Unit3DModal';
@@ -12,6 +13,7 @@ function ListContent() {
   const searchParams = useSearchParams();
   const unitId = searchParams.get('unitId');
   const [is3DModalOpen, setIs3DModalOpen] = useState(false);
+  const t = useT();
   
   const {
     selectedUnit,
@@ -29,7 +31,7 @@ function ListContent() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen" style={{background:'#0d1208'}}>
-        <div className="font-mono text-[#7a9a5a] tracking-widest animate-pulse">[ CARREGANDO DADOS DA UNIDADE... ]</div>
+        <div className="font-mono text-[#7a9a5a] tracking-widest animate-pulse">{t('list.loadingUnit')}</div>
       </div>
     );
   }
@@ -37,7 +39,7 @@ function ListContent() {
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-screen" style={{background:'#0d1208'}}>
-        <div className="font-mono text-red-500 border border-red-900 px-4 py-2">ERRO: {error}</div>
+        <div className="font-mono text-red-500 border border-red-900 px-4 py-2">{t('list.errorPrefix')} {error}</div>
       </div>
     );
   }
@@ -45,8 +47,8 @@ function ListContent() {
   if (!selectedUnit) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4" style={{background:'#0d1208'}}>
-        <div className="font-mono text-[#c9a84c] text-lg tracking-widest">NENHUMA UNIDADE SELECIONADA</div>
-        <div className="font-mono text-xs text-[#4a5e3a] tracking-widest">Selecione uma unidade na página de busca</div>
+        <div className="font-mono text-[#c9a84c] text-lg tracking-widest">{t('list.noUnitTitle')}</div>
+        <div className="font-mono text-xs text-[#4a5e3a] tracking-widest">{t('list.noUnitDesc')}</div>
       </div>
     );
   }
@@ -103,11 +105,11 @@ function ListContent() {
         <div className="p-2 sm:p-3" style={{background:'rgba(0,0,0,0.3)',border:'1px solid #2a3a1a'}}>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-center">
             <div className="sm:border-0 border-b pb-2 sm:pb-0" style={{borderColor:'#2a3a1a'}}>
-              <div className="font-mono text-xs" style={{color:'#4a5e3a'}}>TIPO</div>
+              <div className="font-mono text-xs" style={{color:'#4a5e3a'}}>{t('search.type')}</div>
               <div className="font-bold font-mono text-xs capitalize" style={{color:'#c9a84c'}}>{selectedUnit.type}</div>
             </div>
             <div className="sm:border-l sm:pl-2 sm:border-0 border-b pb-2 sm:pb-0" style={{borderColor:'#2a3a1a'}}>
-              <div className="font-mono text-xs" style={{color:'#4a5e3a'}}>CLASSE</div>
+              <div className="font-mono text-xs" style={{color:'#4a5e3a'}}>{t('list.labelClass')}</div>
               <div className="font-bold font-mono text-xs" style={{color:'#c9a84c'}}>{selectedUnit.class}</div>
             </div>
             <div className="sm:border-l sm:pl-2" style={{borderColor:'#2a3a1a'}}>
@@ -121,15 +123,15 @@ function ListContent() {
         <div className="p-2 sm:p-3" style={{background:'rgba(0,0,0,0.3)',border:'1px solid #2a3a1a'}}>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-center">
             <div className="sm:border-0 border-b pb-2 sm:pb-0" style={{borderColor:'#2a3a1a'}}>
-              <div className="font-mono text-xs" style={{color:'#4a5e3a'}}>MODO</div>
+              <div className="font-mono text-xs" style={{color:'#4a5e3a'}}>{t('list.labelMode')}</div>
               <div className="font-bold font-mono text-xs capitalize" style={{color:'#c9a84c'}}>{selectedUnit.speedMode}</div>
             </div>
             <div className="sm:border-l sm:pl-2 sm:border-0 border-b pb-2 sm:pb-0" style={{borderColor:'#2a3a1a'}}>
-              <div className="font-mono text-xs" style={{color:'#4a5e3a'}}>FACÇÃO</div>
+              <div className="font-mono text-xs" style={{color:'#4a5e3a'}}>{t('search.faction')}</div>
               <div className="font-bold font-mono text-xs" style={{color:'#c9a84c'}}>{selectedUnit.faction}</div>
             </div>
             <div className="sm:border-l sm:pl-2" style={{borderColor:'#2a3a1a'}}>
-              <div className="font-mono text-xs" style={{color:'#4a5e3a'}}>EXPANSÃO</div>
+              <div className="font-mono text-xs" style={{color:'#4a5e3a'}}>{t('search.expansion')}</div>
               <div className="font-bold font-mono text-xs" style={{color:'#c9a84c'}}>{selectedUnit.expansion}</div>
             </div>
           </div>
@@ -156,16 +158,27 @@ function ListContent() {
             </div>
           </div>
         </div>
+        {(selectedUnit.cargoCapacity ?? 0) > 0 && (
+          <div className="px-2 sm:px-3 py-2" style={{background:'rgba(0,0,0,0.3)',border:'1px solid #2a3a1a'}}>
+            <div className="flex items-center gap-3">
+              <CargoIcon />
+              <div>
+                <div className="font-mono text-xs" style={{color:'#4a5e3a'}}>{t('list.cargo')}</div>
+                <div className="font-bold font-mono text-sm" style={{color:'#c9a84c'}}>{selectedUnit.cargoCapacity} {t('list.cargoUnits')}</div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Arc Information */}
         <div className="p-2 sm:p-3" style={{background:'rgba(0,0,0,0.3)',border:'1px solid #2a3a1a'}}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-center">
             <div className="sm:border-0 border-b pb-2 sm:pb-0" style={{borderColor:'#2a3a1a'}}>
-              <div className="font-mono text-xs" style={{color:'#4a5e3a'}}>ARCO FRONTAL</div>
+              <div className="font-mono text-xs" style={{color:'#4a5e3a'}}>{t('list.frontArc')}</div>
               <div className="font-bold font-mono text-xs" style={{color:'#e8d5a0'}}>{selectedUnit.frontArc}°</div>
             </div>
             <div className="sm:border-l sm:pl-2" style={{borderColor:'#2a3a1a'}}>
-              <div className="font-mono text-xs" style={{color:'#4a5e3a'}}>ARCO TRASEIRO</div>
+              <div className="font-mono text-xs" style={{color:'#4a5e3a'}}>{t('list.rearArc')}</div>
               <div className="font-bold font-mono text-xs" style={{color:'#e8d5a0'}}>{selectedUnit.rearArc}°</div>
             </div>
           </div>
@@ -216,15 +229,15 @@ function ListContent() {
         ) : (
           <div className="flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8" style={{background:'rgba(0,0,0,0.4)',border:'1px dashed #3a4a2a'}}>
             <div className="text-center max-w-md">
-              <h3 className="text-lg sm:text-xl font-bold font-mono mb-2" style={{color:'#c9a84c'}}>DIAL EM DESENVOLVIMENTO</h3>
+              <h3 className="text-lg sm:text-xl font-bold font-mono mb-2" style={{color:'#c9a84c'}}>{t('list.dialDevTitle')}</h3>
               <p className="text-sm sm:text-base mb-4 font-mono" style={{color:'#5a7a4a'}}>
-                Tipo: <span style={{color:'#7a9a5a'}}>{selectedUnit.type}</span> |
-                Modo: <span style={{color:'#7a9a5a'}}>{selectedUnit.speedMode}</span> |
-                Classe: <span style={{color:'#7a9a5a'}}>{selectedUnit.class}</span>
+                {t('list.dialDevType')} <span style={{color:'#7a9a5a'}}>{selectedUnit.type}</span> |
+                {t('list.dialDevMode')} <span style={{color:'#7a9a5a'}}>{selectedUnit.speedMode}</span> |
+                {t('list.dialDevClass')} <span style={{color:'#7a9a5a'}}>{selectedUnit.class}</span>
               </p>
               <div className="p-3 corner-clip-sm" style={{background:'rgba(122,154,90,0.1)',border:'1px solid #3a4a2a'}}>
                 <p className="text-xs sm:text-sm font-mono" style={{color:'#6a8a4a'}}>
-                  🚧 Módulo em construção. Em breve disponível.
+                  {t('list.dialDevMsg')}
                 </p>
               </div>
             </div>
@@ -242,6 +255,17 @@ function ListContent() {
       )}
     </div>
   );
+}
+
+function CargoIcon() {
+  return (
+    <svg width="28" height="22" viewBox="0 0 28 22" fill="none" aria-hidden="true">
+      <rect x="1" y="1" width="26" height="20" rx="2" stroke="#8a7a3a" strokeWidth="1.5"/>
+      <line x1="1" y1="9" x2="27" y2="9" stroke="#8a7a3a" strokeWidth="1"/>
+      <line x1="10" y1="9" x2="10" y2="21" stroke="#8a7a3a" strokeWidth="1"/>
+      <line x1="19" y1="9" x2="19" y2="21" stroke="#8a7a3a" strokeWidth="1"/>
+    </svg>
+  )
 }
 
 export default function List() {

@@ -4,6 +4,7 @@ import { Suspense } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Environment, Center, useGLTF, Html } from '@react-three/drei'
 import { Card } from '@/lib/api'
+import { useT } from '@/hooks/useT'
 
 interface Card3DViewerProps {
   card: Card
@@ -12,9 +13,10 @@ interface Card3DViewerProps {
 }
 
 function Model({ url, cardName }: { url: string; cardName: string }) {
+  const t = useT();
   let scene;
   let error;
-  
+
   try {
     const gltf = useGLTF(url)
     scene = gltf.scene
@@ -39,7 +41,7 @@ function Model({ url, cardName }: { url: string; cardName: string }) {
       <Html center>
         <div className="text-white text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
-          <p>Carregando modelo...</p>
+          <p>{t('common.loading3D')}</p>
         </div>
       </Html>
     )
@@ -55,6 +57,7 @@ function Model({ url, cardName }: { url: string; cardName: string }) {
 }
 
 export default function Card3DViewer({ card, modelPath, className = "" }: Card3DViewerProps) {
+  const t = useT();
   // Default path if not provided
   const defaultModelPath = `/models/cards/${card.id}.glb`
   const finalModelPath = modelPath || defaultModelPath
@@ -71,7 +74,7 @@ export default function Card3DViewer({ card, modelPath, className = "" }: Card3D
             <Html center>
               <div className="text-white text-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
-                <p>Carregando modelo 3D...</p>
+                <p>{t('common.loading3D')}</p>
               </div>
             </Html>
           }

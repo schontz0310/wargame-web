@@ -72,6 +72,7 @@ export interface DraftUnit {
   collectionNumber?: string;
   isCard?: boolean; // Flag to distinguish cards from units
   cardType?: string; // Card type if it's a card
+  cardDbId?: string; // Database primary key for card detail navigation
 }
 
 export interface DraftBoosterConfig {
@@ -86,16 +87,19 @@ export interface DraftSettings {
   boosterConfigs: DraftBoosterConfig[];
   useCollection: boolean; // true = use my-collection, false = use search results
   respectFilters: boolean; // respect current page filters
+  armyPointLimit?: number; // Point limit for each player's army (0 = no limit)
 }
 
 export interface DraftResult {
   playerId: number;
   playerName: string;
+  playerAlias?: string; // Custom display alias for the player, falls back to playerName
   units: DraftUnit[]; // Units drafted
   armyUnits: DraftUnit[]; // Units actually in the army (can be modified)
   secretCards: DraftUnit[]; // Cards added manually (only value shown, revealed in game)
   totalPoints: number;
   armyPoints: number; // Points of army units
+  armyPointsLimit?: number; // Optional point limit for the army
 }
 
 export interface DraftUnitWithQuantity {
@@ -117,12 +121,14 @@ export interface Draft {
   availableCards?: DraftCardWithQuantity[]; // Cards that can be drafted with quantities
   results: DraftResult[];
   sourceFilters?: Record<string, unknown>; // Store the filters used when generating
+  preparationCompleted?: boolean; // Whether the preparation phase has been completed
   createdAt: string;
   updatedAt: string;
 }
 
 export interface Card {
   id: string; // Format: EXPANSION-TYPE-NUMBER (e.g., AOD-F-001)
+  dbId?: string; // Database primary key (used for detail page navigation)
   name: string;
   type: "F" | "P" | "G" | "S" | "C" | "MC"; // F=Faction Pride, P=Pilot, G=Gear, S=Special, C=Command, MC=Mercenary Contract
   typeName: "Faction Pride" | "Pilot" | "Gear" | "Special" | "Command" | "Mercenary Contract";
@@ -255,6 +261,7 @@ export interface Unit {
   rearArc: string;
   maxSpeed: number;
   ventCapacity: number;
+  cargoCapacity: number;
   maxAttack: number;
   maxDefense: number;
   maxDamage: number;
@@ -264,6 +271,8 @@ export interface Unit {
   expansion: string;
   imageUrl: string;
   collectionNumber: number;
+  hasArtillery: boolean;
+  artilleryRange: number;
   attackStats?: AttackStat[];
   combatDial?: CombatDialStep[];
   heatDial?: HeatDialStep[];

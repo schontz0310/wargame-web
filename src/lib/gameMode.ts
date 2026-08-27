@@ -1,0 +1,292 @@
+import type { DraftResult, Unit } from '@/lib/api'
+
+export const ORDER_STAGES = ['command', 'order', 'cleanup'] as const
+export type OrderStage = typeof ORDER_STAGES[number]
+
+export const PREPARATION_STAGES = ['player_aliases', 'battlefield_setup', 'first_player_roll', 'terrain_pile_selection', 'terrain_placement', 'battleforce_deployment'] as const
+export type PreparationStage = typeof PREPARATION_STAGES[number]
+
+// The rulebook (p.14) lists 5 order types — move, vent, ranged combat, close
+// combat, assault combat. 'run' is the 'Mech/Quad 'Mech "run option" for a move
+// order (p.17); charge/death_from_above/ram are 'Mech/vehicle special attacks
+// (p.27-28) declared as part of a move order. They're modeled as their own
+// selectable OrderType here so each gets its own order-token label, even
+// though the rulebook frames them as move-order variants rather than a 6th
+// and 7th order type.
+// 'board'/'disembark' are transport move-order variants (rulebook p.18-19): the
+// transport gets a move order with speed halved; passengers board/disembark at its
+// rear arc. Modeled as separate order types for distinct token labels.
+export const ORDER_TYPES = [
+  'move', 'run', 'board', 'disembark', 'vent', 'ranged', 'artillery', 'close', 'assault', 'charge', 'death_from_above', 'ram',
+] as const
+export type OrderType = typeof ORDER_TYPES[number]
+
+export const ORDER_TYPE_LABELS: Record<OrderType, string> = {
+  move: 'Mover (Normal)',
+  run: 'Mover (Corrida)',
+  board: 'Mover (Embarcar)',
+  disembark: 'Mover (Desembarcar)',
+  vent: 'Ventilar',
+  ranged: 'Combate à Distância',
+  artillery: 'Artilharia',
+  close: 'Corpo a Corpo',
+  assault: 'Assalto',
+  charge: 'Carga',
+  death_from_above: 'Morte Vinda do Céu',
+  ram: 'Colisão (Ram)',
+}
+
+// Order types that open the Attack Sequence checklist instead of marking the order immediately.
+export const COMBAT_ORDER_TYPES: OrderType[] = ['ranged', 'close']
+
+// Which order types a unit may be given, per the rulebook's unit-type/speed-mode
+// restrictions:
+// - Run option: 'Mech/Quad 'Mech speed modes only (p.17) — both are unit type "Mech" here.
+// - Board/Disembark: any unit with cargoCapacity > 0 (p.18-19). 'Disembark' only
+//   when the transport already has passengers, since there's nothing to disembark otherwise.
+// - Vent: only 'Mechs have heat (p.21).
+// - Close combat: "Only infantry and 'Mechs can make close combat attacks" (p.26).
+// - Assault combat: "A 'Mech ... may be given an assault order" (p.27) — 'Mech only.
+// - Charge: "'Mechs with attack values greater than 0" (p.27) — 'Mech only.
+// - Death From Above: 'Mechs with Jump Jets special equipment (p.28) — 'Mech only
+//   here (Jump Jets ownership isn't in the unit data model, so this is a necessary
+//   but not sufficient check; the player still has to confirm the unit has Jump Jets).
+// - Ram: "Vehicles with attack values greater than 0" (p.28) — Vehicle only (VTOL
+//   vehicles can't ram per p.18, also not modeled here for the same reason).
+// - Artillery: any unit type can be an artillery unit (p.25); there's no such flag
+//   in the unit data, so it's gated by the player-set hasArtillery toggle instead.
+export function getEligibleOrderTypes(
+  unitType: string,
+  hasArtillery: boolean,
+  cargoCapacity = 0,
+  hasPassengers = false,
+): OrderType[] {
+  const type = unitType.toLowerCase()
+  const isMech = type === 'mech'
+  const isVehicle = type === 'vehicle'
+  const isInfantry = type === 'infantry'
+  const isTransport = cargoCapacity > 0
+
+  const eligible: OrderType[] = ['move']
+  if (isMech) eligible.push('run')
+  if (isTransport) eligible.push('board')
+  if (isTransport && hasPassengers) eligible.push('disembark')
+  if (isMech) eligible.push('vent')
+  eligible.push('ranged')
+  if (hasArtillery) eligible.push('artillery')
+  if (isMech || isInfantry) eligible.push('close')
+  if (isMech) eligible.push('assault', 'charge', 'death_from_above')
+  if (isVehicle) eligible.push('ram')
+  return eligible
+}
+
+// The rulebook's 3 victory conditions (p.38-40).
+export type VictoryCondition = 1 | 2 | 3
+
+export const VICTORY_CONDITION_LABELS: Record<VictoryCondition, string> = {
+  1: 'VC1 · Eliminação',
+  2: 'VC2 · Controle de Campo',
+  3: 'VC3 · Zona Adversária',
+}
+
+export const VICTORY_CONDITION_DESCRIPTIONS: Record<VictoryCondition, string> = {
+  1: 'Elimine unidades inimigas: cada unidade inimiga eliminada vale pontos de vitória iguais ao seu valor em pontos.',
+  2: 'No fim do jogo: suas unidades sobreviventes valem seu valor em pontos; cativos na sua zona de deployment valem o dobro do valor; unidades inimigas com Salvage fora da zona de deployment do dono também contam.',
+  3: 'No início de cada uma das suas fases de Comando: 1 VP por unidade sua que ocupa a zona de deployment do oponente.',
+}
+
+// Rulebook p.40 "Determining the Winner": each VC is scored separately — whoever
+// has the single highest total for a VC wins that VC (a tie means nobody wins
+// it). The game winner is whoever wins the most VCs — NOT the sum of raw VC
+// points, since VC1/VC2 are point-values and VC3 is a per-turn counter, so
+// adding them together mixes incompatible scales.
+export function vcWinner(playerIds: number[], valueOf: (playerId: number) => number): number | null {
+  let max = -Infinity
+  let winners: number[] = []
+  for (const pid of playerIds) {
+    const v = valueOf(pid)
+    if (v > max) { max = v; winners = [pid] }
+    else if (v === max) { winners.push(pid) }
+  }
+  return winners.length === 1 ? winners[0] : null
+}
+
+// Artillery attack placed during the Order stage, resolved next Command stage.
+export interface PendingArtilleryAttack {
+  id: string
+  attackerPlayerId: number
+  attackerInstanceKey: string
+  attackerUnitName: string
+  markerDescription: string
+  attackValue: number
+  damageValue: number
+  blastRadius: number
+  placedOnTurn: number
+}
+
+// Faction abilities that trigger during the Command stage.
+export interface FactionCommandAbility {
+  abilityName: string
+  description: string
+  requirementHint?: string
+}
+
+export const FACTION_COMMAND_ABILITIES: Record<string, FactionCommandAbility[]> = {
+  'House Liao': [
+    {
+      abilityName: 'Awe',
+      description:
+        'Escolha 1 oponente. Role 1d6 para cada 450 pts do build total do oponente (arredonde para cima). Para cada resultado 6, o oponente perde 1 ordem neste turno.',
+      requirementHint:
+        'Requer pelo menos metade do seu build total composto de unidades Elite (★) de House Liao.',
+    },
+  ],
+}
+
+export function getInstanceKey(index: number, unitId: string): string {
+  return `${index}-${unitId}`
+}
+
+export type DialKind = 'mech' | 'infantry' | 'none'
+
+/**
+ * Mirrors the dial-eligibility rule already used in src/app/list/page.tsx:
+ * infantry/vehicle -> InfantryDial; non-colossal mech/quadmech -> AppDial; else no dial.
+ */
+export function getDialKind(unit: Pick<Unit, 'type' | 'speedMode' | 'class'>): DialKind {
+  const type = unit.type.toLowerCase()
+  if (type === 'infantry' || type === 'vehicle') return 'infantry'
+  if (
+    type === 'mech' &&
+    (unit.speedMode.toLowerCase() === 'mech' || unit.speedMode.toLowerCase() === 'quadmech') &&
+    unit.class.toLowerCase() !== 'colossal'
+  ) {
+    return 'mech'
+  }
+  return 'none'
+}
+
+// Rulebook: one order per 150 points of build total, minimum 1.
+export function computeOrdersTotal(points: number): number {
+  return Math.max(1, Math.ceil(points / 150))
+}
+
+export function nextStage(stage: OrderStage): OrderStage {
+  const idx = ORDER_STAGES.indexOf(stage)
+  return ORDER_STAGES[(idx + 1) % ORDER_STAGES.length]
+}
+
+export function nextPreparationStage(stage: PreparationStage): PreparationStage {
+  const idx = PREPARATION_STAGES.indexOf(stage)
+  return PREPARATION_STAGES[(idx + 1) % PREPARATION_STAGES.length]
+}
+
+export function nextPlayerId(results: DraftResult[], currentPlayerId: number): number {
+  const ids = results.map(r => r.playerId).sort((a, b) => a - b)
+  const idx = ids.indexOf(currentPlayerId)
+  return ids[(idx + 1) % ids.length]
+}
+
+// Preparation phase types
+export interface TerrainFeature {
+  id: string
+  playerId: number
+  name: string
+  code: string
+  x: number
+  y: number
+}
+
+// Official WizKids-approved terrain models (warrenborn.com/Terrain.html), grouped
+// by the same 5 categories the rulebook uses. Each model carries its official
+// control code (from the product PDF filenames, e.g. MWDATerrainC1hi.pdf → "C1").
+// The two "Combined Terrain" pieces that share the "Blocking / Hindering" name
+// are distinct physical pieces — their codes (C1 / C3) are what disambiguates them.
+export interface TerrainModel {
+  code: string
+  name: string
+}
+
+export interface TerrainCategory {
+  category: string
+  models: TerrainModel[]
+}
+
+// Official reference sheet PDF for a terrain model, keyed by its control code
+// (matches the warrenborn.com file naming: MWDATerrain<code>hi.pdf).
+export function terrainPdfUrl(code: string): string {
+  return `https://www.warrenborn.com/Files/Terrain/MWDATerrain${code}hi.pdf`
+}
+
+export const TERRAIN_CATEGORIES: TerrainCategory[] = [
+  {
+    category: 'Abrupt Terrain',
+    models: [
+      { code: 'A1', name: 'Abrupt Elevated' },
+    ],
+  },
+  {
+    category: 'Blocking Terrain',
+    models: [
+      { code: 'B1', name: 'Office Building' },
+      { code: 'B2', name: 'City Block A' },
+      { code: 'B3', name: 'City Block B' },
+      { code: 'B4', name: 'City Block C' },
+      { code: 'B5', name: 'Industrial Complex' },
+      { code: 'B6', name: 'Industrial Tower' },
+      { code: 'B7', name: 'Butte' },
+      { code: 'B8', name: 'Fortification Wall' },
+    ],
+  },
+  {
+    category: 'Combined Terrain',
+    models: [
+      { code: 'C1', name: 'Blocking / Hindering' },
+      { code: 'C2', name: 'Water / Hindering' },
+      { code: 'C3', name: 'Blocking / Hindering' },
+      { code: 'C4', name: 'Abrupt / Hindering / Water' },
+    ],
+  },
+  {
+    category: 'Hindering Terrain',
+    models: [
+      { code: 'h1', name: 'Woodland' },
+      { code: 'h2', name: 'Orchard' },
+      { code: 'h4', name: 'Brush' },
+    ],
+  },
+  {
+    category: 'Water Terrain',
+    models: [
+      { code: 'W1', name: 'Lagoon' },
+      { code: 'W2', name: 'Pool' },
+      { code: 'W3', name: 'Canal' },
+      { code: 'W4', name: 'Tarn' },
+      { code: 'W5', name: 'Watercourse' },
+      { code: 'W6', name: 'Watercourse Bend' },
+      { code: 'W7', name: 'Canal Bend' },
+    ],
+  },
+]
+
+export interface BattlefieldSetup {
+  battlefieldSize: number // 3 feet = 36 inches
+  deploymentZoneDepth: number // 3 inches
+  deploymentZoneMinEdgeDistance: number // 8 inches
+  terrainMinDistance: number // 3 inches
+}
+
+export interface PreparationState {
+  stage: PreparationStage
+  battlefieldSetup: BattlefieldSetup
+  terrainFeatures: TerrainFeature[]   // terrenos já colocados no campo
+  terrainPileItems: TerrainFeature[]  // terrenos na pilha aguardando colocação
+  terrainPile: Map<number, number>    // playerId -> count (legado, mantido para compatibilidade)
+  firstPlayerId: number | null
+  diceRolls: Map<number, number> // playerId -> roll total
+  deployedUnits: Map<number, string[]> // playerId -> unitIds
+  currentDeployingPlayer: number | null
+  // Pre-game boarding (rulebook p.18: units can begin as passengers).
+  // playerId -> transportInstanceKey -> passengerInstanceKeys[]
+  initialPassengers?: Record<number, Record<string, string[]>>
+}

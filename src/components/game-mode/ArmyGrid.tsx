@@ -1,15 +1,18 @@
 // src/components/game-mode/ArmyGrid.tsx
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import type { Draft, DraftUnit } from '@/lib/api'
+import { apiService, type Draft, type DraftUnit, type Unit, type ColorMeaning } from '@/lib/api'
 import { useGameSession } from '@/hooks/useGameSession'
 import { getInstanceKey, type OrderType } from '@/lib/gameMode'
 import GameDialCard from './GameDialCard'
 import OrderTypeMenu from './OrderTypeMenu'
 import AttackSequenceOverlay from './AttackSequenceOverlay'
 import ArtilleryOrderOverlay from './ArtilleryOrderOverlay'
+import TransportOverlay from './TransportOverlay'
+import HeatEffectRollModal, { type HeatEffectItem, GREEN_HEX } from './HeatEffectRollModal'
+import { useT } from '@/hooks/useT'
 import { useBattleLog } from '@/hooks/useBattleLog'
 import type { AttackResolutionResult } from './AttackSequenceOverlay'
 import type { PendingArtilleryAttack } from '@/lib/gameMode'
@@ -25,21 +28,41 @@ interface ArmyGridProps {
 interface ActiveAttack {
   instanceKey: string
   draftUnit: DraftUnit
-  orderType: 'ranged' | 'close'
+  orderType: 'ranged' | 'close' | 'assault'
+}
+
+interface ActiveTransport {
+  instanceKey: string
+  draftUnit: DraftUnit
+  action: 'board' | 'disembark'
 }
 
 export default function ArmyGrid({ draft, viewedPlayerId, page }: ArmyGridProps) {
+  const t = useT()
   const router = useRouter()
-  const { session, getPlayerState, setDialClicks, setUnitOrder, placeArtilleryOrder } = useGameSession(draft.id, draft.results)
+  const { session, getPlayerState, setDialClicks, giveOrder, placeArtilleryOrder, boardTransport, disembarkTransport } = useGameSession(draft.id, draft.results)
   const { appendEvent } = useBattleLog(draft.id)
   const [activeAttack, setActiveAttack] = useState<ActiveAttack | null>(null)
   const [activeArtillery, setActiveArtillery] = useState<{ instanceKey: string; draftUnit: DraftUnit } | null>(null)
+  const [activeTransport, setActiveTransport] = useState<ActiveTransport | null>(null)
+  // Keyed by instanceKey; populated as GameDialCards load their unit data.
+  const [unitCache, setUnitCache] = useState<Record<string, Unit>>({})
+  const [colorMeaningsById, setColorMeaningsById] = useState<Record<string, ColorMeaning>>({})
+  const [heatEffectPending, setHeatEffectPending] = useState<{ unitName: string; effects: HeatEffectItem[] } | null>(null)
   const result = draft.results.find(r => r.playerId === viewedPlayerId)
+
+  useEffect(() => {
+    apiService.getColorMeanings().then(meanings => {
+      const byId: Record<string, ColorMeaning> = {}
+      for (const m of meanings) byId[m.id] = m
+      setColorMeaningsById(byId)
+    }).catch(() => {})
+  }, [])
 
   if (!session || !result) {
     return (
       <div className="flex items-center justify-center min-h-screen" style={{ background: '#0d1208' }}>
-        <div className="font-mono text-[#7a9a5a] tracking-widest animate-pulse">[ CARREGANDO... ]</div>
+        <div className="font-mono text-[#7a9a5a] tracking-widest animate-pulse">{t('common.loading')}</div>
       </div>
     )
   }
@@ -55,20 +78,18 @@ export default function ArmyGrid({ draft, viewedPlayerId, page }: ArmyGridProps)
     router.push(`/game-mode?draftId=${draft.id}&view=army&player=${viewedPlayerId}&page=${nextPage}`)
   }
 
-  const logOrderEvent = (instanceKey: string, unitName: string, type: OrderType) => {
-    const existing = playerState.unitOrders[instanceKey]
-    const alreadyHadOrder = existing?.status === 'ordered' || existing?.status === 'pushed'
+  const logOrderEvent = (unitName: string, type: OrderType) => {
     appendEvent({
       turn: session.turn,
       stage: session.stage,
       playerId: viewedPlayerId,
-      type: alreadyHadOrder ? 'order_pushed' : 'order_given',
+      type: 'order_given',
       payload: { unitName, orderType: type },
     })
   }
 
   const handleSelectOrderType = (instanceKey: string, draftUnit: DraftUnit, type: OrderType) => {
-    if (type === 'ranged' || type === 'close') {
+    if (type === 'ranged' || type === 'close' || type === 'assault') {
       setActiveAttack({ instanceKey, draftUnit, orderType: type })
       return
     }
@@ -76,16 +97,38 @@ export default function ArmyGrid({ draft, viewedPlayerId, page }: ArmyGridProps)
       setActiveArtillery({ instanceKey, draftUnit })
       return
     }
-    if (type === 'move' || type === 'run' || type === 'vent' || type === 'charge' || type === 'death_from_above' || type === 'ram') {
-      logOrderEvent(instanceKey, draftUnit.name, type)
-      setUnitOrder(viewedPlayerId, instanceKey, type)
+    if (type === 'board' || type === 'disembark') {
+      setActiveTransport({ instanceKey, draftUnit, action: type })
+      return
     }
+    if (type === 'move' || type === 'run' || type === 'vent' || type === 'charge' || type === 'death_from_above' || type === 'ram') {
+      logOrderEvent(draftUnit.name, type)
+      giveOrder(viewedPlayerId, instanceKey, type, draftUnit.type)
+    }
+  }
+
+  const handleTransportConfirm = (passengerKeys: string[]) => {
+    if (!session || !activeTransport) return
+    const { instanceKey, draftUnit, action } = activeTransport
+    if (action === 'board') {
+      boardTransport(viewedPlayerId, instanceKey, passengerKeys, draftUnit.type)
+    } else {
+      disembarkTransport(viewedPlayerId, instanceKey, passengerKeys, draftUnit.type)
+    }
+    appendEvent({
+      turn: session.turn,
+      stage: session.stage,
+      playerId: viewedPlayerId,
+      type: 'order_given',
+      payload: { unitName: draftUnit.name, orderType: action },
+    })
+    setActiveTransport(null)
   }
 
   const handleArtilleryConfirm = (attack: Omit<PendingArtilleryAttack, 'id'>) => {
     if (!session || !activeArtillery) return
-    placeArtilleryOrder(attack, viewedPlayerId, activeArtillery.instanceKey)
-    logOrderEvent(activeArtillery.instanceKey, activeArtillery.draftUnit.name, 'artillery')
+    placeArtilleryOrder(attack, viewedPlayerId, activeArtillery.instanceKey, activeArtillery.draftUnit.type)
+    logOrderEvent(activeArtillery.draftUnit.name, 'artillery')
     appendEvent({
       turn: session.turn,
       stage: session.stage,
@@ -102,8 +145,8 @@ export default function ArmyGrid({ draft, viewedPlayerId, page }: ArmyGridProps)
   if (armyUnits.length === 0) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4" style={{ background: '#0d1208' }}>
-        <div className="font-mono text-sm" style={{ color: '#c9a84c' }}>{result.playerName} não tem unidades no army</div>
-        <a href="/drafts" className="font-mono text-xs" style={{ color: '#7a9a5a' }}>← Voltar para /drafts</a>
+        <div className="font-mono text-sm" style={{ color: '#c9a84c' }}>{result.playerName} {t('army.noUnits')}</div>
+        <a href="/game" className="font-mono text-xs" style={{ color: '#7a9a5a' }}>{t('army.backToGame')}</a>
       </div>
     )
   }
@@ -116,9 +159,9 @@ export default function ArmyGrid({ draft, viewedPlayerId, page }: ArmyGridProps)
           className="font-mono text-xs tracking-widest uppercase"
           style={{ color: '#c9a84c' }}
         >
-          ← Painel de Controle
+          {t('army.backToControl')}
         </button>
-        <span className="font-mono text-xs" style={{ color: '#5a7a4a' }}>{result.playerName} · Página {clampedPage}/{totalPages}</span>
+        <span className="font-mono text-xs" style={{ color: '#5a7a4a' }}>{result.playerName} · {t('army.page')} {clampedPage}/{totalPages}</span>
         <div className="flex gap-2">
           <button onClick={() => goToPage(clampedPage - 1)} disabled={clampedPage <= 1} className="px-2 py-1 font-mono text-xs disabled:opacity-30" style={{ color: '#7a9a5a' }}>◀</button>
           <button onClick={() => goToPage(clampedPage + 1)} disabled={clampedPage >= totalPages} className="px-2 py-1 font-mono text-xs disabled:opacity-30" style={{ color: '#7a9a5a' }}>▶</button>
@@ -131,6 +174,12 @@ export default function ArmyGrid({ draft, viewedPlayerId, page }: ArmyGridProps)
           const instanceKey = getInstanceKey(index, draftUnit.id)
           const dialState = playerState.units[instanceKey] ?? { damageClicks: 0, heatClicks: 0 }
           const orderState = playerState.unitOrders[instanceKey] ?? { status: 'none' as const }
+          const isPassenger = !!dialState.aboard
+          const loadedUnit = unitCache[instanceKey]
+          const cargoCapacity = loadedUnit?.cargoCapacity ?? 0
+          const hasArtillery = loadedUnit?.hasArtillery ?? false
+          const hasPassengers = (dialState.passengers?.length ?? 0) > 0
+
           return (
             <GameDialCard
               key={instanceKey}
@@ -138,6 +187,28 @@ export default function ArmyGrid({ draft, viewedPlayerId, page }: ArmyGridProps)
               instanceKey={instanceKey}
               damageClicks={dialState.damageClicks}
               heatClicks={dialState.heatClicks}
+              onUnitLoaded={u => setUnitCache(c => ({ ...c, [instanceKey]: u }))}
+              onHeatEffectClick={() => {
+                // Rulebook p.21: when multiple effects appear simultaneously,
+                // roll a separate die for each and apply results at the same time.
+                // So any rect click opens a modal with ALL effects on the current step.
+                const heatDialArr = loadedUnit?.heatDial
+                if (!heatDialArr || heatDialArr.length === 0) return
+                const stepIdx = Math.min(dialState.heatClicks, heatDialArr.length - 1)
+                const step = heatDialArr[stepIdx]
+                const effects: HeatEffectItem[] = []
+                const addEffect = (colorId: string | undefined, slot: HeatEffectItem['slot']) => {
+                  if (!colorId) return
+                  const meaning = colorMeaningsById[colorId]
+                  if (meaning && meaning.color.hexCode !== GREEN_HEX) effects.push({ slot, meaning })
+                }
+                addEffect(step.primaryHeatColorMeaningId, 'primary')
+                addEffect(step.secondaryHeatColorMeaningId, 'secondary')
+                addEffect(step.movementHeatColorMeaningId, 'movement')
+                if (effects.length > 0) {
+                  setHeatEffectPending({ unitName: draftUnit.name, effects })
+                }
+              }}
               onDamageChange={clicks => {
                 appendEvent({
                   turn: session.turn,
@@ -160,22 +231,31 @@ export default function ArmyGrid({ draft, viewedPlayerId, page }: ArmyGridProps)
               }}
               headerRight={
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  <button
-                    onClick={() => setDialClicks(viewedPlayerId, instanceKey, { hasArtillery: !dialState.hasArtillery })}
-                    title="Marcar se esta unidade tem a característica Artilharia (número entre parênteses no alcance máximo)"
-                    className="font-mono text-[9px] uppercase tracking-widest px-1.5 py-0.5 corner-clip-sm"
-                    style={{
-                      background: dialState.hasArtillery ? 'rgba(201,168,76,0.2)' : 'rgba(0,0,0,0.3)',
-                      border: '1px solid #3a4a2a',
-                      color: dialState.hasArtillery ? '#c9a84c' : '#4a5e3a',
-                    }}
-                  >
-                    ART
-                  </button>
+                  {hasPassengers && (
+                    <span
+                      className="font-mono text-[9px] px-1 corner-clip-sm"
+                      style={{ background: 'rgba(40,80,120,0.2)', border: '1px solid #3a6090', color: '#7aaad8' }}
+                      title={`${dialState.passengers!.length} passageiro(s) a bordo`}
+                    >
+                      {dialState.passengers!.length}P
+                    </span>
+                  )}
+                  {hasArtillery && (
+                    <span
+                      className="font-mono text-[9px] uppercase tracking-widest px-1.5 py-0.5 corner-clip-sm"
+                      style={{ background: 'rgba(201,168,76,0.2)', border: '1px solid #3a4a2a', color: '#c9a84c' }}
+                    >
+                      ART
+                    </span>
+                  )}
                   <OrderTypeMenu
                     unitType={draftUnit.type}
-                    hasArtillery={dialState.hasArtillery ?? false}
+                    hasArtillery={hasArtillery}
+                    cargoCapacity={cargoCapacity}
+                    hasPassengers={hasPassengers}
+                    isPassenger={isPassenger}
                     orderState={orderState}
+                    markerCount={dialState.markerCount ?? 0}
                     interactive={isActivePlayerOrderStage}
                     onSelect={type => handleSelectOrderType(instanceKey, draftUnit, type)}
                   />
@@ -196,8 +276,8 @@ export default function ArmyGrid({ draft, viewedPlayerId, page }: ArmyGridProps)
           getDialState={(playerId, instanceKey) => getPlayerState(playerId).units[instanceKey] ?? { damageClicks: 0, heatClicks: 0 }}
           setDialClicks={setDialClicks}
           onOrderMarked={() => {
-            logOrderEvent(activeAttack.instanceKey, activeAttack.draftUnit.name, activeAttack.orderType)
-            setUnitOrder(viewedPlayerId, activeAttack.instanceKey, activeAttack.orderType)
+            logOrderEvent(activeAttack.draftUnit.name, activeAttack.orderType)
+            giveOrder(viewedPlayerId, activeAttack.instanceKey, activeAttack.orderType, activeAttack.draftUnit.type)
           }}
           onComplete={(result: AttackResolutionResult) => {
             appendEvent({
@@ -229,6 +309,27 @@ export default function ArmyGrid({ draft, viewedPlayerId, page }: ArmyGridProps)
           currentTurn={session.turn}
           onConfirm={handleArtilleryConfirm}
           onClose={() => setActiveArtillery(null)}
+        />
+      )}
+
+      {activeTransport && (
+        <TransportOverlay
+          action={activeTransport.action}
+          transportDraftUnit={activeTransport.draftUnit}
+          transportInstanceKey={activeTransport.instanceKey}
+          cargoCapacity={unitCache[activeTransport.instanceKey]?.cargoCapacity ?? 0}
+          allArmyUnits={armyUnits}
+          playerState={playerState}
+          onConfirm={handleTransportConfirm}
+          onClose={() => setActiveTransport(null)}
+        />
+      )}
+
+      {heatEffectPending && (
+        <HeatEffectRollModal
+          unitName={heatEffectPending.unitName}
+          effects={heatEffectPending.effects}
+          onClose={() => setHeatEffectPending(null)}
         />
       )}
     </div>

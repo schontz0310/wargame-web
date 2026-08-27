@@ -4,6 +4,7 @@ import { Suspense } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Environment, Center, useGLTF, Html } from '@react-three/drei'
 import { Unit } from '@/lib/api'
+import { useT } from '@/hooks/useT'
 
 interface Unit3DViewerProps {
   unit: Unit
@@ -12,9 +13,10 @@ interface Unit3DViewerProps {
 }
 
 function Model({ url, unitId }: { url: string; unitId: string }) {
+  const t = useT();
   let scene;
   let error;
-  
+
   try {
     const gltf = useGLTF(url)
     scene = gltf.scene
@@ -38,7 +40,7 @@ function Model({ url, unitId }: { url: string; unitId: string }) {
       <Html center>
         <div className="text-white text-center">
           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white mx-auto mb-1"></div>
-          <p className="text-xs">Carregando...</p>
+          <p className="text-xs">{t('common.loading')}</p>
         </div>
       </Html>
     )
@@ -54,6 +56,7 @@ function Model({ url, unitId }: { url: string; unitId: string }) {
 }
 
 export default function Unit3DViewer({ unit, modelPath, className = "" }: Unit3DViewerProps) {
+  const t = useT();
   // Default path if not provided - use expansion + collectionNumber format like VG049
   const unitCode = `${unit.expansion}${String(unit.collectionNumber).padStart(3, '0')}`;
   const defaultModelPath = `/models/units/${unitCode}.glb`
@@ -71,7 +74,7 @@ export default function Unit3DViewer({ unit, modelPath, className = "" }: Unit3D
             <Html center>
               <div className="text-white text-center">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white mx-auto mb-1"></div>
-                <p className="text-xs">Carregando modelo 3D...</p>
+                <p className="text-xs">{t('common.loading3D')}</p>
               </div>
             </Html>
           }

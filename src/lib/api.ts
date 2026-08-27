@@ -72,6 +72,7 @@ export interface DraftUnit {
   collectionNumber?: string;
   isCard?: boolean; // Flag to distinguish cards from units
   cardType?: string; // Card type if it's a card
+  cardDbId?: string; // Database primary key for card detail navigation
 }
 
 export interface DraftBoosterConfig {
@@ -86,6 +87,7 @@ export interface DraftSettings {
   boosterConfigs: DraftBoosterConfig[];
   useCollection: boolean; // true = use my-collection, false = use search results
   respectFilters: boolean; // respect current page filters
+  armyPointLimit?: number; // Point limit for each player's army (0 = no limit)
 }
 
 export interface DraftResult {
@@ -126,6 +128,7 @@ export interface Draft {
 
 export interface Card {
   id: string; // Format: EXPANSION-TYPE-NUMBER (e.g., AOD-F-001)
+  dbId?: string; // Database primary key (used for detail page navigation)
   name: string;
   type: "F" | "P" | "G" | "S" | "C" | "MC"; // F=Faction Pride, P=Pilot, G=Gear, S=Special, C=Command, MC=Mercenary Contract
   typeName: "Faction Pride" | "Pilot" | "Gear" | "Special" | "Command" | "Mercenary Contract";
@@ -258,6 +261,7 @@ export interface Unit {
   rearArc: string;
   maxSpeed: number;
   ventCapacity: number;
+  cargoCapacity: number;
   maxAttack: number;
   maxDefense: number;
   maxDamage: number;
@@ -267,6 +271,8 @@ export interface Unit {
   expansion: string;
   imageUrl: string;
   collectionNumber: number;
+  hasArtillery: boolean;
+  artilleryRange: number;
   attackStats?: AttackStat[];
   combatDial?: CombatDialStep[];
   heatDial?: HeatDialStep[];

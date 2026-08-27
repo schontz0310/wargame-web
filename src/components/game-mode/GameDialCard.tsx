@@ -6,6 +6,7 @@ import { apiService, type DraftUnit, type Unit } from '@/lib/api'
 import { AppDial } from '@/components/app-dial'
 import { InfantryDial } from '@/components/infantry-dial'
 import { getDialKind } from '@/lib/gameMode'
+import { useT } from '@/hooks/useT'
 
 // AppDial/InfantryDial's Stage canvas is a fixed 500x500, but in compact mode they still
 // render a small position badge above it — DIAL_CONTENT_HEIGHT accounts for that so the
@@ -22,6 +23,8 @@ export interface GameDialCardProps {
   heatClicks: number
   onDamageChange: (clicks: number) => void
   onHeatChange: (clicks: number) => void
+  onHeatEffectClick?: () => void
+  onUnitLoaded?: (unit: Unit) => void
   headerRight?: ReactNode
 }
 
@@ -32,13 +35,19 @@ export default function GameDialCard({
   heatClicks,
   onDamageChange,
   onHeatChange,
+  onHeatEffectClick,
+  onUnitLoaded,
   headerRight,
 }: GameDialCardProps) {
+  const t = useT()
   const [unit, setUnit] = useState<Unit | null>(null)
   const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>('loading')
   const [retryToken, setRetryToken] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(1)
+  // Stable ref so the fetch effect doesn't re-run when the parent re-renders with a new callback.
+  const onUnitLoadedRef = useRef(onUnitLoaded)
+  useEffect(() => { onUnitLoadedRef.current = onUnitLoaded })
 
   useEffect(() => {
     let cancelled = false
@@ -48,6 +57,7 @@ export default function GameDialCard({
       if (u) {
         setUnit(u)
         setStatus('loaded')
+        onUnitLoadedRef.current?.(u)
       } else {
         setStatus('error')
       }
@@ -111,21 +121,21 @@ export default function GameDialCard({
         {status === 'loading' && (
           <div className="text-center px-2">
             <div className="font-mono text-[10px] uppercase tracking-widest animate-pulse" style={{ color: '#7a9a5a' }}>
-              [ CARREGANDO... ]
+              {t('common.loading')}
             </div>
           </div>
         )}
         {status === 'error' && (
           <div className="text-center px-2 flex flex-col items-center gap-1.5">
             <div className="font-mono text-[10px] uppercase tracking-widest" style={{ color: '#c06060' }}>
-              Falha ao carregar unidade
+              {t('common.loadUnitError')}
             </div>
             <button
-              onClick={() => setRetryToken(t => t + 1)}
+              onClick={() => setRetryToken(r => r + 1)}
               className="px-2 py-1 font-mono text-[10px] corner-clip-sm"
               style={{ background: 'rgba(150,50,50,0.15)', border: '1px solid #5a2a2a', color: '#c06060' }}
             >
-              TENTAR NOVAMENTE
+              {t('common.retry')}
             </button>
           </div>
         )}
@@ -139,6 +149,7 @@ export default function GameDialCard({
               externalHeatClicks={heatClicks}
               onDamageChange={handleDamageChange}
               onHeatChange={handleHeatChange}
+              onHeatEffectClick={onHeatEffectClick}
             />
           </div>
         )}
@@ -156,7 +167,7 @@ export default function GameDialCard({
         {status === 'loaded' && dialKind === 'none' && (
           <div className="text-center px-2">
             <div className="font-mono text-[10px] uppercase tracking-widest" style={{ color: '#7a9a5a' }}>
-              {draftUnit.isCard ? 'Card secreto' : 'Dial em desenvolvimento'}
+              {draftUnit.isCard ? t('common.secretCard') : t('common.dialInDev')}
             </div>
           </div>
         )}

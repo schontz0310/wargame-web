@@ -16,9 +16,11 @@ import aquaticIcon from '@/images/aquatic.png';
 import damageIcon from '@/images/damage.png';
 import crosshairIcon from '@/images/crosshair.png';
 import defenseIcon from '@/images/defense.png';
+import capacityIcon from '@/images/capacity.png';
 import useImage from 'use-image';
 import { useSelectedUnit } from '@/hooks/useSelectedUnit';
 import { useColorMeanings } from '@/hooks/useColorMeanings';
+import { useT } from '@/hooks/useT';
 import { useState, useEffect, useCallback } from 'react';
 import { CombatDialStep } from '@/lib/api';
 
@@ -56,6 +58,7 @@ interface InfantryDialParams {
 }
 
 export function InfantryDial({ unitId, dialSide, externalDamageClicks, onDamageChange, compact = false }: InfantryDialParams) {
+  const t = useT();
   const { getColorById, getTextColorForColor, loading: colorLoading, colorMapping } = useColorMeanings();
 
   const getPrimaryDamageColor = useCallback((step: CombatDialStep) => {
@@ -199,12 +202,13 @@ export function InfantryDial({ unitId, dialSide, externalDamageClicks, onDamageC
   const [damageImage] = useImage(damageIcon.src);
   const [crosshairImage] = useImage(crosshairIcon.src);
   const [defenseImage] = useImage(defenseIcon.src);
+  const [capacityLogo] = useImage(capacityIcon.src);
 
-  if (loading || colorLoading) return <div>Carregando...</div>;
-  if (error || !selectedUnit) return <div>Erro ao carregar unidade</div>;
+  if (loading || colorLoading) return <div>{t('common.loading')}</div>;
+  if (error || !selectedUnit) return <div>{t('common.loadUnitError')}</div>;
 
   const dialValues = calculateDialValues(damageClicks);
-  if (!dialValues) return <div>Sem dados de dial</div>;
+  if (!dialValues) return <div>{t('common.noDialData')}</div>;
 
   const getMarkerColor = (marker: "none" | "black" | "green") =>
     marker === 'black' ? '#000000' : marker === 'green' ? '#00ff00' : '#ffffff';
@@ -288,7 +292,7 @@ export function InfantryDial({ unitId, dialSide, externalDamageClicks, onDamageC
             disabled={damageClicks <= 0}
             className="absolute z-10 rounded font-mono text-[9px] font-bold text-white bg-gradient-to-b from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed shadow-md transition-colors"
             style={{ left: 4, top: '50%', transform: 'translateY(-50%)', width: 34, height: 44 }}
-            title="Reparo"
+            title={t('common.repair')}
           >
             REP
           </button>
@@ -297,7 +301,7 @@ export function InfantryDial({ unitId, dialSide, externalDamageClicks, onDamageC
             disabled={damageClicks >= maxDamageClicks}
             className="absolute z-10 rounded font-mono text-[9px] font-bold text-white bg-gradient-to-b from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed shadow-md transition-colors"
             style={{ right: 4, top: '50%', transform: 'translateY(-50%)', width: 34, height: 44 }}
-            title="Dano"
+            title={t('common.damage')}
           >
             DAN
           </button>
@@ -491,13 +495,38 @@ export function InfantryDial({ unitId, dialSide, externalDamageClicks, onDamageC
           {damageType && (
             <Text
               x={DIAL_CENTER_X} y={DIAL_CENTER_Y}
-              text={`${damageType.minRange}/${damageType.maxRange}`}
+              text={`${damageType.minRange}/${damageType.maxRange}${selectedUnit.hasArtillery && damageType.damageType === 'ballistic' ? ` (${selectedUnit.artilleryRange})` : ''}`}
               fontSize={20} fontStyle='bold' fill="#FFFFFF" rotation={180}
               offsetX={damageType.damageType === 'melee' ? MELEE_PADDING + (primaryDamageTargets.length * MELEE_OFFSET) - 3 : -40 + (primaryDamageTargets.length * -10)}
               offsetY={-55}
             />
           )}
         </Layer>
+        {(selectedUnit?.cargoCapacity ?? 0) > 0 && (
+          <Layer>
+            <Image
+              image={capacityLogo}
+              x={DIAL_CENTER_X}
+              y={DIAL_CENTER_Y}
+              width={40}
+              height={27}
+              rotation={180}
+              offsetX={22}
+              offsetY={-12}
+            />
+            <Text
+              x={DIAL_CENTER_X}
+              y={DIAL_CENTER_Y}
+              text={String(selectedUnit.cargoCapacity)}
+              fontSize={21}
+              fontStyle='bold'
+              fill="#000000"
+              rotation={180}
+              offsetY={-17}
+              offsetX={-3}
+            />
+          </Layer>
+        )}
       </Stage>
       </div>
     </>

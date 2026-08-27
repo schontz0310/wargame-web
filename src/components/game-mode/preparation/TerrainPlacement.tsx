@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import type { Draft } from '@/lib/api'
-import { TERRAIN_CATEGORIES, terrainPdfUrl, type TerrainModel, type TerrainFeature, type PreparationState } from '@/lib/gameMode'
+import { terrainPdfUrl, type PreparationState } from '@/lib/gameMode'
+import { useT } from '@/hooks/useT'
 
 interface TerrainPlacementProps {
   draft: Draft
@@ -12,297 +13,231 @@ interface TerrainPlacementProps {
 }
 
 export default function TerrainPlacement({ draft, preparationState, onUpdateState, onNextStage }: TerrainPlacementProps) {
-  const [currentPlacingPlayer, setCurrentPlacingPlayer] = useState<number | null>(() => {
-    // Initialize with first player immediately
-    return preparationState.firstPlayerId ?? draft.results[0]?.playerId ?? 1
-  })
+  const t = useT()
 
-  // Helper to get display name (alias or original name)
   const getPlayerDisplayName = (playerId: number) => {
     const player = draft.results.find(r => r.playerId === playerId)
-    return player?.playerAlias || player?.playerName || `Jogador ${playerId}`
+    return player?.playerAlias || player?.playerName || `${t('control.player')} ${playerId}`
   }
 
-  // Calculate total terrain in pile
-  const totalTerrain = Array.from(preparationState.terrainPile.values()).reduce((sum, count) => sum + count, 0)
-  const placedTerrain = preparationState.terrainFeatures.length
-  const maxTerrain = placedTerrain + totalTerrain // Total terrain = placed + remaining
+  const playerIds = draft.results.map(r => r.playerId)
+  const firstPlayerId = preparationState.firstPlayerId ?? playerIds[0]
+  const firstIdx = playerIds.indexOf(firstPlayerId)
 
-  // Determine next player to place terrain (clockwise from first player)
-  const getNextPlacingPlayer = (currentPlayerId: number) => {
-    const playerIds = draft.results.map(r => r.playerId)
-    const currentIndex = playerIds.indexOf(currentPlayerId)
-    const nextIndex = (currentIndex + 1) % playerIds.length
-    return playerIds[nextIndex]
+  // actionCount tracks placements + discards so the turn always advances correctly
+  const [actionCount, setActionCount] = useState(0)
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
+
+  const currentTurnIdx = (firstIdx + actionCount) % playerIds.length
+  const currentTurnPlayerId = playerIds[currentTurnIdx]
+
+  const pile = preparationState.terrainPileItems
+  const placed = preparationState.terrainFeatures
+  const selectedItem = pile.find(t => t.id === selectedItemId) ?? null
+
+  const nextPlayer = () => {
+    const nextIdx = (playerIds.indexOf(currentTurnPlayerId) + 1) % playerIds.length
+    return playerIds[nextIdx]
   }
 
-  const handlePlaceTerrain = (terrain: TerrainModel) => {
-    // Ensure we have a current player
-    let placingPlayerId = currentPlacingPlayer
-    if (placingPlayerId === null) {
-      placingPlayerId = preparationState.firstPlayerId ?? draft.results[0]?.playerId ?? 1
-      setCurrentPlacingPlayer(placingPlayerId)
-    }
-
-    // Check if this player has terrain left to place
-    let playerTerrainCount = preparationState.terrainPile.get(placingPlayerId) ?? 0
-    
-    // If current player has no terrain, find next player who does
-    let checkedPlayers = 0
-    while (playerTerrainCount <= 0 && checkedPlayers < draft.results.length) {
-      placingPlayerId = getNextPlacingPlayer(placingPlayerId)
-      playerTerrainCount = preparationState.terrainPile.get(placingPlayerId) ?? 0
-      checkedPlayers++
-    }
-
-    if (playerTerrainCount <= 0) {
-      // No more terrain to place
-      return
-    }
-
-    const newTerrain: TerrainFeature = {
-      id: `terrain-${Date.now()}`,
-      playerId: placingPlayerId,
-      name: terrain.name,
-      code: terrain.code,
-      x: 0, // Will be set by user on battlefield
-      y: 0  // Will be set by user on battlefield
-    }
-
-    const updatedFeatures = [...preparationState.terrainFeatures, newTerrain]
-    const updatedPile = new Map(preparationState.terrainPile)
-    const currentCount = updatedPile.get(newTerrain.playerId) ?? 0
-    updatedPile.set(newTerrain.playerId, Math.max(0, currentCount - 1))
-
+  // Place selected terrain on battlefield
+  const handleConfirmPlacement = () => {
+    if (!selectedItem) return
     onUpdateState({
-      terrainFeatures: updatedFeatures,
-      terrainPile: updatedPile
+      terrainPileItems: pile.filter(t => t.id !== selectedItem.id),
+      terrainFeatures: [...placed, selectedItem],
     })
-
-    // Move to next player who still has terrain to place
-    if (updatedFeatures.length < maxTerrain) {
-      let nextPlayerId = getNextPlacingPlayer(placingPlayerId)
-      let nextPlayerTerrainCount = updatedPile.get(nextPlayerId) ?? 0
-      
-      // Find next player with terrain
-      checkedPlayers = 0
-      while (nextPlayerTerrainCount <= 0 && checkedPlayers < draft.results.length) {
-        nextPlayerId = getNextPlacingPlayer(nextPlayerId)
-        nextPlayerTerrainCount = updatedPile.get(nextPlayerId) ?? 0
-        checkedPlayers++
-      }
-
-      if (nextPlayerTerrainCount > 0) {
-        setCurrentPlacingPlayer(nextPlayerId)
-      } else {
-        setCurrentPlacingPlayer(null)
-      }
-    } else {
-      setCurrentPlacingPlayer(null)
-    }
+    setSelectedItemId(null)
+    setActionCount(c => c + 1)
   }
 
-  const handleSkipTerrain = () => {
-    if (totalTerrain === 0) {
-      onNextStage()
-    }
+  // Discard: no valid location exists (rules: p.13 — set aside if no valid spot)
+  const handleDiscard = () => {
+    if (!selectedItem) return
+    onUpdateState({
+      terrainPileItems: pile.filter(t => t.id !== selectedItem.id),
+    })
+    setSelectedItemId(null)
+    setActionCount(c => c + 1)
   }
 
-  const currentPlayer = currentPlacingPlayer 
-    ? draft.results.find(r => r.playerId === currentPlacingPlayer)
-    : null
+  // Undo last placement (also rolls back the turn)
+  const handleUndo = () => {
+    if (placed.length === 0) return
+    const last = placed[placed.length - 1]
+    onUpdateState({
+      terrainFeatures: placed.slice(0, -1),
+      terrainPileItems: [...pile, last],
+    })
+    setSelectedItemId(null)
+    setActionCount(c => Math.max(0, c - 1))
+  }
 
-  const remainingTerrain = maxTerrain - placedTerrain
+  if (pile.length === 0 && placed.length === 0) {
+    return (
+      <div className="min-h-screen p-8" style={{ background: '#0d1208' }}>
+        <div className="max-w-4xl mx-auto text-center p-8" style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid #3a4a2a' }}>
+          <p className="font-mono text-lg mb-6" style={{ color: '#a0a090' }}>{t('terrainPlacement.emptyPile')}</p>
+          <button onClick={onNextStage} className="px-8 py-3 font-mono text-lg"
+            style={{ background: 'rgba(201,168,76,0.3)', border: '1px solid #c9a84c', color: '#c9a84c' }}>
+            {t('terrainPlacement.nextPhase')}
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen p-8" style={{ background: '#0d1208' }}>
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-mono font-bold mb-8 text-center" style={{ color: '#c9a84c' }}>
-          COLOCAÇÃO DE TERRENO
+      <div className="max-w-5xl mx-auto space-y-6">
+        <h1 className="text-3xl font-mono font-bold text-center" style={{ color: '#c9a84c' }}>
+          {t('terrainPlacement.title')}
         </h1>
 
-        {maxTerrain === 0 ? (
-          <div className="text-center p-8" style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid #3a4a2a' }}>
-            <p className="font-mono text-lg mb-6" style={{ color: '#a0a090' }}>
-              Nenhum terreno foi adicionado na fase anterior.
-            </p>
-            <button
-              onClick={handleSkipTerrain}
-              className="px-8 py-3 font-mono text-lg"
-              style={{ background: 'rgba(201,168,76,0.3)', border: '1px solid #c9a84c', color: '#c9a84c' }}
-            >
-              Pular Fase →
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {/* Instructions */}
-            <div className="p-4 border" style={{ background: 'rgba(0,0,0,0.3)', borderColor: '#3a4a2a' }}>
-              <h2 className="font-mono text-lg mb-3" style={{ color: '#7a9a5a' }}>
-                Instruções
-              </h2>
-              <p className="font-mono text-sm mb-2" style={{ color: '#a0a090' }}>
-                Cada característica de terreno deve ser colocada a pelo menos 3&quot; de qualquer outra característica de terreno
-                já no campo de batalha, de qualquer borda do campo de batalha e de qualquer zona de deploy do jogador.
-              </p>
-              <p className="font-mono text-sm" style={{ color: '#a0a090' }}>
-                Continue este processo no sentido horário até que todas as características
-                de terreno da pilha tenham sido colocadas.
-              </p>
-            </div>
+        {/* Rules reminder */}
+        <div className="p-3 border" style={{ background: 'rgba(0,0,0,0.25)', borderColor: '#2a3a1a' }}>
+          <p className="font-mono text-xs" style={{ color: '#5a7a4a' }}>
+            {t('terrainPlacement.rulesHint')}
+          </p>
+        </div>
 
-            {/* Progress */}
-            <div className="p-4 border" style={{ background: 'rgba(0,0,0,0.3)', borderColor: '#3a4a2a' }}>
-              <div className="flex justify-between items-center mb-2">
-                <span className="font-mono text-sm" style={{ color: '#5a7a4a' }}>
-                  Progresso:
-                </span>
-                <span className="font-mono text-lg font-bold" style={{ color: '#c9a84c' }}>
-                  {placedTerrain} / {maxTerrain}
-                </span>
-              </div>
-              <div className="w-full h-2" style={{ background: 'rgba(58,74,42,0.3)' }}>
-                <div
-                  className="h-full transition-all"
-                  style={{
-                    width: `${(placedTerrain / maxTerrain) * 100}%`,
-                    background: '#7a9a5a'
-                  }}
-                />
-              </div>
-            </div>
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6">
 
-            {/* Current Player */}
-            {currentPlayer && (
-              <div className="p-4 border text-center" style={{ background: 'rgba(122,154,90,0.1)', borderColor: '#3a4a2a' }}>
-                <div className="font-mono text-sm mb-1" style={{ color: '#5a7a4a' }}>
-                  Colocando terreno:
+          {/* Left: pile + action */}
+          <div className="space-y-4">
+
+            {/* Active player */}
+            {pile.length > 0 && (
+              <div className="flex items-center justify-between px-4 py-3 border"
+                style={{ background: 'rgba(201,168,76,0.08)', borderColor: '#c9a84c44' }}>
+                <div>
+                  <div className="font-mono text-[10px] uppercase tracking-widest mb-0.5" style={{ color: '#5a7a4a' }}>{t('terrainPlacement.currentTurn')}</div>
+                  <div className="font-mono text-lg font-bold" style={{ color: '#c9a84c' }}>
+                    {getPlayerDisplayName(currentTurnPlayerId)}
+                  </div>
                 </div>
-                <div className="font-mono text-xl font-bold" style={{ color: '#c9a84c' }}>
-                  {getPlayerDisplayName(currentPlayer.playerId)}
+                <div className="font-mono text-xs" style={{ color: '#4a5e3a' }}>
+                  {t('terrainPlacement.next')} {getPlayerDisplayName(nextPlayer())}
                 </div>
               </div>
             )}
 
-            {/* Terrain Selection */}
-            {remainingTerrain > 0 && (
-              <div className="p-4 border" style={{ background: 'rgba(0,0,0,0.3)', borderColor: '#3a4a2a' }}>
-                <h2 className="font-mono text-lg mb-3" style={{ color: '#7a9a5a' }}>
-                  Selecione o Terreno
-                </h2>
-                <div className="space-y-4">
-                  {TERRAIN_CATEGORIES.map(({ category, models }) => (
-                    <div key={category}>
-                      <h3 className="font-mono text-xs uppercase tracking-widest mb-2" style={{ color: '#5a7a4a' }}>
-                        {category}
-                      </h3>
-                      <div className="grid grid-cols-2 gap-3">
-                        {models.map((model) => (
-                          <div
-                            key={model.code}
-                            className="flex items-stretch"
-                            style={{ border: '1px solid #3a4a2a', background: 'rgba(122,154,90,0.1)' }}
-                          >
-                            <button
-                              onClick={() => handlePlaceTerrain(model)}
-                              disabled={placedTerrain >= maxTerrain}
-                              className="flex-1 p-4 font-mono text-sm text-left transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                              style={{ color: '#e8d5a0' }}
-                            >
-                              <span className="font-bold mr-2" style={{ color: '#c9a84c' }}>{model.code}</span>
-                              {model.name}
-                            </button>
-                            <a
-                              href={terrainPdfUrl(model.code)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              title="Ver ficha oficial (PDF)"
-                              className="flex items-center px-3 font-mono text-xs"
-                              style={{ color: '#5a7a4a', borderLeft: '1px solid #3a4a2a' }}
-                            >
-                              PDF
-                            </a>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+            {/* Pile */}
+            {pile.length > 0 ? (
+              <div className="border" style={{ borderColor: '#3a4a2a', background: 'rgba(0,0,0,0.3)' }}>
+                <div className="px-4 py-2 border-b flex items-center justify-between" style={{ borderColor: '#3a4a2a' }}>
+                  <span className="font-mono text-xs uppercase tracking-widest" style={{ color: '#7a9a5a' }}>{t('terrainPlacement.sharedPile')}</span>
+                  <span className="font-mono text-xs" style={{ color: '#c9a84c' }}>{pile.length} {t('terrainPlacement.remaining')}</span>
                 </div>
-              </div>
-            )}
-
-            {/* Placed Terrain List */}
-            {preparationState.terrainFeatures.length > 0 && (
-              <div className="p-4 border" style={{ background: 'rgba(0,0,0,0.3)', borderColor: '#3a4a2a' }}>
-                <h2 className="font-mono text-lg mb-3" style={{ color: '#7a9a5a' }}>
-                  Terrenos Colocados
-                </h2>
-                <div className="space-y-2">
-                  {preparationState.terrainFeatures.map((terrain) => {
+                <div className="p-3 space-y-1">
+                  {pile.map(item => {
+                    const isSelected = item.id === selectedItemId
                     return (
                       <div
-                        key={terrain.id}
-                        className="flex items-center justify-between p-2"
-                        style={{ background: 'rgba(122,154,90,0.1)' }}
+                        key={item.id}
+                        onClick={() => setSelectedItemId(isSelected ? null : item.id)}
+                        className="flex items-center justify-between px-3 py-2 cursor-pointer transition-all"
+                        style={{
+                          border: isSelected ? '1px solid #c9a84c' : '1px solid #2a3a1a',
+                          background: isSelected ? 'rgba(201,168,76,0.12)' : 'rgba(122,154,90,0.06)',
+                        }}
                       >
                         <div className="flex items-center gap-3">
-                          <span className="font-mono text-xs font-bold" style={{ color: '#c9a84c' }}>
-                            {terrain.code}
+                          {isSelected && <span style={{ color: '#c9a84c' }}>▶</span>}
+                          <span className="font-mono text-sm font-bold" style={{ color: isSelected ? '#c9a84c' : '#e8d5a0' }}>
+                            {item.code}
                           </span>
-                          <span className="font-mono text-sm" style={{ color: '#e8d5a0' }}>
-                            {terrain.name}
+                          <span className="font-mono text-sm" style={{ color: '#a0a090' }}>{item.name}</span>
+                          <span className="font-mono text-[10px] px-1.5 py-0.5"
+                            style={{ color: '#5a7a4a', border: '1px solid #2a3a1a', background: 'rgba(0,0,0,0.3)' }}>
+                            {getPlayerDisplayName(item.playerId)}
                           </span>
-                          <span className="font-mono text-xs" style={{ color: '#5a7a4a' }}>
-                            por {getPlayerDisplayName(terrain.playerId)}
-                          </span>
-                          <a
-                            href={terrainPdfUrl(terrain.code)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-mono text-xs underline"
-                            style={{ color: '#5a7a4a' }}
-                          >
-                            PDF
-                          </a>
                         </div>
-                        <button
-                          onClick={() => {
-                            const updatedFeatures = preparationState.terrainFeatures.filter(f => f.id !== terrain.id)
-                            const updatedPile = new Map(preparationState.terrainPile)
-                            const currentCount = updatedPile.get(terrain.playerId) ?? 0
-                            updatedPile.set(terrain.playerId, currentCount + 1)
-                            onUpdateState({
-                              terrainFeatures: updatedFeatures,
-                              terrainPile: updatedPile
-                            })
-                          }}
-                          className="px-2 py-1 font-mono text-xs"
-                          style={{ background: 'rgba(150,50,50,0.2)', border: '1px solid #5a2a2a', color: '#c06060' }}
-                        >
-                          Remover
-                        </button>
+                        <a href={terrainPdfUrl(item.code)} target="_blank" rel="noopener noreferrer"
+                          onClick={e => e.stopPropagation()}
+                          className="font-mono text-[10px] px-2 py-1 shrink-0"
+                          style={{ color: '#5a7a4a', border: '1px solid #2a3a1a', background: 'rgba(0,0,0,0.4)' }}>
+                          PDF
+                        </a>
                       </div>
                     )
                   })}
                 </div>
               </div>
-            )}
-
-            {/* Next Stage Button */}
-            {placedTerrain >= maxTerrain && (
-              <div className="flex justify-center pt-6">
-                <button
-                  onClick={onNextStage}
-                  className="px-8 py-3 font-mono text-lg"
-                  style={{ background: 'rgba(201,168,76,0.3)', border: '1px solid #c9a84c', color: '#c9a84c' }}
-                >
-                  Próxima Fase →
-                </button>
+            ) : (
+              <div className="p-4 text-center border" style={{ borderColor: '#3a4a2a', background: 'rgba(0,0,0,0.3)' }}>
+                <span className="font-mono text-sm" style={{ color: '#5a7a4a' }}>{t('terrainPlacement.pileEmpty')}</span>
               </div>
             )}
+
+            {/* Action buttons when item selected */}
+            {selectedItem && (
+              <div className="p-4 border space-y-3" style={{ borderColor: '#c9a84c44', background: 'rgba(201,168,76,0.06)' }}>
+                <div className="font-mono text-sm" style={{ color: '#e8d5a0' }}>
+                  {t('terrainPlacement.selected')} <span className="font-bold" style={{ color: '#c9a84c' }}>{selectedItem.code}</span> {selectedItem.name}
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleConfirmPlacement}
+                    className="flex-1 py-3 font-mono text-sm"
+                    style={{ background: 'rgba(122,154,90,0.25)', border: '1px solid #7a9a5a', color: '#7a9a5a' }}
+                  >
+                    {t('terrainPlacement.placed')}
+                  </button>
+                  <button
+                    onClick={handleDiscard}
+                    className="px-4 py-3 font-mono text-xs"
+                    style={{ background: 'rgba(150,80,20,0.2)', border: '1px solid #6a4a2a', color: '#aa7a4a' }}
+                    title={t('terrainPlacement.noValidLocation')}
+                  >
+                    {t('terrainPlacement.noValidLocation')}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* End phase / undo */}
+            <div className="flex items-center justify-between gap-3">
+              {placed.length > 0 && (
+                <button onClick={handleUndo} className="font-mono text-xs px-3 py-2"
+                  style={{ color: '#7a5a2a', border: '1px solid #4a3a1a', background: 'rgba(100,70,20,0.15)' }}>
+                  {t('terrainPlacement.undo')}
+                </button>
+              )}
+              {pile.length === 0 && (
+                <button onClick={onNextStage} className="ml-auto px-8 py-3 font-mono text-base"
+                  style={{ background: 'rgba(201,168,76,0.3)', border: '1px solid #c9a84c', color: '#c9a84c' }}>
+                  {t('terrainPlacement.nextPhase')}
+                </button>
+              )}
+            </div>
           </div>
-        )}
+
+          {/* Right: on battlefield */}
+          <div>
+            <div className="border sticky top-8" style={{ borderColor: '#3a4a2a', background: 'rgba(0,0,0,0.4)' }}>
+              <div className="px-4 py-2 border-b flex items-center justify-between" style={{ borderColor: '#3a4a2a' }}>
+                <span className="font-mono text-xs uppercase tracking-widest" style={{ color: '#7a9a5a' }}>{t('terrainPlacement.onField')}</span>
+                <span className="font-mono text-xs" style={{ color: '#7a9a5a' }}>{placed.length}</span>
+              </div>
+              {placed.length === 0 ? (
+                <div className="px-4 py-6 text-center">
+                  <p className="font-mono text-xs" style={{ color: '#2a3a1a' }}>{t('terrainPlacement.noneYet')}</p>
+                </div>
+              ) : (
+                <div className="px-3 py-3 space-y-1">
+                  {placed.map((item, idx) => (
+                    <div key={item.id} className="flex items-center gap-2 py-1">
+                      <span className="font-mono text-[10px] w-4 text-right shrink-0" style={{ color: '#3a5a2a' }}>{idx + 1}.</span>
+                      <span className="font-mono text-xs font-bold" style={{ color: '#4a6a3a' }}>{item.code}</span>
+                      <span className="font-mono text-xs" style={{ color: '#5a7a4a' }}>{item.name}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )

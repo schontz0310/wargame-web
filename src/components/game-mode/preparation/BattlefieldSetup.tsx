@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import type { Draft } from '@/lib/api'
 import { type BattlefieldSetup, type PreparationState } from '@/lib/gameMode'
+import { useT } from '@/hooks/useT'
+import { type TimerConfig, loadTimerConfig, saveTimerConfig } from '@/hooks/useGameTimer'
 
 interface BattlefieldSetupProps {
   draft: Draft
@@ -12,12 +14,13 @@ interface BattlefieldSetupProps {
 }
 
 export default function BattlefieldSetup({ draft, preparationState, onUpdateState, onNextStage }: BattlefieldSetupProps) {
+  const t = useT()
   const [confirmed, setConfirmed] = useState(false)
+  const [timerConfig, setTimerConfig] = useState<TimerConfig>(() => loadTimerConfig(draft.id))
 
-  // Helper to get display name (alias or original name)
   const getPlayerDisplayName = (playerId: number) => {
     const player = draft.results.find(r => r.playerId === playerId)
-    return player?.playerAlias || player?.playerName || `Jogador ${playerId}`
+    return player?.playerAlias || player?.playerName || `${t('control.player')} ${playerId}`
   }
 
   const handleConfirm = () => {
@@ -42,21 +45,21 @@ export default function BattlefieldSetup({ draft, preparationState, onUpdateStat
     <div className="min-h-screen p-8" style={{ background: '#0d1208' }}>
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-mono font-bold mb-8 text-center" style={{ color: '#c9a84c' }}>
-          PREPARANDO O CAMPO DE BATALHA
+          {t('battlefieldSetup.title')}
         </h1>
 
         <div className="space-y-6">
           {/* Battlefield Size */}
           <div className="p-4 border" style={{ background: 'rgba(0,0,0,0.3)', borderColor: '#3a4a2a' }}>
             <h2 className="font-mono text-lg mb-3" style={{ color: '#7a9a5a' }}>
-              1. Tamanho do Campo de Batalha
+              {t('battlefieldSetup.section1Title')}
             </h2>
             <p className="font-mono text-sm mb-4" style={{ color: '#a0a090' }}>
-              Encontre uma área plana e quadrada de aproximadamente 3&apos; (36 polegadas) de cada lado.
+              {t('battlefieldSetup.section1Desc')}
             </p>
             <div className="flex items-center gap-4">
               <span className="font-mono text-sm" style={{ color: '#5a7a4a' }}>
-                Tamanho padrão:
+                {t('battlefieldSetup.defaultSize')}
               </span>
               <span className="font-mono text-lg font-bold" style={{ color: '#c9a84c' }}>
                 36&quot; x 36&quot;
@@ -67,11 +70,10 @@ export default function BattlefieldSetup({ draft, preparationState, onUpdateStat
           {/* Starting Edges */}
           <div className="p-4 border" style={{ background: 'rgba(0,0,0,0.3)', borderColor: '#3a4a2a' }}>
             <h2 className="font-mono text-lg mb-3" style={{ color: '#7a9a5a' }}>
-              2. Bordas de Início
+              {t('battlefieldSetup.section2Title')}
             </h2>
             <p className="font-mono text-sm mb-4" style={{ color: '#a0a090' }}>
-              Cada jogador seleciona uma borda do campo de batalha como sua borda de início.
-              Se houver apenas dois jogadores, essas bordas devem estar diretamente opostas.
+              {t('battlefieldSetup.section2Desc')}
             </p>
             <div className="space-y-2">
               {draft.results.map((result) => (
@@ -80,7 +82,7 @@ export default function BattlefieldSetup({ draft, preparationState, onUpdateStat
                     {getPlayerDisplayName(result.playerId)}
                   </span>
                   <span className="font-mono text-xs" style={{ color: '#5a7a4a' }}>
-                    Selecione sua borda
+                    {t('battlefieldSetup.selectEdge')}
                   </span>
                 </div>
               ))}
@@ -90,17 +92,15 @@ export default function BattlefieldSetup({ draft, preparationState, onUpdateStat
           {/* Deployment Zones */}
           <div className="p-4 border" style={{ background: 'rgba(0,0,0,0.3)', borderColor: '#3a4a2a' }}>
             <h2 className="font-mono text-lg mb-3" style={{ color: '#7a9a5a' }}>
-              3. Zonas de Deploy
+              {t('battlefieldSetup.section3Title')}
             </h2>
             <p className="font-mono text-sm mb-4" style={{ color: '#a0a090' }}>
-              Ao longo da borda de início de cada jogador está uma zona retangular imaginária chamada zona de deploy.
-              Sua zona de deploy começa na sua borda de início e se estende 3&quot; para dentro do campo de batalha.
-              Sua zona de deploy deve estar a pelo menos 8&quot; de qualquer outra borda do campo de batalha.
+              {t('battlefieldSetup.section3Desc')}
             </p>
             <div className="grid grid-cols-2 gap-4">
               <div className="p-3 text-center" style={{ background: 'rgba(122,154,90,0.1)' }}>
                 <div className="font-mono text-xs mb-1" style={{ color: '#5a7a4a' }}>
-                  Profundidade da Zona
+                  {t('battlefieldSetup.zoneDepth')}
                 </div>
                 <div className="font-mono text-xl font-bold" style={{ color: '#c9a84c' }}>
                   3&quot;
@@ -108,7 +108,7 @@ export default function BattlefieldSetup({ draft, preparationState, onUpdateStat
               </div>
               <div className="p-3 text-center" style={{ background: 'rgba(122,154,90,0.1)' }}>
                 <div className="font-mono text-xs mb-1" style={{ color: '#5a7a4a' }}>
-                  Distância Mínima das Bordas
+                  {t('battlefieldSetup.minEdgeDistance')}
                 </div>
                 <div className="font-mono text-xl font-bold" style={{ color: '#c9a84c' }}>
                   8&quot;
@@ -117,41 +117,57 @@ export default function BattlefieldSetup({ draft, preparationState, onUpdateStat
             </div>
           </div>
 
-          {/* Terrain Pile */}
+          {/* Game Timer */}
           <div className="p-4 border" style={{ background: 'rgba(0,0,0,0.3)', borderColor: '#3a4a2a' }}>
             <h2 className="font-mono text-lg mb-3" style={{ color: '#7a9a5a' }}>
-              4. Pilha de Terreno
+              {t('battlefieldSetup.timerTitle')}
             </h2>
             <p className="font-mono text-sm mb-4" style={{ color: '#a0a090' }}>
-              Cada jogador coloca até três características de terreno em uma pilha de terreno ao lado do campo de batalha.
-              Se não estiver usando terreno, pule esta etapa.
+              {t('battlefieldSetup.timerDesc')}
             </p>
-            <div className="flex gap-4">
-              {draft.results.map((result) => (
-                <div key={result.playerId} className="flex-1 p-3 text-center" style={{ background: 'rgba(122,154,90,0.1)' }}>
-                  <div className="font-mono text-xs mb-2" style={{ color: '#e8d5a0' }}>
-                    {getPlayerDisplayName(result.playerId)}
-                  </div>
-                  <input
-                    type="number"
-                    min="0"
-                    max="3"
-                    value={preparationState.terrainPile.get(result.playerId) || 0}
-                    onChange={(e) => {
-                      const count = parseInt(e.target.value) || 0
-                      const newPile = new Map(preparationState.terrainPile)
-                      newPile.set(result.playerId, Math.min(3, Math.max(0, count)))
-                      onUpdateState({ terrainPile: newPile })
-                    }}
-                    className="w-16 p-2 text-center font-mono"
-                    style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid #3a4a2a', color: '#c9a84c' }}
-                  />
-                  <div className="font-mono text-xs mt-1" style={{ color: '#5a7a4a' }}>
-                    / 3 terrenos
-                  </div>
-                </div>
-              ))}
-            </div>
+            <label className="flex items-center gap-3 cursor-pointer mb-3">
+              <div
+                onClick={() => {
+                  const updated = { ...timerConfig, enabled: !timerConfig.enabled }
+                  setTimerConfig(updated)
+                  saveTimerConfig(draft.id, updated)
+                }}
+                className="relative w-10 h-5 rounded-full transition-colors cursor-pointer"
+                style={{ background: timerConfig.enabled ? '#7a9a5a' : '#2a3a1a', border: '1px solid #3a4a2a' }}
+              >
+                <span
+                  className="absolute top-0.5 w-4 h-4 rounded-full transition-all"
+                  style={{
+                    background: timerConfig.enabled ? '#c9a84c' : '#5a7a4a',
+                    left: timerConfig.enabled ? '1.25rem' : '0.125rem',
+                  }}
+                />
+              </div>
+              <span className="font-mono text-sm" style={{ color: '#e8d5a0' }}>
+                {t('battlefieldSetup.timerEnable')}
+              </span>
+            </label>
+            {timerConfig.enabled && (
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-sm" style={{ color: '#5a7a4a' }}>
+                  {t('battlefieldSetup.timerMinutes')}
+                </span>
+                <input
+                  type="number"
+                  min={1}
+                  max={999}
+                  value={timerConfig.totalSeconds > 0 ? Math.round(timerConfig.totalSeconds / 60) : ''}
+                  onChange={e => {
+                    const mins = parseInt(e.target.value) || 0
+                    const updated = { ...timerConfig, totalSeconds: mins * 60 }
+                    setTimerConfig(updated)
+                    saveTimerConfig(draft.id, updated)
+                  }}
+                  className="w-20 px-2 py-1 font-mono text-sm text-center"
+                  style={{ background: 'rgba(122,154,90,0.1)', border: '1px solid #3a4a2a', color: '#c9a84c' }}
+                />
+              </div>
+            )}
           </div>
 
           {/* Confirm Button */}
@@ -162,7 +178,7 @@ export default function BattlefieldSetup({ draft, preparationState, onUpdateStat
                 className="px-8 py-3 font-mono text-lg"
                 style={{ background: 'rgba(122,154,90,0.3)', border: '1px solid #3a4a2a', color: '#7a9a5a' }}
               >
-                Confirmar Setup
+                {t('battlefieldSetup.confirm')}
               </button>
             ) : (
               <button
@@ -170,7 +186,7 @@ export default function BattlefieldSetup({ draft, preparationState, onUpdateStat
                 className="px-8 py-3 font-mono text-lg"
                 style={{ background: 'rgba(201,168,76,0.3)', border: '1px solid #c9a84c', color: '#c9a84c' }}
               >
-                Próxima Fase →
+                {t('battlefieldSetup.nextPhase')}
               </button>
             )}
           </div>

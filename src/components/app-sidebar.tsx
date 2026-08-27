@@ -1,5 +1,6 @@
-import { Home, Search, Settings, Swords } from "lucide-react"
+'use client'
 
+import { Home, Search, Settings, Swords } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
@@ -9,35 +10,23 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarFooter,
 } from "@/components/ui/sidebar"
 import { Separator } from "./ui/separator"
 import { Fragment } from "react"
-
-// Menu items.
-const items = [
-  {
-    title: "Home",
-    url: "/",
-    icon: Home,
-  },
-  {
-    title: "Detalhe",
-    url: "/list",
-    icon: Search,
-  },
-  {
-    title: "Modo Jogo",
-    url: "/game-mode",
-    icon: Swords,
-  },
-  {
-    title: "Settings",
-    url: "/search",
-    icon: Settings,
-  },
-]
+import LangSwitcher from "./LangSwitcher"
+import { useT } from "@/hooks/useT"
 
 export function AppSidebar() {
+  const t = useT()
+
+  const items = [
+    { title: t('sidebar.home'), url: "/", icon: Home },
+    { title: t('sidebar.detail'), url: "/list", icon: Search },
+    { title: t('sidebar.gameMode'), url: "/game-mode", icon: Swords },
+    { title: t('sidebar.settings'), url: "/search", icon: Settings },
+  ]
+
   return (
     <Sidebar className="w-48">
       <SidebarContent>
@@ -47,21 +36,27 @@ export function AppSidebar() {
             <SidebarMenu>
               {items.map((item) => (
                 <Fragment key={item.title}>
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild className="items-center justify-center">
-                    <a href={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <Separator className="border-1" />
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild className="items-center justify-center">
+                      <a href={item.url}>
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </a>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <Separator className="border-1" />
                 </Fragment>
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter className="pb-4 px-3">
+        <div className="font-mono text-[10px] uppercase tracking-widest mb-1.5" style={{ color: '#4a5e3a' }}>
+          {t('sidebar.language')}
+        </div>
+        <LangSwitcher />
+      </SidebarFooter>
     </Sidebar>
   )
 }

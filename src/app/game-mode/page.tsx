@@ -9,8 +9,10 @@ import ControlPanel from '@/components/game-mode/ControlPanel'
 import ArmyGrid from '@/components/game-mode/ArmyGrid'
 import BattleLogView from '@/components/game-mode/BattleLogView'
 import PreparationPhase from '@/components/game-mode/preparation/PreparationPhase'
+import { useT } from '@/hooks/useT'
 
 function GameModeContent() {
+  const t = useT()
   const searchParams = useSearchParams()
   const draftId = searchParams.get('draftId')
   const view = searchParams.get('view') ?? 'control'
@@ -37,7 +39,7 @@ function GameModeContent() {
   if (!isClient) {
     return (
       <div className="flex items-center justify-center min-h-screen" style={{ background: '#0d1208' }}>
-        <div className="font-mono text-[#7a9a5a] tracking-widest animate-pulse">[ CARREGANDO... ]</div>
+        <div className="font-mono text-[#7a9a5a] tracking-widest animate-pulse">{t('common.loading')}</div>
       </div>
     )
   }

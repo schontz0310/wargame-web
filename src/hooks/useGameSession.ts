@@ -5,7 +5,7 @@ import { safeLocalStorage } from '@/lib/storage'
 import { nextStage as computeNextStage, nextPlayerId, type OrderStage, type OrderType, type PendingArtilleryAttack, type VictoryCondition } from '@/lib/gameMode'
 import type { DraftResult } from '@/lib/api'
 
-export type UnitOrderStatus = 'none' | 'ordered' | 'pushed'
+export type UnitOrderStatus = 'none' | 'ordered'
 
 export interface UnitOrderState {
   status: UnitOrderStatus
@@ -20,6 +20,23 @@ export interface UnitDialState {
   // has a number in parentheses printed after its maximum range value"), so this
   // gates the Artillery order option instead of trying to infer it.
   hasArtillery?: boolean
+  // Order markers accumulate across turns (0, 1, or 2). Infantry/vehicles with
+  // 2 markers cannot receive orders. Markers reset for units that rest (receive
+  // no order) during the cleanup phase.
+  markerCount?: number
+  // Transport state (rulebook p.18-19). passengers: instanceKeys of units currently
+  // aboard this transport. aboard: instanceKey of the transport this unit is on (null
+  // or undefined = not a passenger). Both are updated atomically by board/disembark actions.
+  passengers?: string[]
+  aboard?: string | null
+}
+
+// Result of applying the marker rule when an order is given.
+export interface MarkerEffect {
+  kind: 'first_marker' | 'push_heat' | 'push_damage'
+  newMarkerCount: number
+  heatDelta: number
+  damageDelta: number
 }
 
 // Free-text reminder for a Command-stage effect (SEC/pilot card/faction ability, etc.)
@@ -168,22 +185,64 @@ export function useGameSession(draftId: string | null, results: DraftResult[]) {
     }
     if (leavingCleanup) {
       const current = { ...emptyPlayerState(), ...(players[state.activePlayerId] ?? {}) }
-      players[state.activePlayerId] = { ...current, ordersUsed: 0, unitOrders: {} }
+      // Rulebook: cleanup removes order markers from units that received no order
+      // this turn. Units that were ordered keep their marker(s) into next turn.
+      const updatedUnits: Record<string, UnitDialState> = {}
+      for (const [key, unitState] of Object.entries(current.units)) {
+        const wasOrdered = current.unitOrders[key]?.status === 'ordered'
+        updatedUnits[key] = wasOrdered ? unitState : { ...unitState, markerCount: 0 }
+      }
+      players[state.activePlayerId] = { ...current, ordersUsed: 0, unitOrders: {}, units: updatedUnits }
     }
 
     persist({ ...state, stage: newStage, activePlayerId: newActivePlayerId, turn: newTurn, players })
   }, [state, results, persist])
 
-  const setUnitOrder = useCallback((playerId: number, instanceKey: string, orderType: OrderType) => {
-    if (!state) return
+  // Apply marker rule and record the order atomically. Returns the MarkerEffect
+  // so callers can log what happened (heat/damage deltas).
+  const giveOrder = useCallback((
+    playerId: number,
+    instanceKey: string,
+    orderType: OrderType,
+    unitType: string,
+  ): MarkerEffect => {
+    const noOp: MarkerEffect = { kind: 'first_marker', newMarkerCount: 1, heatDelta: 0, damageDelta: 0 }
+    if (!state) return noOp
     const player = state.players[playerId] ?? emptyPlayerState()
-    const existing = player.unitOrders[instanceKey]
-    const alreadyHadOrder = existing?.status === 'ordered' || existing?.status === 'pushed'
-    const nextStatus: UnitOrderStatus = alreadyHadOrder ? 'pushed' : 'ordered'
-    const unitOrders = { ...player.unitOrders, [instanceKey]: { status: nextStatus, orderType } }
-    const ordersUsed = alreadyHadOrder ? player.ordersUsed : player.ordersUsed + 1
-    const players = { ...state.players, [playerId]: { ...player, unitOrders, ordersUsed } }
+    const dialState = player.units[instanceKey] ?? { damageClicks: 0, heatClicks: 0 }
+    const markerCount = dialState.markerCount ?? 0
+    const isMech = unitType.toLowerCase() === 'mech'
+
+    let effect: MarkerEffect
+    if (markerCount === 0) {
+      effect = { kind: 'first_marker', newMarkerCount: 1, heatDelta: 0, damageDelta: 0 }
+    } else if (isMech) {
+      // Push order on a Mech: heat penalty, no 2nd marker
+      effect = { kind: 'push_heat', newMarkerCount: markerCount, heatDelta: 1, damageDelta: 0 }
+    } else {
+      // Push order on infantry/vehicle: 2nd marker + effort damage
+      effect = { kind: 'push_damage', newMarkerCount: 2, heatDelta: 0, damageDelta: 1 }
+    }
+
+    const unitOrders = {
+      ...player.unitOrders,
+      [instanceKey]: { status: 'ordered' as UnitOrderStatus, orderType },
+    }
+    const units = {
+      ...player.units,
+      [instanceKey]: {
+        ...dialState,
+        markerCount: effect.newMarkerCount,
+        damageClicks: dialState.damageClicks + effect.damageDelta,
+        heatClicks: dialState.heatClicks + effect.heatDelta,
+      },
+    }
+    const players = {
+      ...state.players,
+      [playerId]: { ...player, unitOrders, units, ordersUsed: player.ordersUsed + 1 },
+    }
     persist({ ...state, players })
+    return effect
   }, [state, persist])
 
   const setDialClicks = useCallback((playerId: number, instanceKey: string, clicks: Partial<UnitDialState>) => {
@@ -260,28 +319,125 @@ export function useGameSession(draftId: string | null, results: DraftResult[]) {
     persist({ ...state, pendingArtillery: [...(state.pendingArtillery ?? []), { ...attack, id }] })
   }, [state, persist])
 
-  // Atomic: add artillery + mark unit order in a single persist to avoid state overwrites
+  // Atomic: add artillery + mark unit order + apply marker rule in a single persist.
   const placeArtilleryOrder = useCallback((
     attack: Omit<PendingArtilleryAttack, 'id'>,
     playerId: number,
     instanceKey: string,
-  ) => {
-    if (!state) return
+    unitType: string,
+  ): MarkerEffect => {
+    const noOp: MarkerEffect = { kind: 'first_marker', newMarkerCount: 1, heatDelta: 0, damageDelta: 0 }
+    if (!state) return noOp
     const id = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
       ? crypto.randomUUID()
       : `art-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
     const player = state.players[playerId] ?? emptyPlayerState()
-    const existing = player.unitOrders[instanceKey]
-    const alreadyHadOrder = existing?.status === 'ordered' || existing?.status === 'pushed'
-    const nextStatus: UnitOrderStatus = alreadyHadOrder ? 'pushed' : 'ordered'
-    const unitOrders = { ...player.unitOrders, [instanceKey]: { status: nextStatus, orderType: 'artillery' as OrderType } }
-    const ordersUsed = alreadyHadOrder ? player.ordersUsed : player.ordersUsed + 1
-    const players = { ...state.players, [playerId]: { ...player, unitOrders, ordersUsed } }
+    const dialState = player.units[instanceKey] ?? { damageClicks: 0, heatClicks: 0 }
+    const markerCount = dialState.markerCount ?? 0
+    const isMech = unitType.toLowerCase() === 'mech'
+
+    let effect: MarkerEffect
+    if (markerCount === 0) {
+      effect = { kind: 'first_marker', newMarkerCount: 1, heatDelta: 0, damageDelta: 0 }
+    } else if (isMech) {
+      effect = { kind: 'push_heat', newMarkerCount: markerCount, heatDelta: 1, damageDelta: 0 }
+    } else {
+      effect = { kind: 'push_damage', newMarkerCount: 2, heatDelta: 0, damageDelta: 1 }
+    }
+
+    const unitOrders = {
+      ...player.unitOrders,
+      [instanceKey]: { status: 'ordered' as UnitOrderStatus, orderType: 'artillery' as OrderType },
+    }
+    const units = {
+      ...player.units,
+      [instanceKey]: {
+        ...dialState,
+        markerCount: effect.newMarkerCount,
+        damageClicks: dialState.damageClicks + effect.damageDelta,
+        heatClicks: dialState.heatClicks + effect.heatDelta,
+      },
+    }
+    const players = {
+      ...state.players,
+      [playerId]: { ...player, unitOrders, units, ordersUsed: player.ordersUsed + 1 },
+    }
     persist({
       ...state,
       pendingArtillery: [...(state.pendingArtillery ?? []), { ...attack, id }],
       players,
     })
+    return effect
+  }, [state, persist])
+
+  // Marker-logic helper shared by boardTransport and disembarkTransport.
+  function computeMarkerEffect(markerCount: number, isMech: boolean): MarkerEffect {
+    if (markerCount === 0) return { kind: 'first_marker', newMarkerCount: 1, heatDelta: 0, damageDelta: 0 }
+    if (isMech) return { kind: 'push_heat', newMarkerCount: markerCount, heatDelta: 1, damageDelta: 0 }
+    return { kind: 'push_damage', newMarkerCount: 2, heatDelta: 0, damageDelta: 1 }
+  }
+
+  // Atomic: give transport a 'board' order + add passengers in one persist call.
+  const boardTransport = useCallback((
+    playerId: number,
+    transportKey: string,
+    passengerKeys: string[],
+    unitType: string,
+  ): MarkerEffect => {
+    const noOp: MarkerEffect = { kind: 'first_marker', newMarkerCount: 1, heatDelta: 0, damageDelta: 0 }
+    if (!state) return noOp
+    const player = state.players[playerId] ?? emptyPlayerState()
+    const dialState = player.units[transportKey] ?? { damageClicks: 0, heatClicks: 0 }
+    const effect = computeMarkerEffect(dialState.markerCount ?? 0, unitType.toLowerCase() === 'mech')
+    const existing = dialState.passengers ?? []
+    const merged = [...existing, ...passengerKeys.filter(k => !existing.includes(k))]
+    const units: Record<string, UnitDialState> = {
+      ...player.units,
+      [transportKey]: {
+        ...dialState,
+        markerCount: effect.newMarkerCount,
+        damageClicks: dialState.damageClicks + effect.damageDelta,
+        heatClicks: dialState.heatClicks + effect.heatDelta,
+        passengers: merged,
+      },
+    }
+    for (const k of passengerKeys) {
+      units[k] = { ...(units[k] ?? { damageClicks: 0, heatClicks: 0 }), aboard: transportKey }
+    }
+    const unitOrders = { ...player.unitOrders, [transportKey]: { status: 'ordered' as UnitOrderStatus, orderType: 'board' as OrderType } }
+    persist({ ...state, players: { ...state.players, [playerId]: { ...player, unitOrders, units, ordersUsed: player.ordersUsed + 1 } } })
+    return effect
+  }, [state, persist])
+
+  // Atomic: give transport a 'disembark' order + remove specified passengers in one persist call.
+  const disembarkTransport = useCallback((
+    playerId: number,
+    transportKey: string,
+    passengerKeys: string[],
+    unitType: string,
+  ): MarkerEffect => {
+    const noOp: MarkerEffect = { kind: 'first_marker', newMarkerCount: 1, heatDelta: 0, damageDelta: 0 }
+    if (!state) return noOp
+    const player = state.players[playerId] ?? emptyPlayerState()
+    const dialState = player.units[transportKey] ?? { damageClicks: 0, heatClicks: 0 }
+    const effect = computeMarkerEffect(dialState.markerCount ?? 0, unitType.toLowerCase() === 'mech')
+    const remaining = (dialState.passengers ?? []).filter(k => !passengerKeys.includes(k))
+    const units: Record<string, UnitDialState> = {
+      ...player.units,
+      [transportKey]: {
+        ...dialState,
+        markerCount: effect.newMarkerCount,
+        damageClicks: dialState.damageClicks + effect.damageDelta,
+        heatClicks: dialState.heatClicks + effect.heatDelta,
+        passengers: remaining,
+      },
+    }
+    for (const k of passengerKeys) {
+      units[k] = { ...(units[k] ?? { damageClicks: 0, heatClicks: 0 }), aboard: null }
+    }
+    const unitOrders = { ...player.unitOrders, [transportKey]: { status: 'ordered' as UnitOrderStatus, orderType: 'disembark' as OrderType } }
+    persist({ ...state, players: { ...state.players, [playerId]: { ...player, unitOrders, units, ordersUsed: player.ordersUsed + 1 } } })
+    return effect
   }, [state, persist])
 
   const resolveArtilleryAttack = useCallback((attackId: string) => {
@@ -298,7 +454,7 @@ export function useGameSession(draftId: string | null, results: DraftResult[]) {
     session: state,
     getPlayerState,
     advanceStage,
-    setUnitOrder,
+    giveOrder,
     setDialClicks,
     addCommandReminder,
     toggleCommandReminder,
@@ -310,6 +466,8 @@ export function useGameSession(draftId: string | null, results: DraftResult[]) {
     addArtilleryAttack,
     placeArtilleryOrder,
     resolveArtilleryAttack,
+    boardTransport,
+    disembarkTransport,
     resetSession,
   }
 }

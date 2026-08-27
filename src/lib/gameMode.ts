@@ -3,24 +3,29 @@ import type { DraftResult, Unit } from '@/lib/api'
 export const ORDER_STAGES = ['command', 'order', 'cleanup'] as const
 export type OrderStage = typeof ORDER_STAGES[number]
 
-export const PREPARATION_STAGES = ['player_aliases', 'battlefield_setup', 'first_player_roll', 'terrain_placement', 'battleforce_deployment'] as const
+export const PREPARATION_STAGES = ['player_aliases', 'battlefield_setup', 'first_player_roll', 'terrain_pile_selection', 'terrain_placement', 'battleforce_deployment'] as const
 export type PreparationStage = typeof PREPARATION_STAGES[number]
 
 // The rulebook (p.14) lists 5 order types — move, vent, ranged combat, close
-// combat, assault combat. 'run' is the ’Mech/Quad ’Mech "run option" for a move
-// order (p.17); charge/death_from_above/ram are ’Mech/vehicle special attacks
+// combat, assault combat. 'run' is the 'Mech/Quad 'Mech "run option" for a move
+// order (p.17); charge/death_from_above/ram are 'Mech/vehicle special attacks
 // (p.27-28) declared as part of a move order. They're modeled as their own
 // selectable OrderType here so each gets its own order-token label, even
 // though the rulebook frames them as move-order variants rather than a 6th
 // and 7th order type.
+// 'board'/'disembark' are transport move-order variants (rulebook p.18-19): the
+// transport gets a move order with speed halved; passengers board/disembark at its
+// rear arc. Modeled as separate order types for distinct token labels.
 export const ORDER_TYPES = [
-  'move', 'run', 'vent', 'ranged', 'artillery', 'close', 'assault', 'charge', 'death_from_above', 'ram',
+  'move', 'run', 'board', 'disembark', 'vent', 'ranged', 'artillery', 'close', 'assault', 'charge', 'death_from_above', 'ram',
 ] as const
 export type OrderType = typeof ORDER_TYPES[number]
 
 export const ORDER_TYPE_LABELS: Record<OrderType, string> = {
   move: 'Mover (Normal)',
   run: 'Mover (Corrida)',
+  board: 'Mover (Embarcar)',
+  disembark: 'Mover (Desembarcar)',
   vent: 'Ventilar',
   ranged: 'Combate à Distância',
   artillery: 'Artilharia',
@@ -36,26 +41,36 @@ export const COMBAT_ORDER_TYPES: OrderType[] = ['ranged', 'close']
 
 // Which order types a unit may be given, per the rulebook's unit-type/speed-mode
 // restrictions:
-// - Run option: ’Mech/Quad ’Mech speed modes only (p.17) — both are unit type "Mech" here.
-// - Vent: only ’Mechs have heat (p.21).
-// - Close combat: "Only infantry and ’Mechs can make close combat attacks" (p.26).
-// - Assault combat: "A ’Mech ... may be given an assault order" (p.27) — ’Mech only.
-// - Charge: "’Mechs with attack values greater than 0" (p.27) — ’Mech only.
-// - Death From Above: ’Mechs with Jump Jets special equipment (p.28) — ’Mech only
+// - Run option: 'Mech/Quad 'Mech speed modes only (p.17) — both are unit type "Mech" here.
+// - Board/Disembark: any unit with cargoCapacity > 0 (p.18-19). 'Disembark' only
+//   when the transport already has passengers, since there's nothing to disembark otherwise.
+// - Vent: only 'Mechs have heat (p.21).
+// - Close combat: "Only infantry and 'Mechs can make close combat attacks" (p.26).
+// - Assault combat: "A 'Mech ... may be given an assault order" (p.27) — 'Mech only.
+// - Charge: "'Mechs with attack values greater than 0" (p.27) — 'Mech only.
+// - Death From Above: 'Mechs with Jump Jets special equipment (p.28) — 'Mech only
 //   here (Jump Jets ownership isn't in the unit data model, so this is a necessary
 //   but not sufficient check; the player still has to confirm the unit has Jump Jets).
 // - Ram: "Vehicles with attack values greater than 0" (p.28) — Vehicle only (VTOL
 //   vehicles can't ram per p.18, also not modeled here for the same reason).
 // - Artillery: any unit type can be an artillery unit (p.25); there's no such flag
 //   in the unit data, so it's gated by the player-set hasArtillery toggle instead.
-export function getEligibleOrderTypes(unitType: string, hasArtillery: boolean): OrderType[] {
+export function getEligibleOrderTypes(
+  unitType: string,
+  hasArtillery: boolean,
+  cargoCapacity = 0,
+  hasPassengers = false,
+): OrderType[] {
   const type = unitType.toLowerCase()
   const isMech = type === 'mech'
   const isVehicle = type === 'vehicle'
   const isInfantry = type === 'infantry'
+  const isTransport = cargoCapacity > 0
 
   const eligible: OrderType[] = ['move']
   if (isMech) eligible.push('run')
+  if (isTransport) eligible.push('board')
+  if (isTransport && hasPassengers) eligible.push('disembark')
   if (isMech) eligible.push('vent')
   eligible.push('ranged')
   if (hasArtillery) eligible.push('artillery')
@@ -264,10 +279,14 @@ export interface BattlefieldSetup {
 export interface PreparationState {
   stage: PreparationStage
   battlefieldSetup: BattlefieldSetup
-  terrainFeatures: TerrainFeature[]
-  terrainPile: Map<number, number> // playerId -> count
+  terrainFeatures: TerrainFeature[]   // terrenos já colocados no campo
+  terrainPileItems: TerrainFeature[]  // terrenos na pilha aguardando colocação
+  terrainPile: Map<number, number>    // playerId -> count (legado, mantido para compatibilidade)
   firstPlayerId: number | null
   diceRolls: Map<number, number> // playerId -> roll total
   deployedUnits: Map<number, string[]> // playerId -> unitIds
   currentDeployingPlayer: number | null
+  // Pre-game boarding (rulebook p.18: units can begin as passengers).
+  // playerId -> transportInstanceKey -> passengerInstanceKeys[]
+  initialPassengers?: Record<number, Record<string, string[]>>
 }

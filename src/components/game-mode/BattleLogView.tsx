@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import type { Draft } from '@/lib/api'
 import { useBattleLog, buildNarrativeText, eventToNarrativeLine } from '@/hooks/useBattleLog'
+import { useT } from '@/hooks/useT'
 
 function downloadFile(filename: string, content: string, mimeType: string) {
   const blob = new Blob([content], { type: mimeType })
@@ -21,6 +22,7 @@ interface BattleLogViewProps {
 }
 
 export default function BattleLogView({ draft }: BattleLogViewProps) {
+  const t = useT()
   const router = useRouter()
   const { events } = useBattleLog(draft.id)
   const playerNameById = Object.fromEntries(draft.results.map(r => [r.playerId, r.playerAlias || r.playerName]))
@@ -43,9 +45,9 @@ export default function BattleLogView({ draft }: BattleLogViewProps) {
           className="font-mono text-xs tracking-widest uppercase"
           style={{ color: '#c9a84c' }}
         >
-          ← Painel de Controle
+          {t('army.backToControl')}
         </button>
-        <h1 className="font-mono text-sm tracking-widest uppercase" style={{ color: '#e8d5a0' }}>Log de Batalha</h1>
+        <h1 className="font-mono text-sm tracking-widest uppercase" style={{ color: '#e8d5a0' }}>{t('army.battleLogTitle')}</h1>
       </div>
 
       <div className="flex gap-2">

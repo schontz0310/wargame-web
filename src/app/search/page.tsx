@@ -3,10 +3,13 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useUnits } from '@/hooks/useUnits'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Unit, Draft } from '@/lib/api'
+import { Unit } from '@/lib/api'
 import { safeLocalStorage } from '@/lib/storage'
+import { useT } from '@/hooks/useT'
+import LangSwitcher from '@/components/LangSwitcher'
 
 function SearchPageContent() {
+  const t = useT()
   const { units, loading } = useUnits();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -28,27 +31,13 @@ function SearchPageContent() {
   const [showUniqueOnly, setShowUniqueOnly] = useState(false);
   const [showHaveOnly, setShowHaveOnly] = useState(false);
   const [showWantOnly, setShowWantOnly] = useState(false);
+  const [showTransportOnly, setShowTransportOnly] = useState(false);
+  const [showArtilleryOnly, setShowArtilleryOnly] = useState(false);
   const [pointsRange, setPointsRange] = useState({ min: '', max: '' });
   const [sortBy, setSortBy] = useState('name');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
   const [loadingUnits, setLoadingUnits] = useState<Set<string>>(new Set());
-  const [drafts, setDrafts] = useState<Draft[]>([]);
-  const [selectedDraftId, setSelectedDraftId] = useState<string>('');
-
-  // Load drafts from localStorage (client-side only)
-  useEffect(() => {
-    if (!isClient) return;
-    
-    const savedDrafts = safeLocalStorage.getItem('myDrafts');
-    if (savedDrafts) {
-      try {
-        setDrafts(JSON.parse(savedDrafts));
-      } catch (error) {
-        console.error('Error loading drafts:', error);
-      }
-    }
-  }, [isClient]);
 
   // Load state from URL params and localStorage on mount (client-side only)
   useEffect(() => {
@@ -75,6 +64,8 @@ function SearchPageContent() {
     setShowUniqueOnly(searchParams.get('unique') === 'true' || savedState.showUniqueOnly || false);
     setShowHaveOnly(searchParams.get('have') === 'true' || savedState.showHaveOnly || false);
     setShowWantOnly(searchParams.get('want') === 'true' || savedState.showWantOnly || false);
+    setShowTransportOnly(searchParams.get('transport') === 'true' || savedState.showTransportOnly || false);
+    setShowArtilleryOnly(searchParams.get('artillery') === 'true' || savedState.showArtilleryOnly || false);
     setPointsRange({
       min: searchParams.get('minPoints') || savedState.pointsRange?.min || '',
       max: searchParams.get('maxPoints') || savedState.pointsRange?.max || ''
@@ -100,6 +91,8 @@ function SearchPageContent() {
     if (showUniqueOnly) params.set('unique', 'true');
     if (showHaveOnly) params.set('have', 'true');
     if (showWantOnly) params.set('want', 'true');
+    if (showTransportOnly) params.set('transport', 'true');
+    if (showArtilleryOnly) params.set('artillery', 'true');
     if (pointsRange.min) params.set('minPoints', pointsRange.min);
     if (pointsRange.max) params.set('maxPoints', pointsRange.max);
     if (sortBy !== 'name') params.set('sort', sortBy);
@@ -120,6 +113,8 @@ function SearchPageContent() {
       showUniqueOnly,
       showHaveOnly,
       showWantOnly,
+      showTransportOnly,
+      showArtilleryOnly,
       pointsRange,
       sortBy,
       sidebarOpen
@@ -130,7 +125,7 @@ function SearchPageContent() {
     } catch (error) {
       console.warn('Failed to save search state to localStorage:', error);
     }
-  }, [searchTerm, selectedType, selectedExpansion, selectedFaction, selectedRank, selectedClass, showUniqueOnly, showHaveOnly, showWantOnly, pointsRange, sortBy, sidebarOpen, isInitialized, isClient]);
+  }, [searchTerm, selectedType, selectedExpansion, selectedFaction, selectedRank, selectedClass, showUniqueOnly, showHaveOnly, showWantOnly, showTransportOnly, showArtilleryOnly, pointsRange, sortBy, sidebarOpen, isInitialized, isClient]);
 
   const handleUnitClick = (unitId: string) => {
     router.push(`/list?unitId=${unitId}`);
@@ -206,14 +201,6 @@ function SearchPageContent() {
     });
   };
 
-  // Add unit to draft
-  const addToDraft = async (unit: Unit, draftId: string) => {
-    if (!draftId) return;
-    
-    const loadingKey = `${unit.id}-draft`;
-    setLoadingUnits(prev => new Set([...prev, loadingKey]));
-    
-  };
 
   // Use API units directly
   const displayUnits = units;
@@ -241,9 +228,12 @@ function SearchPageContent() {
     const { haveCount, wantCount } = getUnitCounts(unit.id);
     const matchesHave = !showHaveOnly || haveCount > 0;
     const matchesWant = !showWantOnly || wantCount > 0;
-    
-    return matchesSearch && matchesType && matchesExpansion && matchesFaction && 
-           matchesRank && matchesClass && matchesUnique && matchesPoints && matchesHave && matchesWant;
+    const matchesTransport = !showTransportOnly || (unit.cargoCapacity ?? 0) > 0;
+    const matchesArtillery = !showArtilleryOnly || unit.hasArtillery;
+
+    return matchesSearch && matchesType && matchesExpansion && matchesFaction &&
+           matchesRank && matchesClass && matchesUnique && matchesPoints && matchesHave && matchesWant &&
+           matchesTransport && matchesArtillery;
   }).sort((a, b) => {
     switch (sortBy) {
       case 'points':
@@ -333,6 +323,8 @@ function SearchPageContent() {
     setShowUniqueOnly(false);
     setShowHaveOnly(false);
     setShowWantOnly(false);
+    setShowTransportOnly(false);
+    setShowArtilleryOnly(false);
     setPointsRange({ min: '', max: '' });
     setSearchTerm('');
     setSortBy('name');
@@ -341,7 +333,7 @@ function SearchPageContent() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen" style={{background:'#0d1208'}}>
-        <div className="font-mono text-[#7a9a5a] tracking-widest animate-pulse">[ CARREGANDO BANCO DE DADOS... ]</div>
+        <div className="font-mono text-[#7a9a5a] tracking-widest animate-pulse">{t('search.loadingDb')}</div>
       </div>
     );
   }
@@ -352,7 +344,7 @@ function SearchPageContent() {
       <div className={`${sidebarOpen ? 'w-72' : 'w-0'} transition-all duration-300 ease-in-out overflow-hidden lg:relative absolute lg:z-auto z-50 h-full`} style={{background:'#0d1208',borderRight:'1px solid #3a4a2a'}}>
         <div className="p-4 h-full overflow-y-auto overflow-x-hidden">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-mono font-semibold tracking-widest uppercase" style={{color:'#c9a84c'}}>Filtros</h2>
+            <h2 className="text-sm font-mono font-semibold tracking-widest uppercase" style={{color:'#c9a84c'}}>{t('search.filters')}</h2>
             <button
               onClick={() => setSidebarOpen(false)}
               className="p-1 transition-colors"
@@ -366,10 +358,10 @@ function SearchPageContent() {
 
           {/* Search Input */}
           <div className="mb-3">
-            <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>BUSCAR</label>
+            <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>{t('search.search')}</label>
             <input
               type="text"
-              placeholder="Nome ou variante..."
+              placeholder={t('search.nameOrVariant')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full px-2 py-1.5 text-xs font-mono"
@@ -379,110 +371,105 @@ function SearchPageContent() {
 
           {/* Sort By */}
           <div className="mb-3">
-            <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>ORDENAR</label>
+            <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>{t('search.sort')}</label>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
               className="w-full px-2 py-1.5 text-xs font-mono"
               style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c'}}
             >
-              <option value="name">Nome</option>
-              <option value="points">Pontos</option>
-              <option value="faction">Facção</option>
-              <option value="type">Tipo</option>
-              <option value="expansion">Expansão</option>
-              <option value="collectionNumber">Número (#)</option>
+              <option value="name">{t('search.sortName')}</option>
+              <option value="points">{t('search.sortPoints')}</option>
+              <option value="faction">{t('search.sortFaction')}</option>
+              <option value="type">{t('search.type')}</option>
+              <option value="expansion">{t('search.sortExpansion')}</option>
+              <option value="collectionNumber">{t('search.sortNumber')}</option>
             </select>
           </div>
             
-          {/* Draft Selection */}
-          <div className="mb-3">
-            <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>DRAFT</label>
-            <select
-              value={selectedDraftId}
-              onChange={(e) => setSelectedDraftId(e.target.value)}
-              className="w-full px-2 py-1.5 text-xs font-mono"
-              style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c'}}
-            >
-                <option value="">Selecionar Draft</option>
-                {drafts.map(draft => (
-                  <option key={draft.id} value={draft.id}>
-                    {draft.name} ({draft.results?.length || 0} jogadores)
-                  </option>
-                ))}
-              </select>
-            </div>
 
           {/* Type Filter */}
           <div className="mb-3">
-            <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>TIPO</label>
+            <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>{t('search.type')}</label>
             <select value={selectedType} onChange={(e) => setSelectedType(e.target.value)} className="w-full px-2 py-1.5 text-xs font-mono" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c'}}>
-              <option value="">Todos os tipos</option>
+              <option value="">{t('search.allTypes')}</option>
               {uniqueTypes.map(type => <option key={type} value={type}>{type}</option>)}
             </select>
           </div>
 
           <div className="mb-3">
-            <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>EXPANSÃO</label>
+            <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>{t('search.expansion')}</label>
             <select value={selectedExpansion} onChange={(e) => setSelectedExpansion(e.target.value)} className="w-full px-2 py-1.5 text-xs font-mono" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c'}}>
-              <option value="">Todas</option>
+              <option value="">{t('search.all')}</option>
               {uniqueExpansions.map(e => <option key={e} value={e}>{e}</option>)}
             </select>
           </div>
 
           <div className="mb-3">
-            <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>FACÇÃO</label>
+            <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>{t('search.faction')}</label>
             <select value={selectedFaction} onChange={(e) => setSelectedFaction(e.target.value)} className="w-full px-2 py-1.5 text-xs font-mono" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c'}}>
-              <option value="">Todas</option>
+              <option value="">{t('search.all')}</option>
               {uniqueFactions.map(f => <option key={f} value={f}>{f}</option>)}
             </select>
           </div>
 
           <div className="mb-3">
-            <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>RANK</label>
+            <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>{t('search.rank')}</label>
             <select value={selectedRank} onChange={(e) => setSelectedRank(e.target.value)} className="w-full px-2 py-1.5 text-xs font-mono" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c'}}>
-              <option value="">Todos</option>
+              <option value="">{t('search.allM')}</option>
               {uniqueRanks.map(r => <option key={r} value={r}>{r}</option>)}
             </select>
           </div>
 
           <div className="mb-3">
-            <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>CLASSE</label>
+            <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>{t('search.class')}</label>
             <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} className="w-full px-2 py-1.5 text-xs font-mono" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c'}}>
-              <option value="">Todas</option>
+              <option value="">{t('search.all')}</option>
               {uniqueClasses.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
 
           <div className="mb-3 flex gap-2">
             <div className="flex-1">
-              <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>PTS MIN</label>
+              <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>{t('search.ptsMin')}</label>
               <input type="number" placeholder="0" value={pointsRange.min} onChange={(e) => setPointsRange(prev => ({ ...prev, min: e.target.value }))} className="w-full px-2 py-1.5 text-xs font-mono" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c',outline:'none'}} />
             </div>
             <div className="flex-1">
-              <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>PTS MAX</label>
+              <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>{t('search.ptsMax')}</label>
               <input type="number" placeholder="999" value={pointsRange.max} onChange={(e) => setPointsRange(prev => ({ ...prev, max: e.target.value }))} className="w-full px-2 py-1.5 text-xs font-mono" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c',outline:'none'}} />
             </div>
           </div>
 
           <div className="mb-3 space-y-2">
-            <label className="block text-xs font-mono" style={{color:'#5a7a4a'}}>COLEÇÃO</label>
+            <label className="block text-xs font-mono" style={{color:'#5a7a4a'}}>{t('search.collection')}</label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" id="uniqueOnly" checked={showUniqueOnly} onChange={(e) => setShowUniqueOnly(e.target.checked)} className="h-3 w-3" style={{accentColor:'#c9a84c'}} />
-              <span className="text-xs font-mono" style={{color:'#7a9a5a'}}>Apenas únicos ★</span>
+              <span className="text-xs font-mono" style={{color:'#7a9a5a'}}>{t('search.onlyUnique')}</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" id="haveOnly" checked={showHaveOnly} onChange={(e) => setShowHaveOnly(e.target.checked)} className="h-3 w-3" style={{accentColor:'#7a9a5a'}} />
-              <span className="text-xs font-mono" style={{color:'#7a9a5a'}}>Tenho na coleção</span>
+              <span className="text-xs font-mono" style={{color:'#7a9a5a'}}>{t('search.haveInCollection')}</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" id="wantOnly" checked={showWantOnly} onChange={(e) => setShowWantOnly(e.target.checked)} className="h-3 w-3" style={{accentColor:'#7a9a5a'}} />
-              <span className="text-xs font-mono" style={{color:'#7a9a5a'}}>Procuro / Quero</span>
+              <span className="text-xs font-mono" style={{color:'#7a9a5a'}}>{t('search.wantToFind')}</span>
+            </label>
+          </div>
+
+          <div className="mb-3 space-y-2">
+            <label className="block text-xs font-mono" style={{color:'#5a7a4a'}}>{t('search.capabilities')}</label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="transportOnly" checked={showTransportOnly} onChange={(e) => setShowTransportOnly(e.target.checked)} className="h-3 w-3" style={{accentColor:'#7aaad8'}} />
+              <span className="text-xs font-mono" style={{color:'#7a9a5a'}}>{t('search.withTransport')}</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="artilleryOnly" checked={showArtilleryOnly} onChange={(e) => setShowArtilleryOnly(e.target.checked)} className="h-3 w-3" style={{accentColor:'#c9a84c'}} />
+              <span className="text-xs font-mono" style={{color:'#7a9a5a'}}>{t('search.withArtillery')}</span>
             </label>
           </div>
 
           <button onClick={clearFilters} className="w-full px-3 py-2 font-mono text-xs corner-clip-sm transition-colors" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>
-            LIMPAR FILTROS
+            {t('search.clearFilters')}
           </button>
         </div>
       </div>
@@ -493,6 +480,10 @@ function SearchPageContent() {
         <div className="px-6 py-3" style={{background:'rgba(0,0,0,0.5)',borderBottom:'1px solid #3a4a2a'}}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
+              <button onClick={() => router.push('/')} className="font-mono text-xs tracking-widest uppercase transition-colors" style={{color:'#4a5e3a'}} onMouseEnter={e => (e.currentTarget.style.color='#c9a84c')} onMouseLeave={e => (e.currentTarget.style.color='#4a5e3a')}>
+                {t('common.backToHome')}
+              </button>
+              <span style={{color:'#2a3a1a'}}>|</span>
               {!sidebarOpen && (
                 <button onClick={() => setSidebarOpen(true)} className="p-1 transition-colors" style={{color:'#4a5e3a'}}>
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -500,10 +491,11 @@ function SearchPageContent() {
                   </svg>
                 </button>
               )}
-              <h1 className="text-lg font-bold font-mono tracking-widest uppercase" style={{color:'#e8d5a0'}}>Buscar Unidades</h1>
+              <h1 className="text-lg font-bold font-mono tracking-widest uppercase" style={{color:'#e8d5a0'}}>{t('search.title')}</h1>
             </div>
-            <div className="text-xs font-mono" style={{color:'#4a5e3a'}}>
-              {filteredUnits.length} / {displayUnits.length}
+            <div className="flex items-center gap-3">
+              <LangSwitcher />
+              <span className="text-xs font-mono" style={{color:'#4a5e3a'}}>{filteredUnits.length} / {displayUnits.length}</span>
             </div>
           </div>
 
@@ -515,7 +507,7 @@ function SearchPageContent() {
               {selectedFaction && <span className="inline-flex items-center px-2 py-0.5 text-xs font-mono" style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>FAC:{selectedFaction} <button onClick={() => setSelectedFaction('')} className="ml-1" style={{color:'#c9a84c'}}>×</button></span>}
               {selectedRank && <span className="inline-flex items-center px-2 py-0.5 text-xs font-mono" style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>RANK:{selectedRank} <button onClick={() => setSelectedRank('')} className="ml-1" style={{color:'#c9a84c'}}>×</button></span>}
               {selectedClass && <span className="inline-flex items-center px-2 py-0.5 text-xs font-mono" style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>CLASS:{selectedClass} <button onClick={() => setSelectedClass('')} className="ml-1" style={{color:'#c9a84c'}}>×</button></span>}
-              {showUniqueOnly && <span className="inline-flex items-center px-2 py-0.5 text-xs font-mono" style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>ÚNICOS★ <button onClick={() => setShowUniqueOnly(false)} className="ml-1" style={{color:'#c9a84c'}}>×</button></span>}
+              {showUniqueOnly && <span className="inline-flex items-center px-2 py-0.5 text-xs font-mono" style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>{t('search.uniquesTag')} <button onClick={() => setShowUniqueOnly(false)} className="ml-1" style={{color:'#c9a84c'}}>×</button></span>}
               {(pointsRange.min || pointsRange.max) && <span className="inline-flex items-center px-2 py-0.5 text-xs font-mono" style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>PTS:{pointsRange.min||'0'}-{pointsRange.max||'∞'} <button onClick={() => setPointsRange({min:'',max:''})} className="ml-1" style={{color:'#c9a84c'}}>×</button></span>}
             </div>
           )}
@@ -528,15 +520,15 @@ function SearchPageContent() {
             <div style={{background:'#0d1208',border:'1px solid #3a4a2a'}}>
               {/* Table toolbar */}
               <div className="px-4 py-2 flex items-center justify-between" style={{background:'rgba(0,0,0,0.4)',borderBottom:'1px solid #3a4a2a'}}>
-                <span className="font-mono text-xs tracking-widest uppercase" style={{color:'#c9a84c'}}>Lista de Unidades — {filteredUnits.length} encontradas</span>
+                <span className="font-mono text-xs tracking-widest uppercase" style={{color:'#c9a84c'}}>{t('search.unitList')} — {filteredUnits.length} {t('search.found')}</span>
                 <div className="flex gap-2">
                   <button onClick={exportToCSV} className="px-3 py-1 font-mono text-xs corner-clip-sm transition-colors" style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>CSV</button>
-                  <button onClick={() => router.push('/drafts')} className="px-3 py-1 font-mono text-xs corner-clip-sm transition-colors" style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>DRAFTS</button>
-                  <button onClick={() => router.push('/my-collection')} className="px-3 py-1 font-mono text-xs corner-clip-sm transition-colors" style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>COLEÇÃO</button>
-                  <button onClick={() => router.push('/cards')} className="px-3 py-1 font-mono text-xs corner-clip-sm transition-colors" style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>CARTAS</button>
+                  <button onClick={() => router.push('/game')} className="px-3 py-1 font-mono text-xs corner-clip-sm transition-colors" style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>{t('home.game').toUpperCase()}</button>
+                  <button onClick={() => router.push('/my-collection')} className="px-3 py-1 font-mono text-xs corner-clip-sm transition-colors" style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>{t('search.btnCollection')}</button>
+                  <button onClick={() => router.push('/cards')} className="px-3 py-1 font-mono text-xs corner-clip-sm transition-colors" style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>{t('search.btnCards')}</button>
                   <div className="flex items-center gap-1">
                     <div className="w-1.5 h-1.5 rounded-full bg-[#7a9a5a] animate-pulse"></div>
-                    <span className="font-mono text-xs" style={{color:'#3a5a2a'}}>ONLINE</span>
+                    <span className="font-mono text-xs" style={{color:'#3a5a2a'}}>{t('common.online')}</span>
                   </div>
                 </div>
               </div>
@@ -545,20 +537,21 @@ function SearchPageContent() {
                 <table className="w-full table-fixed">
                   <thead className="sticky top-0 z-10" style={{background:'rgba(10,15,6,0.97)'}}>
                   <tr style={{borderBottom:'1px solid #2a3a1a'}}>
-                    <th className="px-1 py-2 text-left text-xs font-mono w-24" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>NOME</th>
+                    <th className="px-1 py-2 text-left text-xs font-mono w-24" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>{t('search.colName')}</th>
                     <th className="px-1 py-2 text-center text-xs font-mono w-8" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>EXP</th>
                     <th className="px-1 py-2 text-center text-xs font-mono w-6" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>#</th>
-                    <th className="px-1 py-2 text-center text-xs font-mono w-8" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>TIPO</th>
-                    <th className="px-1 py-2 text-center text-xs font-mono w-8" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>MODO</th>
-                    <th className="px-1 py-2 text-center text-xs font-mono w-12" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>CLASSE</th>
+                    <th className="px-1 py-2 text-center text-xs font-mono w-8" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>{t('search.colType')}</th>
+                    <th className="px-1 py-2 text-center text-xs font-mono w-8" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>{t('search.colMode')}</th>
+                    <th className="px-1 py-2 text-center text-xs font-mono w-12" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>{t('search.colClass')}</th>
                     <th className="px-1 py-2 text-center text-xs font-mono w-8" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>PTS</th>
                     <th className="px-1 py-2 text-center text-xs font-mono w-6" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>HP</th>
                     <th className="px-1 py-2 text-center text-xs font-mono w-6" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>VENT</th>
+                    <th className="px-1 py-2 text-center text-xs font-mono w-6" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>CAR</th>
                     <th className="px-1 py-2 text-center text-xs font-mono w-16" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>FAC</th>
                     <th className="px-1 py-2 text-center text-xs font-mono w-6" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>ATK</th>
                     <th className="px-1 py-2 text-center text-xs font-mono w-6" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>SPD</th>
                     <th className="px-1 py-2 text-center text-xs font-mono w-6" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>DEF</th>
-                    <th className="px-1 py-2 text-center text-xs font-mono w-20" style={{color:'#5a7a4a'}}>AÇÕES</th>
+                    <th className="px-1 py-2 text-center text-xs font-mono w-20" style={{color:'#5a7a4a'}}>{t('search.colActions')}</th>
                   </tr>
                   </thead>
                   <tbody>
@@ -573,6 +566,7 @@ function SearchPageContent() {
                     <td className="px-1 py-1.5 text-xs font-mono font-bold text-center" style={{color:'#c9a84c',borderRight:'1px solid #1a2a10'}}>{unit.points}</td>
                     <td className="px-1 py-1.5 text-xs font-mono text-center" style={{color:'#e8d5a0',borderRight:'1px solid #1a2a10'}}>{unit.health}</td>
                     <td className="px-1 py-1.5 text-xs font-mono text-center" style={{color:'#e8d5a0',borderRight:'1px solid #1a2a10'}}>{unit.ventCapacity}</td>
+                    <td className="px-1 py-1.5 text-xs font-mono text-center" style={{color: (unit.cargoCapacity ?? 0) > 0 ? '#c9a84c' : '#2a3a1a', fontWeight: (unit.cargoCapacity ?? 0) > 0 ? 'bold' : 'normal', borderRight:'1px solid #1a2a10'}}>{(unit.cargoCapacity ?? 0) > 0 ? unit.cargoCapacity : '—'}</td>
                     <td className="px-1 py-1.5 text-xs font-mono truncate" style={{color:'#7a9a5a',borderRight:'1px solid #1a2a10'}}>{unit.faction}</td>
                     <td className="px-1 py-1.5 text-xs font-mono text-center" style={{color:'#e8d5a0',borderRight:'1px solid #1a2a10'}}>{unit.maxAttack}</td>
                     <td className="px-1 py-1.5 text-xs font-mono text-center" style={{color:'#e8d5a0',borderRight:'1px solid #1a2a10'}}>{unit.maxSpeed}</td>
@@ -583,20 +577,14 @@ function SearchPageContent() {
                           const { haveCount, wantCount } = getUnitCounts(unit.id);
                           const isHaveLoading = loadingUnits.has(`${unit.id}-have`);
                           const isWantLoading = loadingUnits.has(`${unit.id}-want`);
-                          const isDraftLoading = loadingUnits.has(`${unit.id}-draft`);
                           return (
                             <>
-                              <button onClick={(e) => { e.stopPropagation(); addToCollection(unit, 'have'); }} disabled={isHaveLoading} className="text-xs font-mono px-1 py-0.5 transition-colors disabled:opacity-50" style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}} title="Tenho">
-                                {isHaveLoading ? '...' : `T${haveCount}`}
+                              <button onClick={(e) => { e.stopPropagation(); addToCollection(unit, 'have'); }} disabled={isHaveLoading} className="text-xs font-mono px-1 py-0.5 transition-colors disabled:opacity-50" style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}} title={t('search.titleHave')}>
+                                {isHaveLoading ? '...' : `${t('search.titleHave')[0]}${haveCount}`}
                               </button>
-                              <button onClick={(e) => { e.stopPropagation(); addToCollection(unit, 'want'); }} disabled={isWantLoading} className="text-xs font-mono px-1 py-0.5 transition-colors disabled:opacity-50" style={{background:'rgba(201,168,76,0.1)',border:'1px solid #c9a84c44',color:'#c9a84c'}} title="Procuro">
-                                {isWantLoading ? '...' : `P${wantCount}`}
+                              <button onClick={(e) => { e.stopPropagation(); addToCollection(unit, 'want'); }} disabled={isWantLoading} className="text-xs font-mono px-1 py-0.5 transition-colors disabled:opacity-50" style={{background:'rgba(201,168,76,0.1)',border:'1px solid #c9a84c44',color:'#c9a84c'}} title={t('search.titleWant')}>
+                                {isWantLoading ? '...' : `${t('search.titleWant')[0]}${wantCount}`}
                               </button>
-                              {selectedDraftId && (
-                                <button onClick={(e) => { e.stopPropagation(); addToDraft(unit, selectedDraftId); }} disabled={isDraftLoading} className="text-xs font-mono px-1 py-0.5 transition-colors disabled:opacity-50" style={{background:'rgba(100,80,150,0.15)',border:'1px solid #5a4a8a44',color:'#a08ad4'}} title="Draft">
-                                  {isDraftLoading ? '...' : 'D'}
-                                </button>
-                              )}
                             </>
                           );
                         })()}
@@ -609,7 +597,7 @@ function SearchPageContent() {
               </div>
               
               <div className="px-4 py-2" style={{borderTop:'1px solid #2a3a1a',background:'rgba(0,0,0,0.3)'}}>
-                <p className="text-xs font-mono text-center" style={{color:'#3a5a2a'}}>{filteredUnits.length} / {displayUnits.length} UNIDADES</p>
+                <p className="text-xs font-mono text-center" style={{color:'#3a5a2a'}}>{filteredUnits.length} / {displayUnits.length} {t('search.colUnits')}</p>
               </div>
             </div>
           </div>
@@ -635,6 +623,9 @@ function SearchPageContent() {
                     <div>ATK:<span style={{color:'#e8d5a0'}}>{unit.maxAttack}</span></div>
                     <div>DEF:<span style={{color:'#e8d5a0'}}>{unit.maxDefense}</span></div>
                     <div>SPD:<span style={{color:'#e8d5a0'}}>{unit.maxSpeed}</span></div>
+                    {(unit.cargoCapacity ?? 0) > 0 && (
+                      <div className="col-span-4 mt-1">CAR:<span style={{color:'#c9a84c',fontWeight:'bold'}}> {unit.cargoCapacity}</span></div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -642,7 +633,7 @@ function SearchPageContent() {
           </div>
           
           {filteredUnits.length === 0 && displayUnits.length > 0 && (
-            <div className="text-center mt-8 font-mono text-xs" style={{color:'#3a5a2a'}}>[ NENHUMA UNIDADE COM OS FILTROS APLICADOS ]</div>
+            <div className="text-center mt-8 font-mono text-xs" style={{color:'#3a5a2a'}}>{t('search.noResults')}</div>
           )}
         </div>
       </div>

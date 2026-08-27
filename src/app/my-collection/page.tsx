@@ -2,7 +2,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { safeLocalStorage } from '@/lib/storage'
+import { useT } from '@/hooks/useT'
 
 type ListType = "have" | "want";
 
@@ -18,6 +20,8 @@ interface MyUnit {
 }
 
 export default function MyCollection() {
+  const router = useRouter()
+  const t = useT()
   const [haveUnits, setHaveUnits] = useState<MyUnit[]>([]);
   const [wantUnits, setWantUnits] = useState<MyUnit[]>([]);
   const [currentListType] = useState<ListType>("have");
@@ -463,7 +467,11 @@ export default function MyCollection() {
                 </svg>
               </button>
             )}
-            <h1 className="text-lg font-bold font-mono tracking-widest uppercase" style={{color:'#e8d5a0'}}>Minha Coleção</h1>
+            <button onClick={() => router.push('/')} className="font-mono text-xs tracking-widest uppercase transition-colors" style={{color:'#4a5e3a'}} onMouseEnter={e => (e.currentTarget.style.color='#c9a84c')} onMouseLeave={e => (e.currentTarget.style.color='#4a5e3a')}>
+                {t('common.backToHome')}
+              </button>
+              <span style={{color:'#2a3a1a'}}>|</span>
+            <h1 className="text-lg font-bold font-mono tracking-widest uppercase" style={{color:'#e8d5a0'}}>{t('home.myCollection')}</h1>
           </div>
           <div className="text-xs font-mono" style={{color:'#4a5e3a'}}>
             {filteredUnits.length} / {allUnits.length} UNIDADES

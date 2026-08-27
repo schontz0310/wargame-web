@@ -4,26 +4,21 @@
 import { useMemo, useState } from 'react'
 import type { Draft, DraftUnit } from '@/lib/api'
 import type { UnitDialState } from '@/hooks/useGameSession'
-import { getInstanceKey, ORDER_TYPE_LABELS } from '@/lib/gameMode'
+import { getInstanceKey } from '@/lib/gameMode'
 import GameDialCard from './GameDialCard'
+import { useT } from '@/hooks/useT'
+import type { TranslationKey } from '@/lib/translations'
 
-const STEP_LABELS = [
-  'Declarar o(s) alvo(s) do ataque',
-  'Declarar tentativa de captura, se aplicável',
-  'Atacante cancela equipamento especial opcional e define modificadores ao ataque',
-  'Alvo cancela equipamento especial opcional e define modificadores à defesa',
-  'Rolar o ataque e determinar se acerta',
-  'Calcular o dano',
-  'Aplicar calor gerado aos afetados',
-  'Gerou um ataque adicional? Se sim, volte ao passo 2',
-  'Dar o marcador de ordem ao atacante',
-  'Aplicar dano de push e calor ao atacante, se houver',
-]
+const ATTACK_ORDER_LABELS: Record<'ranged' | 'close' | 'assault', TranslationKey> = {
+  ranged: 'orders.ranged',
+  close: 'orders.close',
+  assault: 'orders.assault',
+}
 
 export interface AttackResolutionResult {
   attacker: { playerId: number; instanceKey: string; name: string; damageDelta: number; heatDelta: number }
   targets: { playerId: number; instanceKey: string; name: string; damageDelta: number; heatDelta: number }[]
-  orderType: 'ranged' | 'close'
+  orderType: 'ranged' | 'close' | 'assault' | 'assault'
 }
 
 interface TargetCandidate {
@@ -38,7 +33,7 @@ interface AttackSequenceOverlayProps {
   attackerPlayerId: number
   attackerUnit: DraftUnit
   attackerInstanceKey: string
-  orderType: 'ranged' | 'close'
+  orderType: 'ranged' | 'close' | 'assault'
   getDialState: (playerId: number, instanceKey: string) => UnitDialState
   setDialClicks: (playerId: number, instanceKey: string, clicks: Partial<UnitDialState>) => void
   onOrderMarked: () => void
@@ -58,6 +53,11 @@ export default function AttackSequenceOverlay({
   onComplete,
   onClose,
 }: AttackSequenceOverlayProps) {
+  const t = useT()
+  const STEP_LABELS: TranslationKey[] = [
+    'attack.s0', 'attack.s1', 'attack.s2', 'attack.s3', 'attack.s4',
+    'attack.s5', 'attack.s6', 'attack.s7', 'attack.s8', 'attack.s9',
+  ]
   const [completedSteps, setCompletedSteps] = useState(0)
   const [selectedTargetKeys, setSelectedTargetKeys] = useState<string[]>([])
   const [attackerStart] = useState<UnitDialState>(() => getDialState(attackerPlayerId, attackerInstanceKey))
@@ -136,9 +136,9 @@ export default function AttackSequenceOverlay({
     <div className="fixed inset-0 z-50 flex flex-col p-4 overflow-y-auto" style={{ background: 'rgba(5,8,3,0.96)' }}>
       <div className="flex items-center justify-between mb-4 flex-shrink-0">
         <h2 className="font-mono text-sm tracking-widest uppercase" style={{ color: '#c9a84c' }}>
-          Assistente de Ataque · {ORDER_TYPE_LABELS[orderType]}
+          {t('attack.title')} · {t(ATTACK_ORDER_LABELS[orderType])}
         </h2>
-        <button onClick={onClose} className="font-mono text-xs" style={{ color: '#c06060' }}>FECHAR</button>
+        <button onClick={onClose} className="font-mono text-xs" style={{ color: '#c06060' }}>{t('common.close')}</button>
       </div>
 
       <div className="flex gap-3 mb-4 flex-shrink-0 overflow-x-auto">
@@ -168,7 +168,7 @@ export default function AttackSequenceOverlay({
 
       {completedSteps === 0 && (
         <div className="mb-4 flex-shrink-0">
-          <div className="font-mono text-xs mb-2" style={{ color: '#5a7a4a' }}>Selecione o(s) alvo(s):</div>
+          <div className="font-mono text-xs mb-2" style={{ color: '#5a7a4a' }}>{t('attack.selectTargets')}</div>
           <div className="flex flex-wrap gap-2">
             {targetCandidates.map(t => {
               const key = `${t.playerId}:${t.instanceKey}`
@@ -193,7 +193,7 @@ export default function AttackSequenceOverlay({
       )}
 
       <div className="space-y-1 flex-1 min-h-0 overflow-y-auto">
-        {STEP_LABELS.map((label, idx) => {
+        {STEP_LABELS.map((key, idx) => {
           const isDone = idx < completedSteps
           const isCurrent = idx === completedSteps
           return (
@@ -209,7 +209,7 @@ export default function AttackSequenceOverlay({
               }}
             >
               <span>{isDone ? '✓' : idx + 1}</span>
-              <span>{label}</span>
+              <span>{t(key)}</span>
             </button>
           )
         })}

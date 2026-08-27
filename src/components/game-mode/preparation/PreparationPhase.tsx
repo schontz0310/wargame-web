@@ -10,10 +10,12 @@ import {
 } from '@/lib/gameMode'
 import PlayerAliases from './PlayerAliases'
 import BattlefieldSetup from './BattlefieldSetup'
+import TerrainPileSelection from './TerrainPileSelection'
 import TerrainPlacement from './TerrainPlacement'
 import FirstPlayerRoll from './FirstPlayerRoll'
 import BattleforceDeployment from './BattleforceDeployment'
 import { safeLocalStorage } from '@/lib/storage'
+import { useT } from '@/hooks/useT'
 
 interface PreparationPhaseProps {
   draft: Draft
@@ -24,6 +26,7 @@ interface PreparationPhaseProps {
 const STORAGE_KEY = (draftId: string) => `preparation-state-${draftId}`
 
 export default function PreparationPhase({ draft, onComplete, onUpdateDraft }: PreparationPhaseProps) {
+  const t = useT()
   const [preparationState, setPreparationState] = useState<PreparationState>(() => {
     // Load from localStorage if available
     const saved = safeLocalStorage.getItem(STORAGE_KEY(draft.id))
@@ -37,6 +40,7 @@ export default function PreparationPhase({ draft, onComplete, onUpdateDraft }: P
         // Reconstruct Maps from plain objects
         return {
           ...parsed,
+          terrainPileItems: parsed.terrainPileItems ?? [],
           terrainPile: new Map(Object.entries(parsed.terrainPile ?? {}).map(([k, v]) => [parseInt(k), v])),
           diceRolls: new Map(Object.entries(parsed.diceRolls ?? {}).map(([k, v]) => [parseInt(k), v])),
           deployedUnits: new Map(Object.entries(parsed.deployedUnits ?? {}).map(([k, v]) => [parseInt(k), v]))
@@ -56,6 +60,7 @@ export default function PreparationPhase({ draft, onComplete, onUpdateDraft }: P
         terrainMinDistance: 3
       } as BattlefieldSetupType,
       terrainFeatures: [],
+      terrainPileItems: [],
       terrainPile: new Map(),
       firstPlayerId: null,
       diceRolls: new Map(),
@@ -86,23 +91,51 @@ export default function PreparationPhase({ draft, onComplete, onUpdateDraft }: P
   }
 
   const handleComplete = () => {
-    // Clear preparation state from localStorage
+    // Apply pre-game boarding to the game session before starting.
+    const initialPassengers = preparationState.initialPassengers ?? {}
+    if (Object.keys(initialPassengers).length > 0) {
+      const sessionKey = `wargame_game_session_${draft.id}`
+      let session: Record<string, unknown>
+      try {
+        session = JSON.parse(safeLocalStorage.getItem(sessionKey) ?? 'null') ?? {}
+      } catch {
+        session = {}
+      }
+      const players = (session.players ?? {}) as Record<number, {
+        units?: Record<string, { damageClicks?: number; heatClicks?: number; passengers?: string[]; aboard?: string | null }>
+        [k: string]: unknown
+      }>
+      for (const [pidStr, transportMap] of Object.entries(initialPassengers)) {
+        const pid = parseInt(pidStr)
+        const player = players[pid] ?? {}
+        const units = { ...(player.units ?? {}) }
+        for (const [tKey, pKeys] of Object.entries(transportMap)) {
+          units[tKey] = { damageClicks: 0, heatClicks: 0, ...(units[tKey] ?? {}), passengers: pKeys }
+          for (const pKey of pKeys) {
+            units[pKey] = { damageClicks: 0, heatClicks: 0, ...(units[pKey] ?? {}), aboard: tKey }
+          }
+        }
+        players[pid] = { ...player, units }
+      }
+      safeLocalStorage.setItem(sessionKey, JSON.stringify({ ...session, players }))
+    }
     safeLocalStorage.removeItem(STORAGE_KEY(draft.id))
     onComplete()
   }
 
   const STAGE_LABELS: Record<PreparationStage, string> = {
-    player_aliases: 'Aliases dos Jogadores',
-    battlefield_setup: 'Setup do Campo de Batalha',
-    first_player_roll: 'Determinar Primeiro Jogador',
-    terrain_placement: 'Colocação de Terreno',
-    battleforce_deployment: 'Deploy da Battleforce'
+    player_aliases: t('preparation.stages.player_aliases'),
+    battlefield_setup: t('preparation.stages.battlefield_setup'),
+    first_player_roll: t('preparation.stages.first_player_roll'),
+    terrain_pile_selection: t('preparation.stages.terrain_pile_selection'),
+    terrain_placement: t('preparation.stages.terrain_placement'),
+    battleforce_deployment: t('preparation.stages.battleforce_deployment'),
   }
 
   if (!isClient) {
     return (
       <div className="flex items-center justify-center min-h-screen" style={{ background: '#0d1208' }}>
-        <div className="font-mono text-[#7a9a5a] tracking-widest animate-pulse">[ CARREGANDO... ]</div>
+        <div className="font-mono text-[#7a9a5a] tracking-widest animate-pulse">{t('common.loading')}</div>
       </div>
     )
   }
@@ -114,15 +147,15 @@ export default function PreparationPhase({ draft, onComplete, onUpdateDraft }: P
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between mb-2">
             <span className="font-mono text-xs" style={{ color: '#5a7a4a' }}>
-              FASE PREPARATÓRIA
+              {t('preparation.phase')}
             </span>
             <span className="font-mono text-xs" style={{ color: '#c9a84c' }}>
               {STAGE_LABELS[preparationState.stage]}
             </span>
           </div>
           <div className="flex gap-1">
-            {(['player_aliases', 'battlefield_setup', 'first_player_roll', 'terrain_placement', 'battleforce_deployment'] as PreparationStage[]).map((stage, index) => {
-              const isCompleted = ['player_aliases', 'battlefield_setup', 'first_player_roll', 'terrain_placement', 'battleforce_deployment'].indexOf(preparationState.stage) > index
+            {(['player_aliases', 'battlefield_setup', 'first_player_roll', 'terrain_pile_selection', 'terrain_placement', 'battleforce_deployment'] as PreparationStage[]).map((stage, index) => {
+              const isCompleted = ['player_aliases', 'battlefield_setup', 'first_player_roll', 'terrain_pile_selection', 'terrain_placement', 'battleforce_deployment'].indexOf(preparationState.stage) > index
               const isCurrent = preparationState.stage === stage
               
               return (
@@ -165,6 +198,15 @@ export default function PreparationPhase({ draft, onComplete, onUpdateDraft }: P
 
       {preparationState.stage === 'first_player_roll' && (
         <FirstPlayerRoll
+          draft={draft}
+          preparationState={preparationState}
+          onUpdateState={handleUpdateState}
+          onNextStage={handleNextStage}
+        />
+      )}
+
+      {preparationState.stage === 'terrain_pile_selection' && (
+        <TerrainPileSelection
           draft={draft}
           preparationState={preparationState}
           onUpdateState={handleUpdateState}

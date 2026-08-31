@@ -120,7 +120,6 @@ export default function StandardPage() {
         playerName: `${t('standard.player')} ${p.id}`,
         units: [],
         armyUnits: p.units,
-        secretCards: [],
         totalPoints: 0,
         armyPoints: p.totalPoints,
         armyPointsLimit: session.settings.pointLimit,

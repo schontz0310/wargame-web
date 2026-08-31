@@ -4,15 +4,46 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Unit, Draft, DraftSettings, DraftUnitWithQuantity, DraftCardWithQuantity, DraftResult, DraftUnit, apiService, Card } from '@/lib/api'
+import { Unit, Draft, DraftSettings, DraftUnitWithQuantity, DraftCardWithQuantity, DraftResult, DraftUnit, apiService, Card, IPilot, IGear, pilotPointsLabel } from '@/lib/api'
 import { safeLocalStorage } from '@/lib/storage'
 import { useT } from '@/hooks/useT'
+
+// A unit's mech code (e.g. "AOD113") is the basename of its imageUrl, and matches
+// a pilot's preferredMechId 1:1 — used to auto-pair a unique unit with its pilot.
+function mechCodeFromImageUrl(imageUrl?: string | null): string | null {
+  if (!imageUrl) return null
+  const match = imageUrl.match(/([^/]+)\.[a-zA-Z0-9]+$/)
+  return match ? match[1] : null
+}
+
+function pilotToCard(pilot: IPilot): Card {
+  return {
+    id: pilot.cardId,
+    dbId: pilot.id,
+    name: pilot.name,
+    type: 'P',
+    typeName: 'Pilot',
+    cost: pilot.points,
+    faction: pilot.factionLeft || pilot.factionRight || '',
+    factionLeft: pilot.factionLeft ?? undefined,
+    factionRight: pilot.factionRight ?? undefined,
+    class: pilot.class,
+    rarity: 'Common',
+    expansion: pilot.expansion,
+    collectionNumber: pilot.collectionNumber,
+    imageUrl: pilot.imageUrl || '',
+    description: pilot.description || '',
+    isUnique: pilot.isUnique,
+    cardModel: 'single',
+  }
+}
 
 export default function DraftsPage() {
   const router = useRouter()
   const t = useT()
   const [drafts, setDrafts] = useState<Draft[]>([])
   const [selectedDraft, setSelectedDraft] = useState<Draft | null>(null)
+  const [mechDetailsById, setMechDetailsById] = useState<Map<string, Unit>>(new Map())
   const [isCreating, setIsCreating] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [newDraftName, setNewDraftName] = useState('')
@@ -24,8 +55,12 @@ export default function DraftsPage() {
   const [selectedUnits, setSelectedUnits] = useState<DraftUnitWithQuantity[]>([])
   const [showUnitSelector, setShowUnitSelector] = useState(false)
   const [collectionUnits, setCollectionUnits] = useState<Unit[]>([])
+  const [rawHaveCollection, setRawHaveCollection] = useState<{ id: string; quantity: number }[]>([])
   const [useCollectionAsSource, setUseCollectionAsSource] = useState(false)
   const [availableCards, setAvailableCards] = useState<Card[]>([])
+  const [pilotsByMechCode, setPilotsByMechCode] = useState<Map<string, IPilot>>(new Map())
+  const [pilotsById, setPilotsById] = useState<Map<string, IPilot>>(new Map())
+  const [availablePilotCards, setAvailablePilotCards] = useState<Card[]>([])
   const [showImportModal, setShowImportModal] = useState(false)
   const [importMessage, setImportMessage] = useState('')
   const [importSuccess, setImportSuccess] = useState(false)
@@ -46,8 +81,6 @@ export default function DraftsPage() {
   })
   const [editingPlayerId, setEditingPlayerId] = useState<number | null>(null)
   const [showArmyUnitSelector, setShowArmyUnitSelector] = useState(false)
-  const [showSecretCardModal, setShowSecretCardModal] = useState(false)
-  const [secretCardValue, setSecretCardValue] = useState('')
   const [draftSettings, setDraftSettings] = useState<DraftSettings>({
     numberOfPlayers: 2,
     boostersPerPlayer: 3,
@@ -76,14 +109,23 @@ export default function DraftsPage() {
       const savedDrafts = safeLocalStorage.getItem('myDrafts')
       if (savedDrafts) {
         const parsedDrafts = (JSON.parse(savedDrafts) as any[]).filter((d: any) => !d.id?.startsWith('std-'))
-        // Migrate old drafts without availableUnits and new army fields
+        // Migrate old drafts without availableUnits, new army fields, per-copy instanceIds,
+        // and the older separate pilot/gear attachment fields (now unified into 2 CEC slots)
+        const withInstanceId = (u: DraftUnit): DraftUnit => {
+          const withId: any = u.instanceId ? u : { ...u, instanceId: crypto.randomUUID() }
+          if (withId.attachedInstanceIds) return withId
+          const legacySlots = [withId.attachedPilotInstanceId, ...(withId.attachedGearInstanceIds || [])].filter(Boolean)
+          if (legacySlots.length === 0) return withId
+          const { attachedPilotInstanceId, attachedGearInstanceIds, ...rest } = withId
+          return { ...rest, attachedInstanceIds: legacySlots.slice(0, 2) }
+        }
         const migratedDrafts = parsedDrafts.map((draft: any) => ({
           ...draft,
           availableUnits: draft.availableUnits || [],
           results: draft.results.map((result: any) => ({
             ...result,
-            armyUnits: result.armyUnits || [],
-            secretCards: result.secretCards || [],
+            units: (result.units || []).map(withInstanceId),
+            armyUnits: (result.armyUnits || []).map(withInstanceId),
             armyPoints: result.armyPoints || 0
           }))
         }))
@@ -95,44 +137,52 @@ export default function DraftsPage() {
         }
       }
 
-      // Load collection units from localStorage (client-side only)
+      // Load collection units from localStorage (client-side only). "My collection" only
+      // stores a sparse {id, quantity} — the full unit record (isUnique, imageUrl, class,
+      // etc.) is filled in later once the API's unit list is loaded, see the effect below.
       const savedHaveCollection = safeLocalStorage.getItem('myHaveCollection')
       if (savedHaveCollection) {
-        const haveUnits = JSON.parse(savedHaveCollection)
-        const unitsFromCollection: Unit[] = []
-        
-        // Extract units from have collection
-        haveUnits.forEach((unit: any) => {
-          // Add multiple copies based on quantity
-          for (let i = 0; i < unit.quantity; i++) {
-            unitsFromCollection.push({
-              ...unit,
-              expansion: unit.expansion || '',
-              collectionNumber: unit.collectionNumber || 0,
-              variant: unit.variant || '',
-              speedMode: unit.speedMode || '',
-              class: unit.class || '',
-              health: unit.health || 0,
-              maxMovement: unit.maxMovement || 0,
-              maxAttack: unit.maxAttack || 0,
-              maxDefense: unit.maxDefense || 0,
-              maxDamage: unit.maxDamage || 0,
-              isUnique: unit.isUnique || false,
-              rank: unit.rank || 'NA',
-              imageUrl: unit.imageUrl || '',
-              attackStats: unit.attackStats || [],
-              combatDial: unit.combatDial || [],
-              heatDial: unit.heatDial || []
-            } as Unit)
-          }
-        })
-        
-        setCollectionUnits(unitsFromCollection)
+        setRawHaveCollection(JSON.parse(savedHaveCollection))
       }
     } catch (error) {
       console.error('Error loading drafts:', error)
     }
   }, [isClient])
+
+  // Expand the collection's sparse {id, quantity} entries into full Unit records by matching
+  // against the API's unit list — a stored collection entry never carried isUnique/imageUrl/
+  // class, so without this a unique mech from the collection could never be paired with its
+  // pilot during a draft (isUnique would silently read as false).
+  useEffect(() => {
+    if (rawHaveCollection.length === 0 || availableUnits.length === 0) return
+    const byId = new Map(availableUnits.map(u => [u.id, u]))
+    const unitsFromCollection: Unit[] = []
+    rawHaveCollection.forEach((entry: any) => {
+      const full = byId.get(entry.id)
+      for (let i = 0; i < entry.quantity; i++) {
+        unitsFromCollection.push(full ? { ...full } : {
+          ...entry,
+          expansion: entry.expansion || '',
+          collectionNumber: entry.collectionNumber || 0,
+          variant: entry.variant || '',
+          speedMode: entry.speedMode || '',
+          class: entry.class || '',
+          health: entry.health || 0,
+          maxMovement: entry.maxMovement || 0,
+          maxAttack: entry.maxAttack || 0,
+          maxDefense: entry.maxDefense || 0,
+          maxDamage: entry.maxDamage || 0,
+          isUnique: entry.isUnique || false,
+          rank: entry.rank || 'NA',
+          imageUrl: entry.imageUrl || '',
+          attackStats: entry.attackStats || [],
+          combatDial: entry.combatDial || [],
+          heatDial: entry.heatDial || []
+        } as Unit)
+      }
+    })
+    setCollectionUnits(unitsFromCollection)
+  }, [rawHaveCollection, availableUnits])
 
   // Load all units from API using the existing service
   useEffect(() => {
@@ -157,7 +207,20 @@ export default function DraftsPage() {
         console.log('Loading cards from API...')
         const factionPrides = await apiService.getFactionPrides({ limit: 100 })
         const mercenaryContracts = await apiService.getMercenaryContracts({ limit: 100 })
-        
+
+        // Gears are paginated (100/page); fetch every page
+        const gearCards: IGear[] = []
+        let gearPage = 1
+        let gearTotalPages = 1
+        do {
+          const res = await apiService.getGears({ page: gearPage, limit: 100 })
+          gearTotalPages = res.totalPages
+          gearCards.push(...res.gears)
+          gearPage++
+        } while (gearPage <= gearTotalPages)
+
+        const situationalAlliances = await apiService.getSituationalAlliances({ limit: 100 })
+
         const allCards: Card[] = []
         
         // Convert Faction Prides to Cards
@@ -217,6 +280,53 @@ export default function DraftsPage() {
           })
         })
         
+        // Convert Gears to Cards
+        gearCards.forEach(g => {
+          allCards.push({
+            id: g.cardId,
+            dbId: g.id,
+            name: g.name,
+            type: 'G',
+            typeName: 'Gear',
+            cost: g.points,
+            faction: g.faction || '',
+            class: g.class,
+            attachesTo: g.attachesTo,
+            rarity: 'Common',
+            expansion: g.expansion,
+            collectionNumber: g.collectionNumber,
+            imageUrl: g.imageUrl || '',
+            description: g.effect || '',
+            isUnique: false,
+            cardModel: 'single',
+          })
+        })
+
+        // Convert Situational Alliances to Cards
+        situationalAlliances.situationalAlliances.forEach(sa => {
+          allCards.push({
+            id: sa.cardId,
+            dbId: sa.id,
+            name: sa.name,
+            type: 'SA',
+            typeName: 'Situational Alliance',
+            cost: sa.cost,
+            faction: sa.name,
+            factionLeft: sa.factionLeft,
+            factionRight: sa.factionRight,
+            rarity: 'Common',
+            expansion: sa.expansion,
+            collectionNumber: sa.collectionNumber,
+            imageUrl: '',
+            description: sa.description,
+            flavorText: sa.flavorText ?? undefined,
+            isUnique: false,
+            cardModel: 'double',
+            frontImage: '/images/cards/situational-alliance-front-double.png',
+            backImage: '/images/cards/situational-alliance-back.png',
+          })
+        })
+
         console.log('Total cards loaded:', allCards.length)
         setAvailableCards(allCards)
       } catch (error) {
@@ -225,6 +335,68 @@ export default function DraftsPage() {
     }
     loadAllCards()
   }, [])
+
+  // Load all pilots: indexed by their preferred mech code (so a unique unit drawn
+  // during a draft can be automatically paired with its pilot card), and as regular
+  // drawable Cards (so pilots can also come up in the normal "Card" booster slot).
+  useEffect(() => {
+    const loadPilots = async () => {
+      try {
+        const map = new Map<string, IPilot>()
+        const byId = new Map<string, IPilot>()
+        const cards: Card[] = []
+        let page = 1
+        let totalPages = 1
+        do {
+          const res = await apiService.getPilots({ page, limit: 100 })
+          totalPages = res.totalPages
+          res.pilots.forEach(p => {
+            if (p.preferredMechId) map.set(p.preferredMechId, p)
+            byId.set(p.id, p)
+            cards.push(pilotToCard(p))
+          })
+          page++
+        } while (page <= totalPages)
+        console.log('Total pilots loaded:', map.size)
+        setPilotsByMechCode(map)
+        setPilotsById(byId)
+        setAvailablePilotCards(cards)
+      } catch (error) {
+        console.error('Error loading pilots:', error)
+      }
+    }
+    loadPilots()
+  }, [])
+
+  // Lazily fetch each armied mech's full unit record (weapon damage types, class, faction),
+  // used both to validate a gear's "attaches to" requirement and as a fallback for a mech's
+  // own class/faction when a draft was saved before those fields were tracked on DraftUnit.
+  useEffect(() => {
+    if (!selectedDraft) return
+    const mechIds = new Set<string>()
+    selectedDraft.results.forEach(result => {
+      (result.armyUnits || []).forEach(u => {
+        if (!u.isCard && u.type?.toLowerCase() === 'mech') mechIds.add(u.id)
+      })
+    })
+    const missing = [...mechIds].filter(id => !mechDetailsById.has(id))
+    if (missing.length === 0) return
+    let cancelled = false
+    Promise.all(missing.map(id => apiService.getUnit(id).then(unit => [id, unit] as const))).then(results => {
+      if (cancelled) return
+      setMechDetailsById(prev => {
+        const next = new Map(prev)
+        results.forEach(([id, unit]) => { if (unit) next.set(id, unit) })
+        return next
+      })
+    })
+    return () => { cancelled = true }
+  }, [selectedDraft, mechDetailsById])
+
+  // A mech's class/faction as tracked on its DraftUnit, falling back to the freshly-fetched
+  // full unit record when the draft was saved before those fields existed on DraftUnit.
+  const mechClassOf = (mech: DraftUnit): string | undefined => mech.class || mechDetailsById.get(mech.id)?.class
+  const mechFactionOf = (mech: DraftUnit): string => mech.faction || mechDetailsById.get(mech.id)?.faction || ''
 
   // Filter units based on filters
   useEffect(() => {
@@ -376,7 +548,7 @@ export default function DraftsPage() {
     )
     
     // Use ALL available cards automatically (not just selected)
-    const allCards = availableCards
+    const allCards = [...availableCards, ...availablePilotCards]
     
     // Pre-shuffle the entire pool multiple times for maximum randomness
     let shuffledUnits = shuffleArray(allUnits)
@@ -393,7 +565,6 @@ export default function DraftsPage() {
         playerName: `${t('control.player')} ${i + 1}`,
         units: [],
         armyUnits: [],
-        secretCards: [],
         totalPoints: 0,
         armyPoints: 0,
         ...(settings.armyPointLimit && settings.armyPointLimit > 0
@@ -417,7 +588,11 @@ export default function DraftsPage() {
       const currentPlayerIndex = boosterIndex % settings.numberOfPlayers
       
       const currentPlayer = players[currentPlayerIndex]
-      
+
+      // Unique units drawn in this booster whose pilot should auto-fill this booster's
+      // Card slot(s), bypassing the normal random card draw for those slots.
+      const forcedPilotCards: Card[] = []
+
       // Update UI state (display 1-based player number)
       setCurrentBooster(boosterIndex + 1)
       setCurrentPlayer(currentPlayer.playerId)
@@ -434,25 +609,28 @@ export default function DraftsPage() {
           )
           
           const shuffledCards = shuffleArray(availableCards)
-          
+
           for (let j = 0; j < config.quantity; j++) {
-            if (shuffledCards.length > 0) {
-              const weights = shuffledCards.map(card => {
-                const distributionCount = cardDistribution.get(card.id) || 0
-                return Math.max(1, 10 - distributionCount)
-              })
-              
-              const selectedCard = selectRandomWithWeights(shuffledCards, weights)
-              
+            // A unique unit drawn earlier in this booster auto-fills the card slot
+            // with its pilot, ahead of the normal random draw.
+            const forcedCard = forcedPilotCards.shift()
+            const selectedCard = forcedCard ?? (shuffledCards.length > 0
+              ? selectRandomWithWeights(shuffledCards, shuffledCards.map(card => {
+                  const distributionCount = cardDistribution.get(card.id) || 0
+                  return Math.max(1, 10 - distributionCount)
+                }))
+              : undefined)
+
+            if (selectedCard) {
               // Show animation of card being drawn
               setDraftAnimation({ unit: selectedCard as any, player: currentPlayerIndex + 1 })
               await new Promise(resolve => setTimeout(resolve, 800))
-              
+
               // Add card to player
-              const cardPoints = typeof selectedCard.cost === 'string' 
-                ? parseInt(selectedCard.cost.split('/')[0]) 
+              const cardPoints = typeof selectedCard.cost === 'string'
+                ? parseInt(selectedCard.cost.split('/')[0])
                 : selectedCard.cost
-              
+
               currentPlayer.units.push({
                 id: selectedCard.id,
                 name: selectedCard.name,
@@ -464,23 +642,30 @@ export default function DraftsPage() {
                 quantity: 1,
                 isCard: true,
                 cardType: selectedCard.type,
-                cardDbId: selectedCard.dbId
+                cardDbId: selectedCard.dbId,
+                instanceId: crypto.randomUUID(),
+                class: selectedCard.class,
+                factionLeft: selectedCard.factionLeft,
+                factionRight: selectedCard.factionRight,
+                attachesTo: selectedCard.attachesTo
               })
-              
+
               currentPlayer.totalPoints += cardPoints
-              
+
               // Update distribution tracking
               cardDistribution.set(selectedCard.id, (cardDistribution.get(selectedCard.id) || 0) + 1)
-              
-              // Remove from available pool
-              const poolIndex = availableCardsPool.indexOf(selectedCard)
-              if (poolIndex > -1) {
-                availableCardsPool.splice(poolIndex, 1)
-              }
-              
-              const cardIndex = shuffledCards.indexOf(selectedCard)
-              if (cardIndex > -1) {
-                shuffledCards.splice(cardIndex, 1)
+
+              if (!forcedCard) {
+                // Remove from available pool (forced pilot cards never came from it)
+                const poolIndex = availableCardsPool.indexOf(selectedCard)
+                if (poolIndex > -1) {
+                  availableCardsPool.splice(poolIndex, 1)
+                }
+
+                const cardIndex = shuffledCards.indexOf(selectedCard)
+                if (cardIndex > -1) {
+                  shuffledCards.splice(cardIndex, 1)
+                }
               }
             }
           }
@@ -517,14 +702,25 @@ export default function DraftsPage() {
                 faction: selectedUnit.faction,
                 expansion: selectedUnit.expansion,
                 collectionNumber: selectedUnit.collectionNumber,
-                quantity: 1
+                quantity: 1,
+                instanceId: crypto.randomUUID(),
+                class: selectedUnit.class
               })
-              
+
               currentPlayer.totalPoints += selectedUnit.points
-              
+
+              // A unique unit with a matching pilot auto-fills this booster's card slot
+              if (selectedUnit.isUnique) {
+                const mechCode = mechCodeFromImageUrl(selectedUnit.imageUrl)
+                const pilot = mechCode ? pilotsByMechCode.get(mechCode) : undefined
+                if (pilot && !forcedPilotCards.some(c => c.dbId === pilot.id)) {
+                  forcedPilotCards.push(pilotToCard(pilot))
+                }
+              }
+
               // Update distribution tracking
               unitDistribution.set(selectedUnit.id, (unitDistribution.get(selectedUnit.id) || 0) + 1)
-              
+
               // Remove from available pool
               const poolIndex = availableUnitsPool.indexOf(selectedUnit)
               if (poolIndex > -1) {
@@ -886,6 +1082,234 @@ export default function DraftsPage() {
     }
   }
 
+  // A mech's code (e.g. "AOD113") is its expansion + zero-padded collectionNumber,
+  // matching a pilot's preferredMechId 1:1 (see mechCodeFromImageUrl above). Falls back to
+  // the freshly-fetched unit record when a draft was saved before these fields were tracked.
+  const mechCode = (unit: DraftUnit): string => {
+    if (unit.expansion && unit.collectionNumber) return `${unit.expansion}${String(unit.collectionNumber).padStart(3, '0')}`
+    return mechCodeFromImageUrl(mechDetailsById.get(unit.id)?.imageUrl) || ''
+  }
+
+  // Points label for any drafted unit/card: a pilot shows "standard/preferred-mech" cost, everything else its plain points.
+  const unitPointsLabel = (unit: DraftUnit): string => {
+    const pilot = unit.cardType === 'P' && unit.cardDbId ? pilotsById.get(unit.cardDbId) : undefined
+    return pilot ? pilotPointsLabel(pilot) : `${unit.points}`
+  }
+
+  // " / <class>" suffix for a subtitle line — omitted when there's no meaningful class (e.g. Infantry's "NA").
+  const classSuffix = (unit: DraftUnit): string => unit.class && unit.class !== 'NA' ? ` / ${unit.class}` : ''
+
+  // A pilot's "type" shows its pilotType abbreviation (Common=P, Legendary=L, Gunslinger=GS)
+  // instead of the generic card type 'P' shared by every pilot.
+  const PILOT_TYPE_ABBR: Record<string, string> = { CommonPilot: 'P', LegendaryPilot: 'L', GunslingerPilot: 'GS' }
+  const unitTypeLabel = (unit: DraftUnit): string => {
+    const pilot = unit.cardType === 'P' && unit.cardDbId ? pilotsById.get(unit.cardDbId) : undefined
+    return pilot ? (PILOT_TYPE_ABBR[pilot.pilotType] || unit.type) : unit.type
+  }
+
+  // A gear's "attaches to" uses "Energy"; the mech's own attack data calls it "energetic".
+  const DAMAGE_TYPE_ALIASES: Record<string, string> = { energy: 'energetic' }
+  const WEAPON_DAMAGE_TYPES = ['ballistic', 'energetic', 'melee']
+
+  // Faction abbreviations used in a Gunslinger pilot's recruitCosts labels, matched to full faction names.
+  const GUNSLINGER_RECRUIT_FACTION_CODES: Record<string, string> = {
+    "Bannson's Raiders": 'BR',
+    'Clan Jade Falcon': 'CJF',
+    'Clan Nova Cat': 'CNC',
+    'Clan Sea Fox': 'CSF',
+    'Clan Wolf': 'CW',
+    "Dragon's Fury": 'DF',
+    "Clan Hell's Horses": 'H',
+    'House Davion': 'HD',
+    'House Kurita': 'HK',
+    'Highlanders': 'HL',
+    'House Steiner': 'HS',
+    'Rasalhague Dominion': 'RD',
+    'Republic of the Sphere': 'RotS',
+    'Spirit Cats': 'SC',
+    'Stormhammers': 'SH',
+    'Steel Wolves': 'SW',
+    'Swordsworn': 'SS',
+    'Wolf Hunters': 'WH',
+  }
+
+  // A "Gunslinger" pilot is a mercenary-for-hire: mounting one of a specific faction's mechs
+  // costs an extra recruitment fee on top of its normal cost — the faction-specific entry in
+  // its recruitCosts if listed, else the Base entry. Returns null when that faction explicitly
+  // will not hire this pilot (a listed entry with no cost) — the attach must be blocked.
+  const gunslingerRecruitCost = (pilot: IPilot, mechFaction: string): number | null => {
+    if ((pilot.factionLeft || '').toLowerCase() !== 'gunslinger') return 0
+    if (mechFaction.toLowerCase() === 'gunslinger') return 0 // already home faction, no fee
+    const code = GUNSLINGER_RECRUIT_FACTION_CODES[mechFaction]
+    const entries = pilot.recruitCosts || []
+    const specific = code ? entries.find(rc => rc.label === code) : undefined
+    if (specific) return specific.cost // may be null -> blocked
+    const base = entries.find(rc => rc.label === 'Base')
+    return base ? base.cost : 0
+  }
+
+  // A pilot/gear class of "NA" means "any class" (e.g. a pilot rated to fly Light through
+  // Assault, with per-class costs spelled out in its description) — not a real restriction.
+  const normalizedClass = (value?: string): string | undefined => value && value.toUpperCase() !== 'NA' ? value : undefined
+
+  // Class requirement: a Pilot/Gear can only mount a Mech of the same class. Missing data
+  // on either side is treated as unrestricted rather than silently blocking the attach.
+  const classCompatible = (item: DraftUnit, mech: DraftUnit): boolean => {
+    const itemClass = normalizedClass(item.class)
+    const mechClass = normalizedClass(mechClassOf(mech))
+    return !itemClass || !mechClass || itemClass.toLowerCase() === mechClass.toLowerCase()
+  }
+
+  // A pilot with no fixed class (class "NA") lists its per-class cost in its own description,
+  // e.g. "...depending on class: L=11, M=16, H=19, A=30." — parse that into a class->cost map.
+  const CLASS_LETTER_TO_NAME: Record<string, string> = { L: 'Light', M: 'Medium', H: 'Heavy', A: 'Assault' }
+  const parsePilotClassCosts = (description?: string | null): Record<string, number> | null => {
+    if (!description) return null
+    const section = description.match(/depending on class:\s*([^.]+)\./i)?.[1] || description
+    const costs: Record<string, number> = {}
+    for (const m of section.matchAll(/\b([LMHA])\s*=\s*(\d+)/g)) {
+      const name = CLASS_LETTER_TO_NAME[m[1].toUpperCase()]
+      if (name) costs[name] = parseInt(m[2], 10)
+    }
+    return Object.keys(costs).length > 0 ? costs : null
+  }
+
+  // Faction requirement: no faction on the Pilot/Gear means it fits any mech. Otherwise the
+  // mech's faction must match one of the item's faction(s) (Gear's can be a "A-B" combo).
+  const factionCompatible = (item: DraftUnit, mech: DraftUnit): boolean => {
+    const raw = [item.factionLeft, item.factionRight, item.cardType === 'G' ? item.faction : undefined].filter(Boolean) as string[]
+    const tokens = raw.flatMap(f => f.split(/\s*-\s*/)).map(f => f.trim().toLowerCase()).filter(Boolean)
+    // "Gunslinger" pilots are mercenaries-for-hire: they mount any faction's mech (recruit
+    // cost aside), so that token never restricts the match — same as having no faction at all.
+    const restricting = tokens.filter(t => t !== 'gunslinger')
+    if (restricting.length === 0) return true
+    return restricting.includes(mechFactionOf(mech).toLowerCase())
+  }
+
+  // Gear "attaches to" requirement: a weapon-specific type (Ballistic/Energy/Melee) must
+  // match one of the mech's actual weapon damage types; generic categories are unrestricted.
+  const attachesToCompatible = (item: DraftUnit, mech: DraftUnit): boolean => {
+    if (item.cardType !== 'G' || !item.attachesTo) return true
+    const normalized = item.attachesTo.toLowerCase()
+    const mapped = DAMAGE_TYPE_ALIASES[normalized] || normalized
+    if (!WEAPON_DAMAGE_TYPES.includes(mapped)) return true
+    const mechUnit = mechDetailsById.get(mech.id)
+    if (!mechUnit) return true // not loaded yet — fails open briefly, re-evaluated once fetched
+    const mechTypes = new Set((mechUnit.attackStats || []).map(a => a.damageType.toLowerCase()))
+    return mechTypes.has(mapped)
+  }
+
+  // A Gunslinger pilot some faction won't hire (a listed recruitCosts entry with no cost)
+  // cannot be mounted on that faction's mech at all.
+  const gunslingerRecruitable = (item: DraftUnit, mech: DraftUnit): boolean => {
+    const pilot = item.cardType === 'P' && item.cardDbId ? pilotsById.get(item.cardDbId) : undefined
+    if (!pilot) return true
+    return gunslingerRecruitCost(pilot, mechFactionOf(mech)) !== null
+  }
+
+  const canAttachToMech = (item: DraftUnit, mech: DraftUnit): boolean =>
+    classCompatible(item, mech) && factionCompatible(item, mech) && attachesToCompatible(item, mech) && gunslingerRecruitable(item, mech)
+
+  // A pilot mounted on its preferred mech uses the combo's printed cost instead of its
+  // standalone points; a class-"NA" pilot instead costs whatever its description lists for
+  // the mounted mech's class; a Gunslinger pilot also adds its faction recruitment fee on top.
+  const pilotContribution = (pilotUnit: DraftUnit, mech: DraftUnit): number => {
+    const pilot = pilotUnit.cardDbId ? pilotsById.get(pilotUnit.cardDbId) : undefined
+    const recruitFee = pilot ? (gunslingerRecruitCost(pilot, mechFactionOf(mech)) ?? 0) : 0
+
+    let base = pilotUnit.points
+    const mechClass = mechClassOf(mech)
+    if (pilot && pilot.preferredMechId === mechCode(mech) && pilot.costInPreferredMech != null) {
+      base = pilot.costInPreferredMech
+    } else if (pilot && !normalizedClass(pilot.class) && mechClass) {
+      const classCosts = parsePilotClassCosts(pilot.description)
+      if (classCosts && classCosts[mechClass] != null) base = classCosts[mechClass]
+    }
+    return base + recruitFee
+  }
+
+  // Effective point cost of a mech: base cost plus each mounted CEC (pilot at conditional
+  // cost, gear at flat cost). A mech has exactly 2 CEC slots, shared between pilot and gear.
+  const mechEffectiveCost = (mech: DraftUnit, armyUnits: DraftUnit[]): number => {
+    return (mech.attachedInstanceIds || []).reduce((cost, instanceId) => {
+      const mounted = armyUnits.find(u => u.instanceId === instanceId)
+      if (!mounted) return cost
+      return cost + (mounted.cardType === 'P' ? pilotContribution(mounted, mech) : mounted.points)
+    }, mech.points)
+  }
+
+  // Total army points: mechs count their effective (mech+CEC) cost; any pilot/gear already
+  // mounted on a mech is skipped here so it isn't counted twice.
+  const computeArmyPoints = (armyUnits: DraftUnit[]): number => {
+    const attachedIds = new Set(armyUnits.flatMap(u => u.attachedInstanceIds || []))
+    return armyUnits.reduce((sum, u) => {
+      if (!u.isCard && u.type?.toLowerCase() === 'mech') return sum + mechEffectiveCost(u, armyUnits)
+      if (u.instanceId && attachedIds.has(u.instanceId)) return sum // folded into its mech above
+      return sum + u.points
+    }, 0)
+  }
+
+  // Attach/detach a pilot or gear to/from a specific mech's CEC slots (by instanceId) within a player's army.
+  const updateArmyAttachments = (playerId: number, updater: (armyUnits: DraftUnit[]) => DraftUnit[]) => {
+    if (!selectedDraft) return
+
+    const updatedDraft = {
+      ...selectedDraft,
+      results: selectedDraft.results.map(result => {
+        if (result.playerId !== playerId) return result
+        const newArmyUnits = updater([...(result.armyUnits || [])])
+        return {
+          ...result,
+          armyUnits: newArmyUnits,
+          armyPoints: computeArmyPoints(newArmyUnits)
+        }
+      }),
+      updatedAt: new Date().toISOString()
+    }
+
+    const updatedDrafts = drafts.map(d => d.id === selectedDraft.id ? updatedDraft : d)
+    setDrafts(updatedDrafts)
+    setSelectedDraft(updatedDraft)
+    if (isClient) {
+      safeLocalStorage.setItem('myDrafts', JSON.stringify(updatedDrafts))
+    }
+  }
+
+  // Mount a pilot or gear card into one of a mech's 2 CEC slots. A mech can only carry one
+  // pilot at a time; mounting a new one bumps whichever pilot was already in a slot.
+  const attachToMech = (playerId: number, mechInstanceId: string, cardInstanceId: string, isPilot: boolean) => {
+    updateArmyAttachments(playerId, armyUnits => {
+      const mech = armyUnits.find(u => u.instanceId === mechInstanceId)
+      const card = armyUnits.find(u => u.instanceId === cardInstanceId)
+      if (!mech || !card || !canAttachToMech(card, mech)) return armyUnits
+
+      return armyUnits.map(u => {
+        // Unmount the card from wherever else it might be mounted
+        const withoutCard = { ...u, attachedInstanceIds: (u.attachedInstanceIds || []).filter(id => id !== cardInstanceId) }
+        if (u.instanceId !== mechInstanceId) return withoutCard
+
+        let slots = withoutCard.attachedInstanceIds || []
+        if (isPilot) {
+          // Only one pilot per mech: drop any other pilot currently in a slot
+          slots = slots.filter(id => {
+            const mounted = armyUnits.find(au => au.instanceId === id)
+            return mounted?.cardType !== 'P'
+          })
+        }
+        if (slots.length >= 2) return { ...withoutCard, attachedInstanceIds: slots }
+        return { ...withoutCard, attachedInstanceIds: [...slots, cardInstanceId] }
+      })
+    })
+  }
+
+  const detachFromMech = (playerId: number, mechInstanceId: string, cardInstanceId: string) => {
+    updateArmyAttachments(playerId, armyUnits => armyUnits.map(u =>
+      u.instanceId === mechInstanceId
+        ? { ...u, attachedInstanceIds: (u.attachedInstanceIds || []).filter(id => id !== cardInstanceId) }
+        : u
+    ))
+  }
+
   // Army management functions
   const moveUnitToArmy = (playerId: number, unit: DraftUnit) => {
     if (!selectedDraft) return
@@ -894,9 +1318,7 @@ export default function DraftsPage() {
       ...selectedDraft,
       results: selectedDraft.results.map(result => {
         if (result.playerId === playerId) {
-          const secretCards = result.secretCards || []
-          const currentArmyPoints = (result.armyUnits || []).reduce((sum, u) => sum + u.points, 0) +
-                                    secretCards.reduce((sum, c) => sum + c.points, 0)
+          const currentArmyPoints = computeArmyPoints(result.armyUnits || [])
           if (result.armyPointsLimit && result.armyPointsLimit > 0 &&
               currentArmyPoints + unit.points > result.armyPointsLimit) {
             return result
@@ -907,8 +1329,7 @@ export default function DraftsPage() {
           if (idx !== -1) pool.splice(idx, 1)
           // Add to army units
           const newArmyUnits = [...(result.armyUnits || []), unit]
-          const newArmyPoints = newArmyUnits.reduce((sum, u) => sum + u.points, 0) +
-                               secretCards.reduce((sum, c) => sum + c.points, 0)
+          const newArmyPoints = computeArmyPoints(newArmyUnits)
           const newDraftPoints = pool.reduce((sum, u) => sum + u.points, 0)
 
           return {
@@ -944,14 +1365,21 @@ export default function DraftsPage() {
           const armyPool = [...(result.armyUnits || [])]
           const armyIdx = armyPool.indexOf(unit)
           if (armyIdx !== -1) armyPool.splice(armyIdx, 1)
-          const newArmyUnits = armyPool
+          // If a pilot/gear that was mounted on a mech leaves, unmount it from that mech's CEC slot
+          const newArmyUnits = armyPool.map(u =>
+            u.attachedInstanceIds?.includes(unit.instanceId || '')
+              ? { ...u, attachedInstanceIds: u.attachedInstanceIds.filter(id => id !== unit.instanceId) }
+              : u
+          )
+          // If the mech itself leaves, drop its attachment refs (its pilot/gear stay in the army, unmounted)
+          const leavingUnit = unit.attachedInstanceIds?.length
+            ? { ...unit, attachedInstanceIds: undefined }
+            : unit
           // Add back to draft units
-          const newDraftUnits = [...result.units, unit]
-          const secretCards = result.secretCards || []
-          const newArmyPoints = newArmyUnits.reduce((sum, u) => sum + u.points, 0) + 
-                               secretCards.reduce((sum, c) => sum + c.points, 0)
+          const newDraftUnits = [...result.units, leavingUnit]
+          const newArmyPoints = computeArmyPoints(newArmyUnits)
           const newDraftPoints = newDraftUnits.reduce((sum, u) => sum + u.points, 0)
-          
+
           return {
             ...result,
             units: newDraftUnits,
@@ -981,12 +1409,11 @@ export default function DraftsPage() {
       ...selectedDraft,
       results: selectedDraft.results.map(result => {
         if (result.playerId === playerId) {
-          // Move all army units back to draft
-          const armyUnits = result.armyUnits || []
+          // Move all army units back to draft, clearing attachments (they're meaningless outside the army)
+          const armyUnits = (result.armyUnits || []).map(u => ({ ...u, attachedInstanceIds: undefined }))
           const newDraftUnits = [...result.units, ...armyUnits]
-          const secretCards = result.secretCards || []
           const newDraftPoints = newDraftUnits.reduce((sum, u) => sum + u.points, 0)
-          const newArmyPoints = secretCards.reduce((sum, c) => sum + c.points, 0)
+          const newArmyPoints = 0
           
           return {
             ...result,
@@ -1028,9 +1455,7 @@ export default function DraftsPage() {
             quantity: 1
           }
           const newArmyUnits = [...(result.armyUnits || []), newUnit]
-          const secretCards = result.secretCards || []
-          const newArmyPoints = newArmyUnits.reduce((sum, u) => sum + u.points, 0) + 
-                               secretCards.reduce((sum, c) => sum + c.points, 0)
+          const newArmyPoints = newArmyUnits.reduce((sum, u) => sum + u.points, 0)
           
           return {
             ...result,
@@ -1060,88 +1485,11 @@ export default function DraftsPage() {
       results: selectedDraft.results.map(result => {
         if (result.playerId === playerId) {
           const newArmyUnits = (result.armyUnits || []).filter(u => u.id !== unitId)
-          const secretCards = result.secretCards || []
-          const newArmyPoints = newArmyUnits.reduce((sum, u) => sum + u.points, 0) + 
-                               secretCards.reduce((sum, c) => sum + c.points, 0)
+          const newArmyPoints = newArmyUnits.reduce((sum, u) => sum + u.points, 0)
           
           return {
             ...result,
             armyUnits: newArmyUnits,
-            armyPoints: newArmyPoints
-          }
-        }
-        return result
-      }),
-      updatedAt: new Date().toISOString()
-    }
-    
-    const updatedDrafts = drafts.map(d => d.id === selectedDraft.id ? updatedDraft : d)
-    setDrafts(updatedDrafts)
-    setSelectedDraft(updatedDraft)
-    
-    if (isClient) {
-      safeLocalStorage.setItem('myDrafts', JSON.stringify(updatedDrafts))
-    }
-  }
-
-  // Secret card management functions
-  const addSecretCard = (playerId: number, points: number) => {
-    if (!selectedDraft) return
-    
-    const newSecretCard: DraftUnit = {
-      id: `secret-${Date.now()}`,
-      name: 'Card Secreto',
-      type: 'Card',
-      points: points,
-      faction: '',
-      quantity: 1,
-      isCard: true
-    }
-    
-    const updatedDraft = {
-      ...selectedDraft,
-      results: selectedDraft.results.map(result => {
-        if (result.playerId === playerId) {
-          const newSecretCards = [...(result.secretCards || []), newSecretCard]
-          const armyUnits = result.armyUnits || []
-          const newArmyPoints = armyUnits.reduce((sum, u) => sum + u.points, 0) + 
-                               newSecretCards.reduce((sum, c) => sum + c.points, 0)
-          
-          return {
-            ...result,
-            secretCards: newSecretCards,
-            armyPoints: newArmyPoints
-          }
-        }
-        return result
-      }),
-      updatedAt: new Date().toISOString()
-    }
-    
-    const updatedDrafts = drafts.map(d => d.id === selectedDraft.id ? updatedDraft : d)
-    setDrafts(updatedDrafts)
-    setSelectedDraft(updatedDraft)
-    
-    if (isClient) {
-      safeLocalStorage.setItem('myDrafts', JSON.stringify(updatedDrafts))
-    }
-  }
-
-  const removeSecretCard = (playerId: number, cardId: string) => {
-    if (!selectedDraft) return
-    
-    const updatedDraft = {
-      ...selectedDraft,
-      results: selectedDraft.results.map(result => {
-        if (result.playerId === playerId) {
-          const newSecretCards = (result.secretCards || []).filter(c => c.id !== cardId)
-          const armyUnits = result.armyUnits || []
-          const newArmyPoints = armyUnits.reduce((sum, u) => sum + u.points, 0) + 
-                               newSecretCards.reduce((sum, c) => sum + c.points, 0)
-          
-          return {
-            ...result,
-            secretCards: newSecretCards,
             armyPoints: newArmyPoints
           }
         }
@@ -1327,7 +1675,11 @@ export default function DraftsPage() {
                                   >
                                     <div className="flex-1 cursor-pointer" onClick={() => {
                                       if (unit.isCard) {
-                                        const base = unit.cardType === 'MC' ? '/cards/mercenary-contract/detail' : '/cards/faction-pride/detail'
+                                        const base = unit.cardType === 'MC' ? '/cards/mercenary-contract/detail'
+                                          : unit.cardType === 'P' ? '/cards/pilot/detail'
+                                          : unit.cardType === 'G' ? '/cards/gear/detail'
+                                          : unit.cardType === 'SA' ? '/cards/situational-alliance/detail'
+                                          : '/cards/faction-pride/detail'
                                         const dbId = unit.cardDbId || availableCards.find(c => c.id === unit.id)?.dbId || unit.id
                                         router.push(`${base}?id=${dbId}`)
                                       } else {
@@ -1336,11 +1688,11 @@ export default function DraftsPage() {
                                     }}>
                                       <div className="font-mono text-xs" style={{color: unit.isCard ? '#c9a84c' : '#a0a090'}}>{unit.name}</div>
                                       <div className="font-mono text-xs mt-0.5" style={{color:'#3a3a2a'}}>
-                                        {unit.type}{unit.faction ? ` / ${unit.faction}` : ''}
+                                        {unitTypeLabel(unit)}{unit.faction ? ` / ${unit.faction}` : ''}{classSuffix(unit)}
                                       </div>
                                     </div>
                                     <div className="flex items-center gap-1">
-                                      <span className="font-mono text-xs font-bold" style={{color: wouldExceed ? '#c06060' : '#7a7a6a'}}>{unit.points}</span>
+                                      <span className="font-mono text-xs font-bold" style={{color: wouldExceed ? '#c06060' : '#7a7a6a'}}>{unitPointsLabel(unit)}</span>
                                       <button
                                         onClick={(e) => { e.stopPropagation(); moveUnitToArmy(result.playerId, unit) }}
                                         disabled={wouldExceed}
@@ -1387,14 +1739,17 @@ export default function DraftsPage() {
                               <div className="flex justify-between items-center mb-1">
                                 <span className="font-mono text-xs" style={{color:'#5a7a4a'}}>ARMY ({(result.armyUnits || []).length})</span>
                                 <div className="flex items-center gap-2">
-                                  {result.armyPointsLimit && result.armyPointsLimit > 0 ? (
-                                    <span className="font-mono text-xs" style={{color: (result.armyPoints || 0) >= result.armyPointsLimit ? '#c06060' : '#c9a84c'}}>
-                                      {result.armyPoints || 0} / {result.armyPointsLimit} pts
-                                    </span>
-                                  ) : (
-                                    <span className="font-mono text-xs" style={{color:'#c9a84c'}}>{result.armyPoints || 0} pts</span>
-                                  )}
-                                  <button 
+                                  {(() => {
+                                    const armyPts = computeArmyPoints(result.armyUnits || [])
+                                    return result.armyPointsLimit && result.armyPointsLimit > 0 ? (
+                                      <span className="font-mono text-xs" style={{color: armyPts >= result.armyPointsLimit ? '#c06060' : '#c9a84c'}}>
+                                        {armyPts} / {result.armyPointsLimit} pts
+                                      </span>
+                                    ) : (
+                                      <span className="font-mono text-xs" style={{color:'#c9a84c'}}>{armyPts} pts</span>
+                                    )
+                                  })()}
+                                  <button
                                     onClick={() => moveAllUnitsToDraft(result.playerId)}
                                     disabled={(result.armyUnits || []).length === 0}
                                     className="px-1.5 py-0.5 font-mono text-xs disabled:opacity-40 disabled:cursor-not-allowed"
@@ -1406,80 +1761,122 @@ export default function DraftsPage() {
                                 </div>
                               </div>
                               <div className="space-y-1" style={{minHeight:'100px'}}>
-                                {(result.armyUnits || []).map((unit, index) => (
-                                  <div 
-                                    key={`${unit.id}-${index}`} 
-                                    className="flex items-center justify-between px-2 py-1 cursor-pointer hover:bg-opacity-10 transition-colors"
-                                    style={{background:'rgba(122,154,90,0.05)',border:'1px solid #1a2a10'}}
-                                    onClick={() => router.push(`/list?unitId=${unit.id}`)}
-                                  >
-                                    <div className="flex-1">
-                                      <div className="font-mono text-xs" style={{color:'#e8d5a0'}}>{unit.name}</div>
-                                      <div className="font-mono text-xs mt-0.5" style={{color:'#4a5e3a'}}>
-                                        {unit.type} / {unit.faction}
+                                {(() => {
+                                  const armyUnits = result.armyUnits || []
+                                  const attachedIds = new Set(armyUnits.flatMap(u => u.attachedInstanceIds || []))
+                                  const mechs = armyUnits.filter(u => !u.isCard && u.type?.toLowerCase() === 'mech')
+                                  const unattachedPilots = armyUnits.filter(u => u.isCard && u.cardType === 'P' && !attachedIds.has(u.instanceId || ''))
+                                  const unattachedGear = armyUnits.filter(u => u.isCard && u.cardType === 'G' && !attachedIds.has(u.instanceId || ''))
+                                  const otherUnits = armyUnits.filter(u =>
+                                    !(!u.isCard && u.type?.toLowerCase() === 'mech') &&
+                                    !(u.isCard && (u.cardType === 'P' || u.cardType === 'G'))
+                                  )
+
+                                  const attachRow = (unit: DraftUnit, onDetach: () => void) => (
+                                    <div key={unit.instanceId} className="flex items-center justify-between px-2 py-1 ml-3" style={{background:'rgba(201,168,76,0.05)',borderLeft:'2px solid #4a5e35'}}>
+                                      <div className="flex-1">
+                                        <div className="font-mono text-[10px] uppercase tracking-wider" style={{color:'#6a7a5a'}}>{t('drafts.cecSlot')} · {unit.cardType === 'P' ? t('drafts.pilot') : t('drafts.gear')}</div>
+                                        <div className="font-mono text-xs" style={{color:'#c9a84c'}}>{unit.name}</div>
                                       </div>
+                                      <button onClick={onDetach} className="px-1.5 py-0.5 font-mono text-xs" style={{background:'rgba(90,90,90,0.2)',border:'1px solid #3a3a2a',color:'#7a7a6a'}} title={t('drafts.detach')}>✕</button>
                                     </div>
-                                    <div className="flex items-center gap-1">
-                                      <span className="font-mono text-xs font-bold" style={{color:'#c9a84c'}}>{unit.points}</span>
-                                      <button 
-                                        onClick={(e) => { e.stopPropagation(); moveUnitToDraft(result.playerId, unit) }}
-                                        className="px-1.5 py-0.5 font-mono text-xs"
-                                        style={{background:'rgba(90,90,90,0.2)',border:'1px solid #3a3a2a',color:'#7a7a6a'}}
-                                        title={t('drafts.moveToDraft')}
-                                      >
-                                        ←
-                                      </button>
-                                    </div>
-                                  </div>
-                                ))}
+                                  )
+
+                                  const attachSelector = (mech: DraftUnit, hasPilot: boolean, key: string) => {
+                                    const candidates = [...(hasPilot ? [] : unattachedPilots), ...unattachedGear]
+                                    const options = candidates.filter(o => canAttachToMech(o, mech))
+                                    return (
+                                      <div key={key} className="flex items-center gap-1 ml-3">
+                                        <span className="font-mono text-[10px] uppercase tracking-wider" style={{color:'#3a5a2a'}}>{t('drafts.cecSlot')}</span>
+                                        <select
+                                          className="font-mono text-[10px] px-1 py-0.5 flex-1"
+                                          style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}
+                                          value=""
+                                          disabled={options.length === 0}
+                                          onChange={e => { if (e.target.value) attachToMech(result.playerId, mech.instanceId!, e.target.value, e.target.selectedOptions[0].dataset.pilot === '1') }}
+                                        >
+                                          <option value="">{options.length === 0 ? '—' : t('drafts.empty')}</option>
+                                          {options.map(o => (
+                                            <option key={o.instanceId} value={o.instanceId} data-pilot={o.cardType === 'P' ? '1' : '0'}>
+                                              {o.name} ({o.cardType === 'P' ? t('drafts.pilot') : t('drafts.gear')}, {unitPointsLabel(o)} pts)
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </div>
+                                    )
+                                  }
+
+                                  return (
+                                    <>
+                                      {mechs.map(mech => {
+                                        const slots = mech.attachedInstanceIds || []
+                                        const mountedUnits = slots.map(id => armyUnits.find(u => u.instanceId === id)).filter((u): u is DraftUnit => !!u)
+                                        const hasPilot = mountedUnits.some(u => u.cardType === 'P')
+                                        const effCost = mechEffectiveCost(mech, armyUnits)
+                                        return (
+                                          <div key={mech.instanceId} className="space-y-0.5">
+                                            <div className="flex items-center justify-between px-2 py-1 cursor-pointer transition-colors" style={{background:'rgba(122,154,90,0.05)',border:'1px solid #1a2a10'}} onClick={() => router.push(`/list?unitId=${mech.id}`)}>
+                                              <div className="flex-1">
+                                                <div className="font-mono text-xs" style={{color:'#e8d5a0'}}>{mech.name}</div>
+                                                <div className="font-mono text-xs mt-0.5" style={{color:'#4a5e3a'}}>{mech.type} / {mechFactionOf(mech)}{classSuffix({ ...mech, class: mechClassOf(mech) })}</div>
+                                              </div>
+                                              <div className="flex items-center gap-1">
+                                                <span className="font-mono text-xs font-bold" style={{color:'#c9a84c'}}>{effCost}</span>
+                                                <button onClick={(e) => { e.stopPropagation(); moveUnitToDraft(result.playerId, mech) }} className="px-1.5 py-0.5 font-mono text-xs" style={{background:'rgba(90,90,90,0.2)',border:'1px solid #3a3a2a',color:'#7a7a6a'}} title={t('drafts.moveToDraft')}>←</button>
+                                              </div>
+                                            </div>
+                                            {mountedUnits.map(u => attachRow(u, () => detachFromMech(result.playerId, mech.instanceId!, u.instanceId!)))}
+                                            {Array.from({ length: 2 - slots.length }, (_, i) => attachSelector(mech, hasPilot, `empty-${i}`))}
+                                          </div>
+                                        )
+                                      })}
+                                      {[...otherUnits, ...unattachedPilots, ...unattachedGear].map((unit, index) => (
+                                        <div
+                                          key={`${unit.id}-${index}`}
+                                          className="flex items-center justify-between px-2 py-1 cursor-pointer hover:bg-opacity-10 transition-colors"
+                                          style={{background:'rgba(122,154,90,0.05)',border:'1px solid #1a2a10'}}
+                                          onClick={() => {
+                                            if (unit.isCard) {
+                                              const base = unit.cardType === 'MC' ? '/cards/mercenary-contract/detail'
+                                                : unit.cardType === 'P' ? '/cards/pilot/detail'
+                                                : unit.cardType === 'G' ? '/cards/gear/detail'
+                                                : unit.cardType === 'SA' ? '/cards/situational-alliance/detail'
+                                                : '/cards/faction-pride/detail'
+                                              const dbId = unit.cardDbId || availableCards.find(c => c.id === unit.id)?.dbId || unit.id
+                                              router.push(`${base}?id=${dbId}`)
+                                            } else {
+                                              router.push(`/list?unitId=${unit.id}`)
+                                            }
+                                          }}
+                                        >
+                                          <div className="flex-1">
+                                            <div className="font-mono text-xs" style={{color: unit.isCard ? '#c9a84c' : '#e8d5a0'}}>{unit.name}</div>
+                                            <div className="font-mono text-xs mt-0.5" style={{color:'#4a5e3a'}}>
+                                              {unitTypeLabel(unit)} / {unit.faction}{classSuffix(unit)}
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-1">
+                                            <span className="font-mono text-xs font-bold" style={{color:'#c9a84c'}}>{unitPointsLabel(unit)}</span>
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); moveUnitToDraft(result.playerId, unit) }}
+                                              className="px-1.5 py-0.5 font-mono text-xs"
+                                              style={{background:'rgba(90,90,90,0.2)',border:'1px solid #3a3a2a',color:'#7a7a6a'}}
+                                              title={t('drafts.moveToDraft')}
+                                            >
+                                              ←
+                                            </button>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </>
+                                  )
+                                })()}
                                 {(result.armyUnits || []).length === 0 && (
                                   <div className="font-mono text-xs px-2 py-1 text-center" style={{color:'#3a5a2a'}}>
                                     {t('drafts.empty')}
                                   </div>
                                 )}
                               </div>
-                            </div>
-                          </div>
-                          
-                          {/* Secret Cards */}
-                          <div>
-                            <div className="flex justify-between items-center mb-1">
-                              <span className="font-mono text-xs" style={{color:'#5a7a4a'}}>{t('drafts.secretCardsTitle')}</span>
-                              <button
-                                onClick={() => { setEditingPlayerId(result.playerId); setSecretCardValue(''); setShowSecretCardModal(true) }}
-                                className="px-2 py-0.5 font-mono text-xs"
-                                style={{background:'rgba(201,168,76,0.15)',border:'1px solid #c9a84c',color:'#c9a84c'}}
-                              >
-                                {t('drafts.btnAddCard')}
-                              </button>
-                            </div>
-                            <div className="space-y-1">
-                              {(result.secretCards || []).map((card, index) => (
-                                <div 
-                                  key={`${card.id}-${index}`} 
-                                  className="flex items-center justify-between px-2 py-1"
-                                  style={{background:'rgba(201,168,76,0.05)',border:'1px solid #3a2a1a'}}
-                                >
-                                  <div className="flex-1">
-                                    <div className="font-mono text-xs" style={{color:'#e8d5a0'}}>{t('drafts.secretCardN')}{index + 1}</div>
-                                    <div className="font-mono text-xs mt-0.5" style={{color:'#4a5e3a'}}>
-                                      {t('drafts.valueLabel')} {card.points} pts
-                                    </div>
-                                  </div>
-                                  <button 
-                                    onClick={() => removeSecretCard(result.playerId, card.id)}
-                                    className="px-1.5 py-0.5 font-mono text-xs"
-                                    style={{background:'rgba(150,50,50,0.2)',border:'1px solid #5a2a2a',color:'#c06060'}}
-                                  >
-                                    ✕
-                                  </button>
-                                </div>
-                              ))}
-                              {(result.secretCards || []).length === 0 && (
-                                <div className="font-mono text-xs px-2 py-1" style={{color:'#3a5a2a'}}>
-                                  {t('drafts.noSecretCards')}
-                                </div>
-                              )}
                             </div>
                           </div>
                         </div>
@@ -1879,54 +2276,6 @@ export default function DraftsPage() {
           </div>
         )}
 
-        {/* Secret Card Modal */}
-        {showSecretCardModal && editingPlayerId && (
-          <div className="fixed inset-0 flex items-center justify-center z-50" style={{background:'rgba(0,0,0,0.85)'}}>
-            <div className="p-6 max-w-md w-full mx-4" style={{background:'#0d1208',border:'1px solid #3a2a1a'}}>
-              <h3 className="font-mono text-sm font-bold tracking-widest uppercase mb-4" style={{color:'#c9a84c'}}>{t('drafts.secretCardTitle')}</h3>
-              <p className="font-mono text-xs mb-4" style={{color:'#5a7a4a'}}>{t('drafts.playerLabel')} {editingPlayerId}</p>
-
-              <div className="mb-4">
-                <label className="block text-xs font-mono mb-2" style={{color:'#5a7a4a'}}>{t('drafts.cardValueLabel')}</label>
-                <input
-                  type="number"
-                  value={secretCardValue}
-                  onChange={(e) => setSecretCardValue(e.target.value)}
-                  className="w-full px-3 py-2 text-xs font-mono"
-                  style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a2a1a',color:'#c9a84c',outline:'none'}}
-                  placeholder={t('drafts.valuePlaceholder')}
-                  autoFocus
-                />
-              </div>
-
-              <div className="flex gap-3 justify-end">
-                <button
-                  onClick={() => { setShowSecretCardModal(false); setEditingPlayerId(null); setSecretCardValue('') }}
-                  className="px-4 py-2 font-mono text-xs corner-clip-sm transition-colors"
-                  style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a2a1a',color:'#7a9a5a'}}
-                >
-                  {t('common.cancel')}
-                </button>
-                <button
-                  onClick={() => {
-                    const points = parseInt(secretCardValue)
-                    if (points > 0) {
-                      addSecretCard(editingPlayerId, points)
-                      setShowSecretCardModal(false)
-                      setEditingPlayerId(null)
-                      setSecretCardValue('')
-                    }
-                  }}
-                  disabled={!secretCardValue || parseInt(secretCardValue) <= 0}
-                  className="px-4 py-2 font-mono text-xs corner-clip-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{background:'rgba(201,168,76,0.15)',border:'1px solid #c9a84c',color:'#c9a84c'}}
-                >
-                  {t('drafts.btnAdd')}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Delete Confirmation Modal */}
         {showDeleteModal && (

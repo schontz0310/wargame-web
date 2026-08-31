@@ -41,5 +41,7 @@ yarn-error.log*
 next-env.d.ts
 
 # claude
-.claude/
+.claude/*
+!.claude/skills/
+.claude/skills/*/shots/
 blender-5.1.2-macos-arm64.dmg

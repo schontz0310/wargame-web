@@ -18,6 +18,24 @@ export default function CardsPage() {
       description: 'Contratos mercenários que permitem recrutar unidades de outras facções.',
       route: '/cards/mercenary-contract',
     },
+    {
+      id: 'situational-alliance',
+      label: 'SITUATIONAL ALLIANCE',
+      description: 'Alianças situacionais entre duas facções que concedem um efeito compartilhado.',
+      route: '/cards/situational-alliance',
+    },
+    {
+      id: 'pilot',
+      label: 'PILOT',
+      description: 'Pilotos que equipam unidades, com estatísticas e habilidades próprias.',
+      route: '/cards/pilot',
+    },
+    {
+      id: 'gear',
+      label: 'GEAR',
+      description: 'Equipamentos especiais que se acoplam às unidades, concedendo efeitos extras.',
+      route: '/cards/gear',
+    },
   ];
 
   return (
@@ -49,7 +67,7 @@ export default function CardsPage() {
 
       {/* Card type grid */}
       <div className="flex-1 flex items-center justify-center p-8">
-        <div className="w-full max-w-2xl grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-6">
           {cardTypes.map(ct => (
             <button
               key={ct.id}

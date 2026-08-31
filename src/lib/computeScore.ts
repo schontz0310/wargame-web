@@ -10,8 +10,33 @@ import {
   NA_INFANTRY_SCORING_WEIGHTS,
 } from '@/lib/scoringWeights/index'
 import type { ColorMeaning } from '@/lib/api'
+import type { ScoringWeights } from '@/lib/scoringWeights/types'
 
-type ScoringWeights = { bias: number; weights: Record<string, number> }
+// ── GBM inference ─────────────────────────────────────────────────────────────
+
+function _traverseTree(
+  cl: number[], cr: number[], fi: number[], th: number[], va: number[],
+  featVec: number[],
+  node = 0,
+): number {
+  if (cl[node] === -1) return va[node]
+  const goLeft = (featVec[fi[node]] ?? 0) <= th[node]
+  return _traverseTree(cl, cr, fi, th, va, featVec, goLeft ? cl[node] : cr[node])
+}
+
+function _predictGBM(
+  model: Extract<ScoringWeights, { type: 'gbm' }>,
+  features: Record<string, number>,
+): number {
+  const featVec = model.featureNames.map(fn => features[fn] ?? 0)
+  let pred = model.initPrediction
+  for (const { cl, cr, fi, th, va } of model.trees) {
+    pred += model.learningRate * _traverseTree(cl, cr, fi, th, va, featVec)
+  }
+  return pred
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 function selectWeights(unitClass: string, unitType: string): ScoringWeights {
   if (unitType === 'Vehicle') return NA_VEHICLE_SCORING_WEIGHTS
@@ -60,7 +85,7 @@ export function computeScore(
   attacks: AttackRow[],
   colorMeanings: ColorMeaning[],
 ): ScoreBreakdown {
-  const { bias, weights } = selectWeights(meta.class, meta.type)
+  const model = selectWeights(meta.class, meta.type)
 
   const n = combatDial.length
   if (n === 0) return { total: 0, rounded: 0, contributions: [] }
@@ -179,19 +204,24 @@ export function computeScore(
   }
 
   // ── Compute score ────────────────────────────────────────────────
-  let total = bias
   const contributions: ScoreBreakdown['contributions'] = []
+  let total: number
 
-  for (const [feat, w] of Object.entries(weights) as [string, number][]) {
-    const val = features[feat] ?? 0
-    const contribution = w * val
-    total += contribution
-    if (Math.abs(contribution) > 0.01) {
-      contributions.push({ feature: feat, value: val, weight: w, contribution })
+  if (model.type === 'gbm') {
+    total = _predictGBM(model, features)
+  } else {
+    // Linear model (Ridge) — backward-compat with files that omit `type`
+    total = model.bias
+    for (const [feat, w] of Object.entries(model.weights) as [string, number][]) {
+      const val = features[feat] ?? 0
+      const contribution = w * val
+      total += contribution
+      if (Math.abs(contribution) > 0.01) {
+        contributions.push({ feature: feat, value: val, weight: w, contribution })
+      }
     }
+    contributions.sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution))
   }
-
-  contributions.sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution))
 
   return {
     total,

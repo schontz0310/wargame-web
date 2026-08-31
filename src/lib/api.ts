@@ -73,6 +73,12 @@ export interface DraftUnit {
   isCard?: boolean; // Flag to distinguish cards from units
   cardType?: string; // Card type if it's a card
   cardDbId?: string; // Database primary key for card detail navigation
+  instanceId?: string; // Stable per-copy id, used to attach a pilot/gear to a specific mech
+  attachedInstanceIds?: string[]; // instanceIds of Pilot/Gear cards mounted on this Mech's 2 CEC slots (max 2, at most 1 Pilot)
+  class?: string; // Mech's own class, or a Gear/Pilot's class requirement, for attach validation
+  factionLeft?: string; // A Pilot's faction requirement(s) (a Gear's sits in `faction`, possibly dash-joined)
+  factionRight?: string;
+  attachesTo?: string; // A Gear's damage-type requirement (Ballistic/Energy/Melee/Attack/Defense/Speed/Damage)
 }
 
 export interface DraftBoosterConfig {
@@ -96,7 +102,6 @@ export interface DraftResult {
   playerAlias?: string; // Custom display alias for the player, falls back to playerName
   units: DraftUnit[]; // Units drafted
   armyUnits: DraftUnit[]; // Units actually in the army (can be modified)
-  secretCards: DraftUnit[]; // Cards added manually (only value shown, revealed in game)
   totalPoints: number;
   armyPoints: number; // Points of army units
   armyPointsLimit?: number; // Optional point limit for the army
@@ -130,8 +135,8 @@ export interface Card {
   id: string; // Format: EXPANSION-TYPE-NUMBER (e.g., AOD-F-001)
   dbId?: string; // Database primary key (used for detail page navigation)
   name: string;
-  type: "F" | "P" | "G" | "S" | "C" | "MC"; // F=Faction Pride, P=Pilot, G=Gear, S=Special, C=Command, MC=Mercenary Contract
-  typeName: "Faction Pride" | "Pilot" | "Gear" | "Special" | "Command" | "Mercenary Contract";
+  type: "F" | "P" | "G" | "S" | "C" | "MC" | "SA"; // F=Faction Pride, P=Pilot, G=Gear, S=Special, C=Command, MC=Mercenary Contract, SA=Situational Alliance
+  typeName: "Faction Pride" | "Pilot" | "Gear" | "Special" | "Command" | "Mercenary Contract" | "Situational Alliance";
   cost: string | number; // Can be string like "10/150" or number
   alternativeCost?: string | number; // Optional alternative cost
   haveAlternativeCost?: boolean; // Optional flag for alternative cost
@@ -139,6 +144,11 @@ export interface Card {
   haveSeeText?: boolean; // Optional flag for see text
   faction: string;
   factionLogoVersion?: "standard" | "blue" | "gray" | "black";
+  // Dual-faction cards (e.g. Situational Alliance) carry each side separately
+  factionLeft?: string;
+  factionLeftLogoVersion?: "standard" | "blue" | "gray" | "black";
+  factionRight?: string;
+  factionRightLogoVersion?: "standard" | "blue" | "gray" | "black";
   rarity: "Common" | "Uncommon" | "Rare" | "Ultra Rare" | "Promo";
   expansion: string; // e.g., "AOD", "DA", "FI"
   collectionNumber: string; // e.g., "001", "002", etc.
@@ -154,6 +164,8 @@ export interface Card {
   backImage?: string;  // override card back image path
   contractText?: string; // mercenary contract text
   variant?: string;
+  class?: string; // Gear/Pilot class restriction (Light/Medium/Heavy/Assault), for mech attach validation
+  attachesTo?: string; // Gear's damage-type restriction (Ballistic/Energy/Melee/Attack/Defense/Speed/Damage)
   // Back side properties
   backImageUrl?: string;
   backDescription?: string;
@@ -237,6 +249,132 @@ export interface MercenaryContractsFilters {
   faction?: string;
   expansion?: string;
   cardModel?: string;
+  search?: string;
+}
+
+export interface ISituationalAlliance {
+  id: string;
+  cardId: string;
+  type: string;
+  name: string;
+  factionLeft: string;
+  factionLeftLogoVariant: string;
+  factionRight: string;
+  factionRightLogoVariant: string;
+  expansion: string;
+  collectionNumber: string;
+  description: string;
+  flavorText?: string | null;
+  cost: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SituationalAlliancesResponse {
+  situationalAlliances: ISituationalAlliance[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface SituationalAlliancesFilters {
+  page?: number;
+  limit?: number;
+  expansion?: string;
+  search?: string;
+}
+
+export interface IRecruitCost {
+  cost: number;
+  label: string;
+}
+
+export interface IPilot {
+  id: string;
+  cardId: string;
+  type: string;
+  pilotType: "CommonPilot" | "LegendaryPilot" | "GunslingerPilot" | string;
+  name: string;
+  factionLeft?: string | null;
+  factionLeftLogoVariant?: string;
+  factionRight?: string | null;
+  factionRightLogoVariant?: string;
+  expansion: string;
+  collectionNumber: string;
+  class: string;
+  points: number;
+  speed: number;
+  attack: number;
+  defense: number;
+  description?: string | null;
+  isUnique: boolean;
+  rank?: string | null;
+  preferredMechId?: string | null;
+  costInPreferredMech?: number | null;
+  recruitCosts?: IRecruitCost[] | null;
+  imageUrl?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// A pilot's points always show as "standard cost / preferred mech cost" when it has one
+// (e.g. "21/32"); with no preferred mech it's just the standard cost.
+export function pilotPointsLabel(pilot: Pick<IPilot, 'points' | 'costInPreferredMech'>): string {
+  return pilot.costInPreferredMech != null ? `${pilot.points}/${pilot.costInPreferredMech}` : `${pilot.points}`;
+}
+
+export interface PilotsResponse {
+  pilots: IPilot[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface PilotsFilters {
+  page?: number;
+  limit?: number;
+  faction?: string;
+  expansion?: string;
+  class?: string;
+  pilotType?: string;
+  search?: string;
+}
+
+export interface IGear {
+  id: string;
+  cardId: string;
+  type: string;
+  name: string;
+  expansion: string;
+  collectionNumber: string;
+  class: string;
+  points: number;
+  isSingleUse: boolean;
+  attachesTo: string;
+  faction?: string | null;
+  effect?: string | null;
+  imageUrl?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GearsResponse {
+  gears: IGear[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface GearsFilters {
+  page?: number;
+  limit?: number;
+  faction?: string;
+  expansion?: string;
+  class?: string;
+  attachesTo?: string;
   search?: string;
 }
 
@@ -368,6 +506,34 @@ class ApiService {
     return this.request<Unit[]>(`/units/faction/${faction}`);
   }
 
+  // Resolve a unit's id from a mech code like "AOD113" (expansion + collectionNumber,
+  // matching the tail of its imageUrl, e.g. .../AOD/AOD113.jpg). Used to link a pilot's
+  // preferredMechId to its unit detail page. Tries the given expansion first (cheap),
+  // then falls back to scanning all units (used only when that first lookup misses).
+  async findUnitIdByMechCode(code: string, expansionHint?: string): Promise<string | null> {
+    const scan = async (expansion?: string): Promise<string | null> => {
+      let page = 1;
+      const suffix = `/${code}.jpg`.toLowerCase();
+      while (true) {
+        const qs = `limit=100&page=${page}${expansion ? `&expansion=${encodeURIComponent(expansion)}` : ''}`;
+        const res = await this.request<ApiResponse>(`/units?${qs}`);
+        const match = res.units.find(u => u.imageUrl?.toLowerCase().endsWith(suffix));
+        if (match) return match.id;
+        if (page >= res.pagination.totalPages) return null;
+        page++;
+      }
+    };
+    try {
+      if (expansionHint) {
+        const found = await scan(expansionHint);
+        if (found) return found;
+      }
+      return await scan(undefined);
+    } catch {
+      return null;
+    }
+  }
+
   // Get faction prides with filters and pagination
   async getFactionPrides(filters: FactionPridesFilters = {}): Promise<FactionPridesResponse> {
     const params = new URLSearchParams();
@@ -414,6 +580,77 @@ class ApiService {
   async getMercenaryContractById(id: string): Promise<IMercenaryContract | null> {
     try {
       return await this.request<IMercenaryContract>(`/mercenary-contracts/${id}`);
+    } catch {
+      return null;
+    }
+  }
+
+  // Get situational alliances with filters and pagination
+  // Note: the backend has no faction filter for this endpoint (factions come in pairs),
+  // so faction filtering is done client-side by the caller.
+  async getSituationalAlliances(filters: SituationalAlliancesFilters = {}): Promise<SituationalAlliancesResponse> {
+    const params = new URLSearchParams();
+    if (filters.page) params.set('page', String(filters.page));
+    if (filters.limit) params.set('limit', String(filters.limit));
+    if (filters.expansion) params.set('expansion', filters.expansion);
+    if (filters.search) params.set('search', filters.search);
+    const qs = params.toString();
+    const raw = await this.request<{ data: ISituationalAlliance[]; total: number; page: number; limit: number; totalPages: number }>(`/situational-alliances${qs ? `?${qs}` : ''}`);
+    return { situationalAlliances: raw.data, total: raw.total, page: raw.page, limit: raw.limit, totalPages: raw.totalPages };
+  }
+
+  // Get situational alliance by id
+  async getSituationalAllianceById(id: string): Promise<ISituationalAlliance | null> {
+    try {
+      return await this.request<ISituationalAlliance>(`/situational-alliances/${id}`);
+    } catch {
+      return null;
+    }
+  }
+
+  // Get pilots with filters and pagination
+  async getPilots(filters: PilotsFilters = {}): Promise<PilotsResponse> {
+    const params = new URLSearchParams();
+    if (filters.page) params.set('page', String(filters.page));
+    if (filters.limit) params.set('limit', String(filters.limit));
+    if (filters.faction) params.set('faction', filters.faction);
+    if (filters.expansion) params.set('expansion', filters.expansion);
+    if (filters.class) params.set('class', filters.class);
+    if (filters.pilotType) params.set('pilotType', filters.pilotType);
+    if (filters.search) params.set('search', filters.search);
+    const qs = params.toString();
+    const raw = await this.request<{ data: IPilot[]; total: number; page: number; limit: number; totalPages: number }>(`/pilots${qs ? `?${qs}` : ''}`);
+    return { pilots: raw.data, total: raw.total, page: raw.page, limit: raw.limit, totalPages: raw.totalPages };
+  }
+
+  // Get pilot by id
+  async getPilotById(id: string): Promise<IPilot | null> {
+    try {
+      return await this.request<IPilot>(`/pilots/${id}`);
+    } catch {
+      return null;
+    }
+  }
+
+  // Get gears with filters and pagination
+  async getGears(filters: GearsFilters = {}): Promise<GearsResponse> {
+    const params = new URLSearchParams();
+    if (filters.page) params.set('page', String(filters.page));
+    if (filters.limit) params.set('limit', String(filters.limit));
+    if (filters.faction) params.set('faction', filters.faction);
+    if (filters.expansion) params.set('expansion', filters.expansion);
+    if (filters.class) params.set('class', filters.class);
+    if (filters.attachesTo) params.set('attachesTo', filters.attachesTo);
+    if (filters.search) params.set('search', filters.search);
+    const qs = params.toString();
+    const raw = await this.request<{ data: IGear[]; total: number; page: number; limit: number; totalPages: number }>(`/gears${qs ? `?${qs}` : ''}`);
+    return { gears: raw.data, total: raw.total, page: raw.page, limit: raw.limit, totalPages: raw.totalPages };
+  }
+
+  // Get gear by id
+  async getGearById(id: string): Promise<IGear | null> {
+    try {
+      return await this.request<IGear>(`/gears/${id}`);
     } catch {
       return null;
     }

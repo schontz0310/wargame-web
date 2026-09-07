@@ -4,9 +4,10 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Unit, Draft, DraftSettings, DraftUnitWithQuantity, DraftCardWithQuantity, DraftResult, DraftUnit, apiService, Card, IPilot, IGear, pilotPointsLabel } from '@/lib/api'
+import { Unit, Draft, DraftSettings, DraftUnitWithQuantity, DraftCardWithQuantity, DraftResult, DraftUnit, apiService, Card, IPilot, IGear, IPlanetaryCondition, IMission, pilotPointsLabel } from '@/lib/api'
 import { safeLocalStorage } from '@/lib/storage'
 import { useT } from '@/hooks/useT'
+import { CARD_TYPE_LABELS } from '@/lib/cardCollection'
 
 // A unit's mech code (e.g. "AOD113") is the basename of its imageUrl, and matches
 // a pilot's preferredMechId 1:1 — used to auto-pair a unique unit with its pilot.
@@ -77,6 +78,13 @@ export default function DraftsPage() {
     type: '',
     minPoints: '',
     maxPoints: '',
+    search: ''
+  })
+  const [selectedCards, setSelectedCards] = useState<DraftCardWithQuantity[]>([])
+  const [showCardSelector, setShowCardSelector] = useState(false)
+  const [cardFilters, setCardFilters] = useState({
+    expansions: [] as string[],
+    types: [] as string[],
     search: ''
   })
   const [editingPlayerId, setEditingPlayerId] = useState<number | null>(null)
@@ -221,6 +229,19 @@ export default function DraftsPage() {
 
         const situationalAlliances = await apiService.getSituationalAlliances({ limit: 100 })
 
+        // Planetary Conditions are paginated (100/page); fetch every page
+        const planetaryConditionCards: IPlanetaryCondition[] = []
+        let pcPage = 1
+        let pcTotalPages = 1
+        do {
+          const res = await apiService.getPlanetaryConditions({ page: pcPage, limit: 100 })
+          pcTotalPages = res.totalPages
+          planetaryConditionCards.push(...res.planetaryConditions)
+          pcPage++
+        } while (pcPage <= pcTotalPages)
+
+        const missions = await apiService.getMissions({ limit: 100 })
+
         const allCards: Card[] = []
         
         // Convert Faction Prides to Cards
@@ -327,6 +348,46 @@ export default function DraftsPage() {
           })
         })
 
+        // Convert Planetary Conditions to Cards
+        planetaryConditionCards.forEach(pc => {
+          allCards.push({
+            id: pc.cardId,
+            dbId: pc.id,
+            name: pc.name,
+            type: 'PC',
+            typeName: 'Planetary Condition',
+            cost: 0,
+            faction: '',
+            rarity: 'Common',
+            expansion: pc.expansion,
+            collectionNumber: pc.collectionNumber,
+            imageUrl: pc.imageUrl || '',
+            description: pc.description || '',
+            isUnique: false,
+            cardModel: 'single',
+          })
+        })
+
+        // Convert Missions to Cards
+        missions.missions.forEach(m => {
+          allCards.push({
+            id: m.cardId,
+            dbId: m.id,
+            name: m.name,
+            type: 'M',
+            typeName: 'Mission',
+            cost: 0,
+            faction: '',
+            rarity: 'Common',
+            expansion: m.expansion,
+            collectionNumber: m.collectionNumber,
+            imageUrl: m.imageUrl || '',
+            description: m.effect || '',
+            isUnique: false,
+            cardModel: 'single',
+          })
+        })
+
         console.log('Total cards loaded:', allCards.length)
         setAvailableCards(allCards)
       } catch (error) {
@@ -344,7 +405,6 @@ export default function DraftsPage() {
       try {
         const map = new Map<string, IPilot>()
         const byId = new Map<string, IPilot>()
-        const cards: Card[] = []
         let page = 1
         let totalPages = 1
         do {
@@ -353,10 +413,12 @@ export default function DraftsPage() {
           res.pilots.forEach(p => {
             if (p.preferredMechId) map.set(p.preferredMechId, p)
             byId.set(p.id, p)
-            cards.push(pilotToCard(p))
           })
           page++
         } while (page <= totalPages)
+        // Build cards from the deduped-by-id map: overlapping pages can otherwise
+        // hand back the same pilot twice, which would show up as duplicate React keys.
+        const cards: Card[] = Array.from(byId.values()).map(pilotToCard)
         console.log('Total pilots loaded:', map.size)
         setPilotsByMechCode(map)
         setPilotsById(byId)
@@ -547,8 +609,11 @@ export default function DraftsPage() {
       Array(selectedUnit.quantity).fill(selectedUnit.unit)
     )
     
-    // Use ALL available cards automatically (not just selected)
-    const allCards = [...availableCards, ...availablePilotCards]
+    // Use the curated card selection when the player picked one, otherwise fall back to every
+    // available card (regular cards + pilots), matching the pre-selector default behavior.
+    const allCards = selectedCards.length > 0
+      ? selectedCards.flatMap(selectedCard => Array(selectedCard.quantity).fill(selectedCard.card))
+      : [...availableCards, ...availablePilotCards]
     
     // Pre-shuffle the entire pool multiple times for maximum randomness
     let shuffledUnits = shuffleArray(allUnits)
@@ -748,6 +813,7 @@ export default function DraftsPage() {
       description: newDraftDescription,
       settings: settings,
       availableUnits: selectedUnits,
+      availableCards: selectedCards,
       results: players,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -1076,9 +1142,31 @@ export default function DraftsPage() {
     if (quantity <= 0) {
       setSelectedUnits(selectedUnits.filter(u => u.unit.id !== unitId))
     } else {
-      setSelectedUnits(selectedUnits.map(u => 
+      setSelectedUnits(selectedUnits.map(u =>
         u.unit.id === unitId ? { ...u, quantity } : u
       ))
+    }
+  }
+
+  // Full card pool available to draw from: regular cards plus pilots (drawn as cards too).
+  // Pilots reuse their short cardId as Card.id, which can collide with a regular card's id
+  // (or with another pilot's), so identity uses the real database id (dbId) when available.
+  const allCardsPool = [...availableCards, ...availablePilotCards]
+  const cardKey = (card: Card) => `${card.type}:${card.dbId || card.id}`
+
+  const filteredCardsForSelector = allCardsPool.filter(card => {
+    const matchesType = cardFilters.types.length === 0 || cardFilters.types.includes(card.type)
+    const matchesExpansion = cardFilters.expansions.length === 0 || cardFilters.expansions.includes(card.expansion)
+    const matchesSearch = !cardFilters.search || card.name.toLowerCase().includes(cardFilters.search.toLowerCase())
+    return matchesType && matchesExpansion && matchesSearch
+  })
+
+  const toggleCardSelection = (card: Card) => {
+    const isSelected = selectedCards.some(c => cardKey(c.card) === cardKey(card))
+    if (isSelected) {
+      setSelectedCards(selectedCards.filter(c => cardKey(c.card) !== cardKey(card)))
+    } else {
+      setSelectedCards([...selectedCards, { card, quantity: 1 }])
     }
   }
 
@@ -1679,6 +1767,8 @@ export default function DraftsPage() {
                                           : unit.cardType === 'P' ? '/cards/pilot/detail'
                                           : unit.cardType === 'G' ? '/cards/gear/detail'
                                           : unit.cardType === 'SA' ? '/cards/situational-alliance/detail'
+                                          : unit.cardType === 'PC' ? '/cards/planetary-condition/detail'
+                                          : unit.cardType === 'M' ? '/cards/mission/detail'
                                           : '/cards/faction-pride/detail'
                                         const dbId = unit.cardDbId || availableCards.find(c => c.id === unit.id)?.dbId || unit.id
                                         router.push(`${base}?id=${dbId}`)
@@ -1841,6 +1931,8 @@ export default function DraftsPage() {
                                                 : unit.cardType === 'P' ? '/cards/pilot/detail'
                                                 : unit.cardType === 'G' ? '/cards/gear/detail'
                                                 : unit.cardType === 'SA' ? '/cards/situational-alliance/detail'
+                                                : unit.cardType === 'PC' ? '/cards/planetary-condition/detail'
+                                                : unit.cardType === 'M' ? '/cards/mission/detail'
                                                 : '/cards/faction-pride/detail'
                                               const dbId = unit.cardDbId || availableCards.find(c => c.id === unit.id)?.dbId || unit.id
                                               router.push(`${base}?id=${dbId}`)
@@ -2070,8 +2162,13 @@ export default function DraftsPage() {
 
                 <div>
                   <label className="block text-xs font-mono mb-2" style={{color:'#5a7a4a'}}>{t('drafts.cardsLabel')}</label>
-                  <div className="font-mono text-xs" style={{color:'#4a5e3a'}}>
-                    {availableCards.length} {t('drafts.cardsAutoIncluded')}
+                  <button onClick={() => setShowCardSelector(true)} className="w-full px-4 py-2 font-mono text-xs corner-clip-sm transition-colors" style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>
+                    {t('drafts.btnSelectCards')} ({selectedCards.length > 0 ? selectedCards.length : allCardsPool.length})
+                  </button>
+                  <div className="mt-1 font-mono text-xs" style={{color:'#4a5e3a'}}>
+                    {selectedCards.length > 0
+                      ? `${selectedCards.length} ${t('drafts.nSelected')}`
+                      : `${allCardsPool.length} ${t('drafts.cardsAutoIncluded')}`}
                   </div>
                 </div>
 
@@ -2083,7 +2180,7 @@ export default function DraftsPage() {
                         <input type="number" min="0" max="10" value={config.quantity} onChange={(e) => { const c = [...draftSettings.boosterConfigs]; c[index].quantity = parseInt(e.target.value) || 0; setDraftSettings({...draftSettings, boosterConfigs: c}) }} className="w-20 px-2 py-1 text-xs font-mono text-center" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c',outline:'none'}} />
                         <span className="font-mono text-xs" style={{color: config.unitType === 'Card' ? '#c9a84c' : '#7a9a5a'}}>{config.unitType}</span>
                         {config.unitType === 'Card' && (
-                          <span className="font-mono text-xs" style={{color:'#4a5e3a'}}>({t('drafts.cardsAvailableN')} {availableCards.length})</span>
+                          <span className="font-mono text-xs" style={{color:'#4a5e3a'}}>({t('drafts.cardsAvailableN')} {selectedCards.length > 0 ? selectedCards.length : allCardsPool.length})</span>
                         )}
                       </div>
                     ))}
@@ -2218,6 +2315,92 @@ export default function DraftsPage() {
                 <div className="flex gap-2">
                   <button onClick={() => setSelectedUnits([])} className="px-4 py-1.5 font-mono text-xs corner-clip-sm" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#5a7a4a'}}>{t('drafts.btnClear')}</button>
                   <button onClick={() => setShowUnitSelector(false)} className="px-4 py-1.5 font-mono text-xs corner-clip-sm" style={{background:'rgba(201,168,76,0.15)',border:'1px solid #c9a84c',color:'#c9a84c'}}>{t('drafts.btnConfirm')}</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Card Selector Modal */}
+        {showCardSelector && (
+          <div className="fixed inset-0 flex items-center justify-center z-50" style={{background:'rgba(0,0,0,0.85)'}}>
+            <div className="max-w-5xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col" style={{background:'#0d1208',border:'1px solid #3a4a2a'}}>
+              <div className="px-4 py-3 flex justify-between items-center" style={{borderBottom:'1px solid #2a3a1a',background:'rgba(0,0,0,0.3)'}}>
+                <h3 className="font-mono text-xs tracking-widest uppercase" style={{color:'#c9a84c'}}>{t('drafts.cardSelectorTitle')} ({filteredCardsForSelector.length})</h3>
+                <button onClick={() => setShowCardSelector(false)} className="font-mono text-xs px-2" style={{color:'#5a7a4a'}}>✕</button>
+              </div>
+
+              {/* Filters */}
+              <div className="p-4" style={{borderBottom:'1px solid #2a3a1a',background:'rgba(0,0,0,0.2)'}}>
+                <div>
+                  <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>{t('drafts.btnSearch')}</label>
+                  <input type="text" placeholder={t('drafts.cardNamePlaceholder')} value={cardFilters.search} onChange={(e) => setCardFilters({...cardFilters, search: e.target.value})} className="w-full px-2 py-1.5 text-xs font-mono" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c',outline:'none'}} />
+                </div>
+                <div className="grid grid-cols-2 gap-3 mt-3">
+                  <div>
+                    <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>{t('drafts.cardTypeLabel')} ({cardFilters.types.length})</label>
+                    <div className="max-h-24 overflow-y-auto p-2" style={{border:'1px solid #2a3a1a',background:'rgba(0,0,0,0.3)'}}>
+                      {[...new Set(allCardsPool.map(c => c.type))].sort().map(type => (
+                        <label key={type} className="flex items-center gap-2 py-0.5 cursor-pointer">
+                          <input type="checkbox" checked={cardFilters.types.includes(type)} onChange={(e) => { if(e.target.checked) setCardFilters({...cardFilters, types:[...cardFilters.types,type]}); else setCardFilters({...cardFilters, types:cardFilters.types.filter(t2=>t2!==type)}) }} style={{accentColor:'#c9a84c'}} />
+                          <span className="font-mono text-xs" style={{color:'#7a9a5a'}}>{CARD_TYPE_LABELS[type] || type}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-mono mb-1" style={{color:'#5a7a4a'}}>{t('drafts.expansionsLabel')} ({cardFilters.expansions.length})</label>
+                    <div className="max-h-24 overflow-y-auto p-2" style={{border:'1px solid #2a3a1a',background:'rgba(0,0,0,0.3)'}}>
+                      {[...new Set(allCardsPool.map(c => c.expansion))].sort().map(expansion => (
+                        <label key={expansion} className="flex items-center gap-2 py-0.5 cursor-pointer">
+                          <input type="checkbox" checked={cardFilters.expansions.includes(expansion)} onChange={(e) => { if(e.target.checked) setCardFilters({...cardFilters, expansions:[...cardFilters.expansions,expansion]}); else setCardFilters({...cardFilters, expansions:cardFilters.expansions.filter(ex=>ex!==expansion)}) }} style={{accentColor:'#c9a84c'}} />
+                          <span className="font-mono text-xs" style={{color:'#7a9a5a'}}>{expansion}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-3">
+                  <button onClick={() => setCardFilters({expansions:[],types:[],search:''})} className="px-3 py-1 font-mono text-xs corner-clip-sm" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#5a7a4a'}}>{t('drafts.btnClear')}</button>
+                  <button onClick={() => setSelectedCards([...selectedCards, ...filteredCardsForSelector.filter(c => !selectedCards.some(s => cardKey(s.card) === cardKey(c))).map(c => ({card:c, quantity:1}))])} className="px-3 py-1 font-mono text-xs corner-clip-sm" style={{background:'rgba(122,154,90,0.15)',border:'1px solid #3a4a2a',color:'#7a9a5a'}}>{t('drafts.btnSelectAll')}</button>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto">
+                <table className="w-full table-fixed">
+                  <thead className="sticky top-0 z-10" style={{background:'rgba(10,15,6,0.97)',borderBottom:'1px solid #2a3a1a'}}>
+                    <tr>
+                      <th className="px-2 py-2 w-8 text-xs font-mono" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>{t('drafts.colSel')}</th>
+                      <th className="px-2 py-2 text-left text-xs font-mono" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>{t('search.colName')}</th>
+                      <th className="px-2 py-2 w-28 text-center text-xs font-mono" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>{t('drafts.cardTypeLabel')}</th>
+                      <th className="px-2 py-2 w-20 text-center text-xs font-mono" style={{color:'#5a7a4a'}}>{t('cardsUI.expansion')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredCardsForSelector.map((card) => {
+                      const isSelected = selectedCards.some(c => cardKey(c.card) === cardKey(card))
+                      return (
+                        <tr key={cardKey(card)} style={{borderBottom:'1px solid #1a2a10', background: isSelected ? 'rgba(201,168,76,0.06)' : 'transparent', cursor: 'pointer'}} onClick={() => toggleCardSelection(card)}>
+                          <td className="px-2 py-1.5 text-center" style={{borderRight:'1px solid #1a2a10'}}>
+                            <input type="checkbox" checked={isSelected} onChange={() => toggleCardSelection(card)} onClick={(e) => e.stopPropagation()} style={{accentColor:'#c9a84c'}} />
+                          </td>
+                          <td className="px-2 py-1.5" style={{borderRight:'1px solid #1a2a10'}}>
+                            <div className="font-mono text-xs truncate" style={{color:'#e8d5a0'}}>{card.name} {card.isUnique && "★"}</div>
+                          </td>
+                          <td className="px-2 py-1.5 text-xs font-mono text-center" style={{color:'#7a9a5a',borderRight:'1px solid #1a2a10'}}>{CARD_TYPE_LABELS[card.type] || card.type}</td>
+                          <td className="px-2 py-1.5 text-xs font-mono text-center" style={{color:'#7a9a5a'}}>{card.expansion}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="px-4 py-3 flex justify-between items-center" style={{borderTop:'1px solid #2a3a1a',background:'rgba(0,0,0,0.3)'}}>
+                <div className="font-mono text-xs" style={{color:'#4a5e3a'}}>{selectedCards.length} {t('drafts.nSelected')}</div>
+                <div className="flex gap-2">
+                  <button onClick={() => setSelectedCards([])} className="px-4 py-1.5 font-mono text-xs corner-clip-sm" style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#5a7a4a'}}>{t('drafts.btnClear')}</button>
+                  <button onClick={() => setShowCardSelector(false)} className="px-4 py-1.5 font-mono text-xs corner-clip-sm" style={{background:'rgba(201,168,76,0.15)',border:'1px solid #c9a84c',color:'#c9a84c'}}>{t('drafts.btnConfirm')}</button>
                 </div>
               </div>
             </div>

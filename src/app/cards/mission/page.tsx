@@ -3,23 +3,23 @@
 import { useState, useEffect, useMemo, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { useT } from '@/hooks/useT'
-import { IMercenaryContract, apiService } from '@/lib/api'
+import { IMission, apiService } from '@/lib/api'
+import CardPortrait from '@/components/CardPortrait'
 import CardCollectionButtons from '@/components/CardCollectionButtons'
 import { getCardCounts } from '@/lib/cardCollection'
 
 const PAGE_SIZE = 20;
 
-function MercenaryContractListContent() {
+function MissionListContent() {
   const router = useRouter();
   const t = useT();
 
-  const [allCards, setAllCards] = useState<IMercenaryContract[]>([]);
+  const [allCards, setAllCards] = useState<IMission[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
-  const [selectedFaction, setSelectedFaction] = useState('');
   const [selectedExpansion, setSelectedExpansion] = useState('');
   const [showHaveOnly, setShowHaveOnly] = useState(false);
   const [showWantOnly, setShowWantOnly] = useState(false);
@@ -30,14 +30,14 @@ function MercenaryContractListContent() {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    apiService.getMercenaryContracts({ page: 1, limit: 100 })
+    apiService.getMissions({ page: 1, limit: 100 })
       .then(async res => {
-        let cards = res.mercenaryContracts;
+        let cards = res.missions;
         if (res.totalPages > 1) {
           const rest = await Promise.all(
-            Array.from({ length: res.totalPages - 1 }, (_, i) => apiService.getMercenaryContracts({ page: i + 2, limit: 100 }))
+            Array.from({ length: res.totalPages - 1 }, (_, i) => apiService.getMissions({ page: i + 2, limit: 100 }))
           );
-          cards = cards.concat(...rest.map(r => r.mercenaryContracts));
+          cards = cards.concat(...rest.map(r => r.missions));
         }
         setAllCards(cards);
       })
@@ -45,21 +45,19 @@ function MercenaryContractListContent() {
       .finally(() => setLoading(false));
   }, []);
 
-  const factions = useMemo(() => [...new Set(allCards.map(c => c.faction))].sort(), [allCards]);
   const expansions = useMemo(() => [...new Set(allCards.map(c => c.expansion))].sort(), [allCards]);
 
   const filteredCards = useMemo(() => {
     const q = search.trim().toLowerCase();
     return allCards.filter(c => {
-      if (selectedFaction && c.faction !== selectedFaction) return false;
       if (selectedExpansion && c.expansion !== selectedExpansion) return false;
-      if (q && !(c.description || '').toLowerCase().includes(q)) return false;
+      if (q && !(c.effect || '').toLowerCase().includes(q) && !c.name.toLowerCase().includes(q)) return false;
       if (showHaveOnly && getCardCounts(c.id).haveCount === 0) return false;
       if (showWantOnly && getCardCounts(c.id).wantCount === 0) return false;
       return true;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allCards, search, selectedFaction, selectedExpansion, showHaveOnly, showWantOnly, collectionVersion]);
+  }, [allCards, search, selectedExpansion, showHaveOnly, showWantOnly, collectionVersion]);
 
   const totalPages = Math.max(1, Math.ceil(filteredCards.length / PAGE_SIZE));
   const pageCards = filteredCards.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -71,7 +69,6 @@ function MercenaryContractListContent() {
 
   const clearFilters = () => {
     setSearch('');
-    setSelectedFaction('');
     setSelectedExpansion('');
     setShowHaveOnly(false);
     setShowWantOnly(false);
@@ -89,7 +86,7 @@ function MercenaryContractListContent() {
         </div>
         <div className="p-3 space-y-4 flex-1">
           <form onSubmit={handleSearch}>
-            <label className="block font-mono text-xs mb-1" style={{color:'#5a7a4a'}}>{t('cardsUI.searchDescription')}</label>
+            <label className="block font-mono text-xs mb-1" style={{color:'#5a7a4a'}}>{t('cardsUI.searchNameEffect')}</label>
             <input
               type="text"
               value={search}
@@ -99,18 +96,6 @@ function MercenaryContractListContent() {
               style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c',outline:'none'}}
             />
           </form>
-          <div>
-            <label className="block font-mono text-xs mb-1" style={{color:'#5a7a4a'}}>{t('cardsUI.faction')}</label>
-            <select
-              value={selectedFaction}
-              onChange={e => { setSelectedFaction(e.target.value); setPage(1); }}
-              className="w-full px-2 py-1.5 text-xs font-mono"
-              style={{background:'rgba(0,0,0,0.4)',border:'1px solid #3a4a2a',color:'#c9a84c'}}
-            >
-              <option value="">{t('cardsUI.allF')}</option>
-              {factions.map(fac => <option key={fac} value={fac}>{fac}</option>)}
-            </select>
-          </div>
           <div>
             <label className="block font-mono text-xs mb-1" style={{color:'#5a7a4a'}}>{t('cardsUI.expansion')}</label>
             <select
@@ -146,7 +131,7 @@ function MercenaryContractListContent() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="px-4 py-3 flex items-center justify-between" style={{background:'rgba(0,0,0,0.5)',borderBottom:'1px solid #3a4a2a'}}>
           <div>
-            <h1 className="font-mono text-sm font-bold tracking-widest uppercase" style={{color:'#c9a84c'}}>{t('cardsUI.cardsHeader')} — MERCENARY CONTRACT</h1>
+            <h1 className="font-mono text-sm font-bold tracking-widest uppercase" style={{color:'#c9a84c'}}>{t('cardsUI.cardsHeader')} — MISSION</h1>
             <p className="font-mono text-xs mt-0.5" style={{color:'#4a5e3a'}}>{filteredCards.length} {t('cardsUI.cardsFound')}</p>
           </div>
           <div className="flex items-center gap-2">
@@ -174,12 +159,10 @@ function MercenaryContractListContent() {
                 <thead className="sticky top-0 z-10" style={{background:'rgba(10,15,6,0.97)',borderBottom:'1px solid #2a3a1a'}}>
                   <tr>
                     <th className="px-3 py-2 text-left text-xs font-mono" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>{t('cardsUI.colCardId')}</th>
-                    <th className="px-3 py-2 text-left text-xs font-mono" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>#</th>
-                    <th className="px-3 py-2 text-left text-xs font-mono" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>{t('cardsUI.colFaction')}</th>
+                    <th className="px-3 py-2 text-left text-xs font-mono" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}></th>
+                    <th className="px-3 py-2 text-left text-xs font-mono" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>{t('cardsUI.colName')}</th>
+                    <th className="px-3 py-2 text-left text-xs font-mono" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>{t('cardsUI.colEffect')}</th>
                     <th className="px-3 py-2 text-left text-xs font-mono" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>{t('cardsUI.colExpansion')}</th>
-                    <th className="px-3 py-2 text-left text-xs font-mono" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>{t('cardsUI.colCost')}</th>
-                    <th className="px-3 py-2 text-left text-xs font-mono" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>{t('cardsUI.colLogo')}</th>
-                    <th className="px-3 py-2 text-left text-xs font-mono" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>{t('cardsUI.colDescription')}</th>
                     <th className="px-3 py-2 text-left text-xs font-mono" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>{t('cardsUI.colCollection')}</th>
                     <th className="px-3 py-2 text-center text-xs font-mono" style={{color:'#5a7a4a'}}>{t('cardsUI.colView')}</th>
                   </tr>
@@ -192,26 +175,21 @@ function MercenaryContractListContent() {
                       style={{borderBottom:'1px solid #1a2a10'}}
                       onMouseEnter={e => (e.currentTarget.style.background = 'rgba(122,154,90,0.06)')}
                       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                      onClick={() => router.push(`/cards/mercenary-contract/detail?id=${card.id}`)}
+                      onClick={() => router.push(`/cards/mission/detail?id=${card.id}`)}
                     >
                       <td className="px-3 py-2 text-xs font-mono" style={{color:'#7a9a5a',borderRight:'1px solid #1a2a10'}}>{card.cardId}</td>
-                      <td className="px-3 py-2 text-xs font-mono" style={{color:'#4a5e3a',borderRight:'1px solid #1a2a10'}}>{card.collectionNumber}</td>
-                      <td className="px-3 py-2 text-xs font-mono font-medium" style={{color:'#e8d5a0',borderRight:'1px solid #1a2a10'}}>{card.faction}</td>
-                      <td className="px-3 py-2 text-xs font-mono" style={{color:'#7a9a5a',borderRight:'1px solid #1a2a10'}}>{card.expansion}</td>
-                      <td className="px-3 py-2 text-xs font-mono" style={{borderRight:'1px solid #1a2a10'}}>
-                        <span className="px-1.5 py-0.5 font-bold" style={{background:'rgba(201,168,76,0.15)',border:'1px solid #c9a84c55',color:'#c9a84c'}}>{card.cost}</span>
-                        {card.alternativeCost && (
-                          <span className="ml-1 px-1.5 py-0.5 text-[10px] font-mono" style={{background:'rgba(0,0,0,0.3)',border:'1px solid #2a3a1a',color:'#5a7a4a'}}>{card.alternativeCost}</span>
-                        )}
+                      <td className="px-2 py-1" style={{borderRight:'1px solid #1a2a10'}}>
+                        <CardPortrait imageUrl={card.imageUrl} name={card.name} />
                       </td>
-                      <td className="px-3 py-2 text-xs font-mono capitalize" style={{color:'#5a7a4a',borderRight:'1px solid #1a2a10'}}>{card.logoVariant}</td>
-                      <td className="px-3 py-2 text-xs font-mono max-w-xs truncate" style={{color:'#6a8a4a',borderRight:'1px solid #1a2a10'}}>{card.description}</td>
+                      <td className="px-3 py-2 text-xs font-mono font-medium max-w-[220px] truncate" style={{color:'#e8d5a0',borderRight:'1px solid #1a2a10'}}>{card.name}</td>
+                      <td className="px-3 py-2 text-xs font-mono max-w-md truncate" style={{color:'#6a8a4a',borderRight:'1px solid #1a2a10'}}>{card.effect}</td>
+                      <td className="px-3 py-2 text-xs font-mono" style={{color:'#7a9a5a',borderRight:'1px solid #1a2a10'}}>{card.expansion}</td>
                       <td className="px-3 py-2" style={{borderRight:'1px solid #1a2a10'}}>
-                        <CardCollectionButtons card={{ id: card.id, cardId: card.cardId, name: card.faction, cardType: 'MC', expansion: card.expansion, collectionNumber: card.collectionNumber }} onChange={() => setCollectionVersion(v => v + 1)} />
+                        <CardCollectionButtons card={{ id: card.id, cardId: card.cardId, name: card.name, cardType: 'M', expansion: card.expansion, collectionNumber: card.collectionNumber }} onChange={() => setCollectionVersion(v => v + 1)} />
                       </td>
                       <td className="px-3 py-2 text-center">
                         <button
-                          onClick={e => { e.stopPropagation(); router.push(`/cards/mercenary-contract/detail?id=${card.id}`); }}
+                          onClick={e => { e.stopPropagation(); router.push(`/cards/mission/detail?id=${card.id}`); }}
                           className="px-2 py-1 font-mono text-xs corner-clip-sm"
                           style={{background:'rgba(201,168,76,0.15)',border:'1px solid #c9a84c',color:'#c9a84c'}}
                         >
@@ -237,11 +215,11 @@ function MercenaryContractListContent() {
   );
 }
 
-export default function MercenaryContractPage() {
+export default function MissionPage() {
   const t = useT();
   return (
     <Suspense fallback={<div className="flex items-center justify-center min-h-screen" style={{background:'#0d1208'}}><div className="font-mono text-xs animate-pulse" style={{color:'#7a9a5a'}}>{t('common.loading')}</div></div>}>
-      <MercenaryContractListContent />
+      <MissionListContent />
     </Suspense>
   );
 }

@@ -2,9 +2,11 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useT } from '@/hooks/useT'
 import { Card, IFactionPride, apiService } from '@/lib/api'
 import CardDesktopFactionPride from '@/components/CardDesktopFactionPride'
 import CardMobile from '@/components/CardMobile'
+import CardCollectionButtons from '@/components/CardCollectionButtons'
 
 const getFactionLogo = (faction: string, version: string = 'standard'): string => {
   const baseName = faction.toLowerCase().replace(/'/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -41,6 +43,7 @@ function FactionPrideDetailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get('id');
+  const t = useT();
 
   const [card, setCard] = useState<Card | null>(null);
   const [loading, setLoading] = useState(true);
@@ -70,7 +73,7 @@ function FactionPrideDetailContent() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Carregando carta...</div>
+        <div className="text-lg">{t('cardDetail.loadingCardPlain')}</div>
       </div>
     );
   }
@@ -78,9 +81,9 @@ function FactionPrideDetailContent() {
   if (!card) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-        <div className="text-lg text-gray-600">Nenhuma carta encontrada</div>
+        <div className="text-lg text-gray-600">{t('cardDetail.notFound')}</div>
         <button onClick={() => router.push('/cards/faction-pride')} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-          Voltar para listagem
+          {t('cardDetail.backToList')}
         </button>
       </div>
     );
@@ -100,7 +103,7 @@ function FactionPrideDetailContent() {
           onClick={() => router.push('/cards/faction-pride')}
           className="gold-accent flex items-center gap-2 text-sm mb-4 w-fit transition-opacity hover:opacity-75"
         >
-          ← Voltar para listagem
+          {t('cardDetail.backToList')}
         </button>
 
         {/* Card Header */}
@@ -132,6 +135,9 @@ function FactionPrideDetailContent() {
                 style={{ background: '#1a2410', color: '#c9a84c', border: '1px solid #4a5e35' }}
               >
                 {card.cost} ⚡
+              </div>
+              <div className="pt-1">
+                <CardCollectionButtons card={{ id: card.dbId || card.id, cardId: card.id, name: card.name, cardType: 'F', expansion: card.expansion, collectionNumber: card.collectionNumber }} />
               </div>
             </div>
           </div>
@@ -194,18 +200,18 @@ function FactionPrideDetailContent() {
           <div className="p-2 rounded" style={{ background: '#111608', border: '1px solid #4a5e35' }}>
             <div className="grid grid-cols-2 gap-2 text-center">
               <div>
-                <div className="font-mono uppercase tracking-wider text-xs mb-0.5" style={{ color: '#6a7a5a' }}>Facção</div>
+                <div className="font-mono uppercase tracking-wider text-xs mb-0.5" style={{ color: '#6a7a5a' }}>{t('cardDetail.faction')}</div>
                 <div className="font-bold text-xs px-1 py-0.5 rounded" style={{ background: '#0d1208', color: '#c8b97a', border: '1px solid #3a4a2a' }}>{card.faction}</div>
               </div>
               <div>
-                <div className="font-mono uppercase tracking-wider text-xs mb-0.5" style={{ color: '#6a7a5a' }}>Expansão</div>
+                <div className="font-mono uppercase tracking-wider text-xs mb-0.5" style={{ color: '#6a7a5a' }}>{t('cardDetail.expansion')}</div>
                 <div className="font-bold text-xs px-1 py-0.5 rounded" style={{ background: '#0d1208', color: '#c8b97a', border: '1px solid #3a4a2a' }}>{card.expansion}</div>
               </div>
             </div>
           </div>
 
           <div className="p-2 rounded" style={{ background: '#111608', border: '1px solid #4a5e35' }}>
-            <div className="font-mono uppercase tracking-wider text-xs mb-1" style={{ color: '#6a7a5a' }}>Descrição</div>
+            <div className="font-mono uppercase tracking-wider text-xs mb-1" style={{ color: '#6a7a5a' }}>{t('cardDetail.description')}</div>
             <p className="text-xs leading-relaxed" style={{ color: '#c8b97a' }}>
               {card.description}
             </p>
@@ -213,7 +219,7 @@ function FactionPrideDetailContent() {
 
           {card.flavorText && (
             <div className="p-2 rounded" style={{ background: '#111608', border: '1px solid #4a5e35' }}>
-              <div className="font-mono uppercase tracking-wider text-xs mb-1" style={{ color: '#6a7a5a' }}>Texto de Sabor</div>
+              <div className="font-mono uppercase tracking-wider text-xs mb-1" style={{ color: '#6a7a5a' }}>{t('cardDetail.flavorText')}</div>
               <p className="text-xs italic leading-relaxed" style={{ color: '#7a9a5a' }}>
                 {card.flavorText}
               </p>
@@ -222,7 +228,7 @@ function FactionPrideDetailContent() {
 
           {card.backDescription && (
             <div className="p-2 rounded" style={{ background: '#111608', border: '1px solid #4a5e35' }}>
-              <div className="font-mono uppercase tracking-wider text-xs mb-1" style={{ color: '#6a7a5a' }}>Descrição (Verso)</div>
+              <div className="font-mono uppercase tracking-wider text-xs mb-1" style={{ color: '#6a7a5a' }}>{t('cardDetail.backDescription')}</div>
               <p className="text-xs leading-relaxed" style={{ color: '#c8b97a' }}>
                 {card.backDescription}
               </p>
@@ -231,7 +237,7 @@ function FactionPrideDetailContent() {
 
           {card.backFlavorText && (
             <div className="p-2 rounded" style={{ background: '#111608', border: '1px solid #4a5e35' }}>
-              <div className="font-mono uppercase tracking-wider text-xs mb-1" style={{ color: '#6a7a5a' }}>Texto de Sabor (Verso)</div>
+              <div className="font-mono uppercase tracking-wider text-xs mb-1" style={{ color: '#6a7a5a' }}>{t('cardDetail.backFlavorText')}</div>
               <p className="text-xs italic leading-relaxed" style={{ color: '#7a9a5a' }}>
                 {card.backFlavorText}
               </p>
@@ -250,7 +256,7 @@ function FactionPrideDetailContent() {
           }`}
           style={{ background: '#c9a84c', color: '#0d1208' }}
         >
-          {isFlipped ? '↺ Ver Frente' : '↺ Ver Verso'}
+          {isFlipped ? t('cardDetail.viewFront') : t('cardDetail.viewBack')}
         </button>
 
         <div className="w-full flex-1 flex items-center justify-center">
@@ -275,8 +281,9 @@ function FactionPrideDetailContent() {
 }
 
 export default function FactionPrideDetailPage() {
+  const t = useT();
   return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="text-lg">Carregando...</div></div>}>
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="text-lg">{t('cardDetail.loadingPlain')}</div></div>}>
       <FactionPrideDetailContent />
     </Suspense>
   );

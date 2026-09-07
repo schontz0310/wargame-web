@@ -2,9 +2,11 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useT } from '@/hooks/useT'
 import { Card, ISituationalAlliance, apiService } from '@/lib/api'
 import CardDesktopSituationalAlliance from '@/components/CardDesktopSituationalAlliance'
 import CardMobile from '@/components/CardMobile'
+import CardCollectionButtons from '@/components/CardCollectionButtons'
 
 const getFactionLogo = (faction: string, version: string = 'standard'): string => {
   const baseName = faction.toLowerCase().replace(/'/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -40,6 +42,7 @@ function SituationalAllianceDetailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get('id');
+  const t = useT();
 
   const [card, setCard] = useState<Card | null>(null);
   const [loading, setLoading] = useState(true);
@@ -69,7 +72,7 @@ function SituationalAllianceDetailContent() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Carregando carta...</div>
+        <div className="text-lg">{t('cardDetail.loadingCardPlain')}</div>
       </div>
     );
   }
@@ -77,13 +80,13 @@ function SituationalAllianceDetailContent() {
   if (!card) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4" style={{ backgroundColor: '#0d1208' }}>
-        <div className="text-lg" style={{ color: '#c8b97a' }}>Nenhuma carta encontrada</div>
+        <div className="text-lg" style={{ color: '#c8b97a' }}>{t('cardDetail.notFound')}</div>
         <button
           onClick={() => router.push('/cards/situational-alliance')}
           className="px-4 py-2 corner-clip-sm font-mono uppercase tracking-wider text-sm transition-opacity hover:opacity-80"
           style={{ background: '#c9a84c', color: '#0d1208' }}
         >
-          Voltar para listagem
+          {t('cardDetail.backToList')}
         </button>
       </div>
     );
@@ -100,7 +103,7 @@ function SituationalAllianceDetailContent() {
           onClick={() => router.push('/cards/situational-alliance')}
           className="gold-accent flex items-center gap-2 text-sm mb-4 w-fit transition-opacity hover:opacity-75"
         >
-          ← Voltar para listagem
+          {t('cardDetail.backToList')}
         </button>
 
         <div className="pb-3 mb-3 flex-shrink-0" style={{ borderBottom: '1px solid #4a5e35' }}>
@@ -131,6 +134,9 @@ function SituationalAllianceDetailContent() {
             >
               {card.cost} ⚡
             </div>
+            <div className="pt-1">
+              <CardCollectionButtons card={{ id: card.dbId || card.id, cardId: card.id, name: card.name, cardType: 'SA', expansion: card.expansion, collectionNumber: card.collectionNumber }} />
+            </div>
           </div>
         </div>
 
@@ -145,7 +151,7 @@ function SituationalAllianceDetailContent() {
                   className={`font-mono uppercase tracking-wider mb-0.5 ${isDesktop ? 'text-xs' : 'text-[10px]'}`}
                   style={{ color: '#6a7a5a' }}
                 >
-                  Facção A
+                  {t('cardDetail.factionA')}
                 </div>
                 <div
                   className={`font-bold px-1 py-0.5 rounded ${isDesktop ? 'text-xs' : 'text-[10px]'}`}
@@ -159,7 +165,7 @@ function SituationalAllianceDetailContent() {
                   className={`font-mono uppercase tracking-wider mb-0.5 ${isDesktop ? 'text-xs' : 'text-[10px]'}`}
                   style={{ color: '#6a7a5a' }}
                 >
-                  Facção B
+                  {t('cardDetail.factionB')}
                 </div>
                 <div
                   className={`font-bold px-1 py-0.5 rounded ${isDesktop ? 'text-xs' : 'text-[10px]'}`}
@@ -174,7 +180,7 @@ function SituationalAllianceDetailContent() {
           <div className="p-2 rounded" style={{ background: '#111608', border: '1px solid #4a5e35' }}>
             <div className="grid grid-cols-2 gap-2 text-center">
               <div>
-                <div className="font-mono uppercase tracking-wider text-xs mb-0.5" style={{ color: '#6a7a5a' }}>Expansão</div>
+                <div className="font-mono uppercase tracking-wider text-xs mb-0.5" style={{ color: '#6a7a5a' }}>{t('cardDetail.expansion')}</div>
                 <div className="font-bold text-xs px-1 py-0.5 rounded" style={{ background: '#0d1208', color: '#c8b97a', border: '1px solid #3a4a2a' }}>{card.expansion}</div>
               </div>
               <div>
@@ -185,13 +191,13 @@ function SituationalAllianceDetailContent() {
           </div>
 
           <div className="p-2 rounded" style={{ background: '#111608', border: '1px solid #4a5e35' }}>
-            <div className="font-mono uppercase tracking-wider text-xs mb-1" style={{ color: '#6a7a5a' }}>Descrição</div>
+            <div className="font-mono uppercase tracking-wider text-xs mb-1" style={{ color: '#6a7a5a' }}>{t('cardDetail.description')}</div>
             <p className="text-xs leading-relaxed" style={{ color: '#c8b97a' }}>{card.description}</p>
           </div>
 
           {card.flavorText && (
             <div className="p-2 rounded" style={{ background: '#111608', border: '1px solid #4a5e35' }}>
-              <div className="font-mono uppercase tracking-wider text-xs mb-1" style={{ color: '#6a7a5a' }}>Texto de Sabor</div>
+              <div className="font-mono uppercase tracking-wider text-xs mb-1" style={{ color: '#6a7a5a' }}>{t('cardDetail.flavorText')}</div>
               <p className="text-xs italic leading-relaxed" style={{ color: '#7a9a5a' }}>{card.flavorText}</p>
             </div>
           )}
@@ -207,7 +213,7 @@ function SituationalAllianceDetailContent() {
           }`}
           style={{ background: '#c9a84c', color: '#0d1208' }}
         >
-          {isFlipped ? '↺ Ver Frente' : '↺ Ver Verso'}
+          {isFlipped ? t('cardDetail.viewFront') : t('cardDetail.viewBack')}
         </button>
 
         <div className="w-full flex-1 flex items-center justify-center">
@@ -223,8 +229,9 @@ function SituationalAllianceDetailContent() {
 }
 
 export default function SituationalAllianceDetailPage() {
+  const t = useT();
   return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="text-lg">Carregando...</div></div>}>
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="text-lg">{t('cardDetail.loadingPlain')}</div></div>}>
       <SituationalAllianceDetailContent />
     </Suspense>
   );

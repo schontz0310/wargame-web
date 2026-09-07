@@ -1,40 +1,54 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { useT } from '@/hooks/useT'
 
 export default function CardsPage() {
   const router = useRouter();
+  const t = useT();
 
   const cardTypes = [
     {
       id: 'faction-pride',
       label: 'FACTION PRIDE',
-      description: 'Cartas de orgulho de facção que concedem bônus baseados na afiliação.',
+      description: t('cardsHome.descFactionPride'),
       route: '/cards/faction-pride',
     },
     {
       id: 'mercenary-contract',
       label: 'MERCENARY CONTRACT',
-      description: 'Contratos mercenários que permitem recrutar unidades de outras facções.',
+      description: t('cardsHome.descMercenaryContract'),
       route: '/cards/mercenary-contract',
     },
     {
       id: 'situational-alliance',
       label: 'SITUATIONAL ALLIANCE',
-      description: 'Alianças situacionais entre duas facções que concedem um efeito compartilhado.',
+      description: t('cardsHome.descSituationalAlliance'),
       route: '/cards/situational-alliance',
     },
     {
       id: 'pilot',
       label: 'PILOT',
-      description: 'Pilotos que equipam unidades, com estatísticas e habilidades próprias.',
+      description: t('cardsHome.descPilot'),
       route: '/cards/pilot',
     },
     {
       id: 'gear',
       label: 'GEAR',
-      description: 'Equipamentos especiais que se acoplam às unidades, concedendo efeitos extras.',
+      description: t('cardsHome.descGear'),
       route: '/cards/gear',
+    },
+    {
+      id: 'planetary-condition',
+      label: 'PLANETARY CONDITION',
+      description: t('cardsHome.descPlanetaryCondition'),
+      route: '/cards/planetary-condition',
+    },
+    {
+      id: 'mission',
+      label: 'MISSION',
+      description: t('cardsHome.descMission'),
+      route: '/cards/mission',
     },
   ];
 
@@ -44,10 +58,10 @@ export default function CardsPage() {
       <div className="px-6 py-4 flex items-center justify-between" style={{background:'rgba(0,0,0,0.5)',borderBottom:'1px solid #3a4a2a'}}>
         <div>
           <h1 className="font-mono text-sm font-bold tracking-widest uppercase" style={{color:'#c9a84c'}}>
-            MÓDULO — CARTAS
+            {t('cardsHome.title')}
           </h1>
           <p className="font-mono text-xs mt-0.5" style={{color:'#4a5e3a'}}>
-            Selecione o tipo de carta
+            {t('cardsHome.subtitle')}
           </p>
         </div>
         <div className="flex items-center gap-4">
@@ -56,11 +70,11 @@ export default function CardsPage() {
             className="font-mono text-xs px-3 py-1.5 transition-colors"
             style={{color:'#5a7a4a',border:'1px solid #2a3a1a',background:'rgba(0,0,0,0.3)'}}
           >
-            ← INÍCIO
+            {t('cardsHome.backHome')}
           </button>
           <div className="flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{background:'#7a9a5a'}}></div>
-            <span className="font-mono text-xs" style={{color:'#3a5a2a'}}>ONLINE</span>
+            <span className="font-mono text-xs" style={{color:'#3a5a2a'}}>{t('cardsUI.online')}</span>
           </div>
         </div>
       </div>
@@ -82,7 +96,7 @@ export default function CardsPage() {
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(122,154,90,0.06)'; }}
             >
               <div className="font-mono text-xs tracking-widest mb-1" style={{color:'#4a5e3a'}}>
-                DISPONÍVEL
+                {t('cardsHome.available')}
               </div>
               <div className="font-mono font-bold text-base mb-3" style={{color:'#c9a84c'}}>
                 {ct.label}
@@ -91,7 +105,7 @@ export default function CardsPage() {
                 {ct.description}
               </p>
               <div className="mt-4 font-mono text-xs" style={{color:'#7a9a5a'}}>
-                ACESSAR →
+                {t('cardsHome.access')}
               </div>
             </button>
           ))}

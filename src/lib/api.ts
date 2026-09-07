@@ -135,8 +135,8 @@ export interface Card {
   id: string; // Format: EXPANSION-TYPE-NUMBER (e.g., AOD-F-001)
   dbId?: string; // Database primary key (used for detail page navigation)
   name: string;
-  type: "F" | "P" | "G" | "S" | "C" | "MC" | "SA"; // F=Faction Pride, P=Pilot, G=Gear, S=Special, C=Command, MC=Mercenary Contract, SA=Situational Alliance
-  typeName: "Faction Pride" | "Pilot" | "Gear" | "Special" | "Command" | "Mercenary Contract" | "Situational Alliance";
+  type: "F" | "P" | "G" | "S" | "C" | "MC" | "SA" | "PC" | "M"; // F=Faction Pride, P=Pilot, G=Gear, S=Special, C=Command, MC=Mercenary Contract, SA=Situational Alliance, PC=Planetary Condition, M=Mission
+  typeName: "Faction Pride" | "Pilot" | "Gear" | "Special" | "Command" | "Mercenary Contract" | "Situational Alliance" | "Planetary Condition" | "Mission";
   cost: string | number; // Can be string like "10/150" or number
   alternativeCost?: string | number; // Optional alternative cost
   haveAlternativeCost?: boolean; // Optional flag for alternative cost
@@ -375,6 +375,62 @@ export interface GearsFilters {
   expansion?: string;
   class?: string;
   attachesTo?: string;
+  search?: string;
+}
+
+export interface IPlanetaryCondition {
+  id: string;
+  cardId: string;
+  type: string;
+  name: string;
+  expansion: string;
+  collectionNumber: string;
+  description?: string | null;
+  imageUrl?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PlanetaryConditionsResponse {
+  planetaryConditions: IPlanetaryCondition[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface PlanetaryConditionsFilters {
+  page?: number;
+  limit?: number;
+  expansion?: string;
+  search?: string;
+}
+
+export interface IMission {
+  id: string;
+  cardId: string;
+  type: string;
+  name: string;
+  expansion: string;
+  collectionNumber: string;
+  effect?: string | null;
+  imageUrl?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MissionsResponse {
+  missions: IMission[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface MissionsFilters {
+  page?: number;
+  limit?: number;
+  expansion?: string;
   search?: string;
 }
 
@@ -651,6 +707,48 @@ class ApiService {
   async getGearById(id: string): Promise<IGear | null> {
     try {
       return await this.request<IGear>(`/gears/${id}`);
+    } catch {
+      return null;
+    }
+  }
+
+  // Get planetary conditions with filters and pagination
+  async getPlanetaryConditions(filters: PlanetaryConditionsFilters = {}): Promise<PlanetaryConditionsResponse> {
+    const params = new URLSearchParams();
+    if (filters.page) params.set('page', String(filters.page));
+    if (filters.limit) params.set('limit', String(filters.limit));
+    if (filters.expansion) params.set('expansion', filters.expansion);
+    if (filters.search) params.set('search', filters.search);
+    const qs = params.toString();
+    const raw = await this.request<{ data: IPlanetaryCondition[]; total: number; page: number; limit: number; totalPages: number }>(`/planetary-conditions${qs ? `?${qs}` : ''}`);
+    return { planetaryConditions: raw.data, total: raw.total, page: raw.page, limit: raw.limit, totalPages: raw.totalPages };
+  }
+
+  // Get planetary condition by id
+  async getPlanetaryConditionById(id: string): Promise<IPlanetaryCondition | null> {
+    try {
+      return await this.request<IPlanetaryCondition>(`/planetary-conditions/${id}`);
+    } catch {
+      return null;
+    }
+  }
+
+  // Get missions with filters and pagination
+  async getMissions(filters: MissionsFilters = {}): Promise<MissionsResponse> {
+    const params = new URLSearchParams();
+    if (filters.page) params.set('page', String(filters.page));
+    if (filters.limit) params.set('limit', String(filters.limit));
+    if (filters.expansion) params.set('expansion', filters.expansion);
+    if (filters.search) params.set('search', filters.search);
+    const qs = params.toString();
+    const raw = await this.request<{ data: IMission[]; total: number; page: number; limit: number; totalPages: number }>(`/missions${qs ? `?${qs}` : ''}`);
+    return { missions: raw.data, total: raw.total, page: raw.page, limit: raw.limit, totalPages: raw.totalPages };
+  }
+
+  // Get mission by id
+  async getMissionById(id: string): Promise<IMission | null> {
+    try {
+      return await this.request<IMission>(`/missions/${id}`);
     } catch {
       return null;
     }

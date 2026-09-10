@@ -28,7 +28,7 @@ export default function DeploymentCanvas({ draft, onNextStage, onBack }: Props) 
           .map((u, i) => ({ ...u, instanceKey: getInstanceKey(i, u.id) }))
           .filter(u => {
             const t = u.type.toLowerCase()
-            return t === 'mech' || t === 'infantry'
+            return t === 'mech' || t === 'infantry' || t === 'vehicle'
           })
           .map(u => ({
             id: u.id,

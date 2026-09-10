@@ -1162,6 +1162,9 @@ function placeTerrain(poolItem, cat, x, y, rotation){
 function checkPlacementEnd(){
   if (phase === 'placing' && (placedTerrain.length >= MAX_TERRAIN_PLACED || pool.length === 0)){
     phase = 'done'; renderStatus();
+    if (window.parent !== window) {
+      window.parent.postMessage({ type: 'BATTLEFIELD_DONE' }, '*');
+    }
   }
 }
 
@@ -1264,6 +1267,25 @@ document.getElementById('btnReset').addEventListener('click', () => {
   btn.textContent = '↺ Reiniciar';
   btn.style.color = ''; btn.style.borderColor = '';
   resetAll();
+});
+
+// ================= INTEGRAÇÃO REACT (postMessage) =================
+window.addEventListener('message', function(e) {
+  if (!e.data || e.data.type !== 'BATTLEFIELD_INIT') return;
+  var d = e.data;
+  pool = [];
+  (d.pile || []).forEach(function(item) {
+    var cat = CATALOG.find(function(c) { return c.official === item.code; });
+    if (!cat) return;
+    pool.push({ poolId: 'p' + Math.random().toString(36).slice(2, 9), catalogId: cat.id, owner: item.playerId });
+  });
+  firstPlayer = d.firstPlayerId || 1;
+  placingTurn = firstPlayer === 1 ? 2 : 1;
+  phase = 'placing';
+  document.getElementById('selectionPanel').style.display = 'none';
+  document.getElementById('poolPanel').style.display = '';
+  renderPool();
+  renderStatus();
 });
 
 // ================= INIT =================

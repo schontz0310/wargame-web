@@ -4,6 +4,7 @@ import { useState } from 'react'
 import type { Draft } from '@/lib/api'
 import { terrainPdfUrl, type PreparationState } from '@/lib/gameMode'
 import { useT } from '@/hooks/useT'
+import BattlefieldCanvas from './BattlefieldCanvas'
 
 interface TerrainPlacementProps {
   draft: Draft
@@ -24,6 +25,7 @@ export default function TerrainPlacement({ draft, preparationState, onUpdateStat
   const firstPlayerId = preparationState.firstPlayerId ?? playerIds[0]
   const firstIdx = playerIds.indexOf(firstPlayerId)
 
+  const [mode, setMode] = useState<'physical' | 'digital' | null>(null)
   // actionCount tracks placements + discards so the turn always advances correctly
   const [actionCount, setActionCount] = useState(0)
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
@@ -71,6 +73,44 @@ export default function TerrainPlacement({ draft, preparationState, onUpdateStat
     })
     setSelectedItemId(null)
     setActionCount(c => Math.max(0, c - 1))
+  }
+
+  if (mode === 'digital') {
+    return (
+      <BattlefieldCanvas
+        preparationState={preparationState}
+        onNextStage={onNextStage}
+        onBack={() => setMode(null)}
+      />
+    )
+  }
+
+  if (mode === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-8" style={{ background: '#0d1208' }}>
+        <div className="max-w-lg w-full space-y-4">
+          <h2 className="font-mono text-sm tracking-widest uppercase text-center mb-8" style={{ color: '#c9a84c' }}>
+            {t('terrainPlacement.chooseMode')}
+          </h2>
+          <button
+            onClick={() => setMode('physical')}
+            className="w-full p-5 font-mono text-left corner-clip-sm"
+            style={{ background: 'rgba(122,154,90,0.1)', border: '1px solid #3a5a2a', color: '#e8d5a0' }}
+          >
+            <div className="text-sm font-bold mb-1" style={{ color: '#7a9a5a' }}>{t('terrainPlacement.modePhysical')}</div>
+            <div className="text-xs" style={{ color: '#4a5e3a' }}>{t('terrainPlacement.modePhysicalDesc')}</div>
+          </button>
+          <button
+            onClick={() => setMode('digital')}
+            className="w-full p-5 font-mono text-left corner-clip-sm"
+            style={{ background: 'rgba(201,168,76,0.08)', border: '1px solid #c9a84c44', color: '#e8d5a0' }}
+          >
+            <div className="text-sm font-bold mb-1" style={{ color: '#c9a84c' }}>{t('terrainPlacement.modeDigital')}</div>
+            <div className="text-xs" style={{ color: '#7a6a3a' }}>{t('terrainPlacement.modeDigitalDesc')}</div>
+          </button>
+        </div>
+      </div>
+    )
   }
 
   if (pile.length === 0 && placed.length === 0) {

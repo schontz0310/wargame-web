@@ -1485,6 +1485,91 @@ function renderDeployTokens() {
   });
 }
 
+// Retorna o spine da cápsula (veículo) em coordenadas do mundo
+function getTokenCapsule(u) {
+  const rad = (u.rotation || 0) * Math.PI / 180;
+  const spineHalf = 0.75; // halfLength(1.5) - halfWidth(0.75)
+  const r = 0.75;
+  return {
+    ax: u.x - Math.cos(rad) * spineHalf, ay: u.y - Math.sin(rad) * spineHalf,
+    bx: u.x + Math.cos(rad) * spineHalf, by: u.y + Math.sin(rad) * spineHalf,
+    r,
+  };
+}
+
+function getTokenRadius(u) {
+  const t = (u.type || '').toLowerCase();
+  return t === 'infantry' ? 0.75 : 1; // mech default
+}
+
+// Empurra `dragged` para fora de `other` se sobrepostos
+function pushTokenOut(dragged, other) {
+  const dt = (dragged.type || '').toLowerCase();
+  const ot = (other.type || '').toLowerCase();
+  const isVD = dt === 'vehicle', isVO = ot === 'vehicle';
+
+  if (!isVD && !isVO) {
+    // círculo vs círculo
+    const minD = getTokenRadius(dragged) + getTokenRadius(other);
+    const dx = dragged.x - other.x, dy = dragged.y - other.y;
+    const d = Math.hypot(dx, dy);
+    if (d < minD) {
+      if (d < 0.001) { dragged.y += minD; return; }
+      dragged.x = other.x + dx / d * minD;
+      dragged.y = other.y + dy / d * minD;
+    }
+  } else if (!isVD && isVO) {
+    // círculo vs cápsula
+    const cap = getTokenCapsule(other);
+    const seg = distPointToSegmentP(dragged.x, dragged.y, cap.ax, cap.ay, cap.bx, cap.by);
+    const minD = getTokenRadius(dragged) + cap.r;
+    if (seg.dist < minD) {
+      const dx = dragged.x - seg.point.x, dy = dragged.y - seg.point.y;
+      const d = Math.hypot(dx, dy);
+      if (d < 0.001) { dragged.y -= minD; return; }
+      dragged.x = seg.point.x + dx / d * minD;
+      dragged.y = seg.point.y + dy / d * minD;
+    }
+  } else if (isVD && !isVO) {
+    // cápsula vs círculo: empurra o centro da cápsula no sentido oposto
+    const cap = getTokenCapsule(dragged);
+    const or = getTokenRadius(other);
+    const seg = distPointToSegmentP(other.x, other.y, cap.ax, cap.ay, cap.bx, cap.by);
+    const minD = cap.r + or;
+    if (seg.dist < minD) {
+      const push = minD - seg.dist;
+      const dx = seg.point.x - other.x, dy = seg.point.y - other.y;
+      const d = Math.hypot(dx, dy);
+      if (d < 0.001) { dragged.y -= push; return; }
+      dragged.x += dx / d * push;
+      dragged.y += dy / d * push;
+    }
+  } else {
+    // cápsula vs cápsula
+    const c1 = getTokenCapsule(dragged), c2 = getTokenCapsule(other);
+    const r = distSegToSegP(
+      { x: c1.ax, y: c1.ay }, { x: c1.bx, y: c1.by },
+      { x: c2.ax, y: c2.ay }, { x: c2.bx, y: c2.by }
+    );
+    const minD = c1.r + c2.r;
+    if (r.dist < minD) {
+      const push = minD - r.dist;
+      const dx = r.pointA.x - r.pointB.x, dy = r.pointA.y - r.pointB.y;
+      const d = Math.hypot(dx, dy);
+      if (d < 0.001) { dragged.y += push; return; }
+      dragged.x += dx / d * push;
+      dragged.y += dy / d * push;
+    }
+  }
+}
+
+function clampToDeployZone(u, zone) {
+  if (!zone) return;
+  const ext = getDeployExtents(u.type, u.rotation);
+  u.x = Math.max(zone.x + ext.rx, Math.min(zone.x + zone.w - ext.rx, u.x));
+  u.y = Math.max(zone.y + ext.ry, Math.min(zone.y + zone.h - ext.ry, u.y));
+}
+
 function onDeployKey(e) {
   if (!unitDragState) return;
   const u = deployUnitsState[unitDragState.idx];
@@ -1498,15 +1583,17 @@ function onDeployMove(e) {
   if (!unitDragState) return;
   const u = deployUnitsState[unitDragState.idx];
   const rect = stage.getBoundingClientRect();
-  let xIn = pxToIn(e.clientX - rect.left);
-  let yIn = pxToIn(e.clientY - rect.top);
-  const z = unitDragState.zone;
-  if (z) {
-    const ext = getDeployExtents(u.type, u.rotation);
-    xIn = Math.max(z.x + ext.rx, Math.min(z.x + z.w - ext.rx, xIn));
-    yIn = Math.max(z.y + ext.ry, Math.min(z.y + z.h - ext.ry, yIn));
+  u.x = pxToIn(e.clientX - rect.left);
+  u.y = pxToIn(e.clientY - rect.top);
+  clampToDeployZone(u, unitDragState.zone);
+  // Resolve sobreposição com outros tokens (4 passes)
+  for (let pass = 0; pass < 4; pass++) {
+    for (let i = 0; i < deployUnitsState.length; i++) {
+      if (i === unitDragState.idx) continue;
+      pushTokenOut(u, deployUnitsState[i]);
+    }
+    clampToDeployZone(u, unitDragState.zone);
   }
-  u.x = xIn; u.y = yIn;
   renderDeployTokens();
 }
 

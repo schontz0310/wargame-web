@@ -24,12 +24,18 @@ export default function DeploymentCanvas({ draft, onNextStage, onBack }: Props) 
         playerId: result.playerId,
         side: idx + 1,
         alias: result.playerAlias || result.playerName || `P${result.playerId}`,
-        units: result.armyUnits.map((u, i) => ({
-          id: u.id,
-          name: u.name,
-          type: u.type,
-          instanceKey: getInstanceKey(i, u.id),
-        })),
+        units: result.armyUnits
+          .map((u, i) => ({ ...u, instanceKey: getInstanceKey(i, u.id) }))
+          .filter(u => {
+            const t = u.type.toLowerCase()
+            return t !== 'vehicle' && t !== 'pilot'
+          })
+          .map(u => ({
+            id: u.id,
+            name: u.name,
+            type: u.type,
+            instanceKey: u.instanceKey,
+          })),
       })),
     }, '*')
   }

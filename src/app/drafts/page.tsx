@@ -463,46 +463,18 @@ export default function DraftsPage() {
   // Filter units based on filters
   useEffect(() => {
     const sourceUnits = useCollectionAsSource ? collectionUnits : availableUnits
-    let filtered = sourceUnits
-
-    if (unitFilters.factions.length > 0) {
-      filtered = filtered.filter(unit => {
-        const matchesType = !unitFilters.type || unit.type === unitFilters.type
-        const matchesPoints = (!unitFilters.minPoints || unit.points >= parseInt(unitFilters.minPoints)) &&
-                             (!unitFilters.maxPoints || unit.points <= parseInt(unitFilters.maxPoints))
-        const matchesSearch = !unitFilters.search || 
-          unit.name.toLowerCase().includes(unitFilters.search.toLowerCase()) ||
-          unit.variant.toLowerCase().includes(unitFilters.search.toLowerCase())
-        const matchesFaction = unitFilters.factions.length === 0 || unitFilters.factions.includes(unit.faction)
-        const matchesExpansion = unitFilters.expansions.length === 0 || unitFilters.expansions.includes(unit.expansion)
-        
-        return matchesType && matchesPoints && matchesSearch && matchesFaction && matchesExpansion
-      })
-    }
-
-    if (unitFilters.expansions.length > 0) {
-      const filteredUnitsList = filtered.filter(unit => {
-        const matchesType = !unitFilters.type || unit.type === unitFilters.type
-        const matchesPoints = (!unitFilters.minPoints || unit.points >= parseInt(unitFilters.minPoints)) &&
-                             (!unitFilters.maxPoints || unit.points <= parseInt(unitFilters.maxPoints))
-        const matchesSearch = !unitFilters.search || 
-          unit.name.toLowerCase().includes(unitFilters.search.toLowerCase()) ||
-          unit.variant.toLowerCase().includes(unitFilters.search.toLowerCase())
-        const matchesFaction = unitFilters.factions.length === 0 || unitFilters.factions.includes(unit.faction)
-        const matchesExpansion = unitFilters.expansions.length === 0 || unitFilters.expansions.includes(unit.expansion)
-        
-        return matchesType && matchesPoints && matchesSearch && matchesFaction && matchesExpansion
-      })
-      setFilteredUnits(filteredUnitsList)
-    }
-
-    if (unitFilters.maxPoints) {
-      const maxPoints = parseInt(unitFilters.maxPoints)
-      if (!isNaN(maxPoints)) {
-        filtered = filtered.filter(unit => unit.points <= maxPoints)
-      }
-    }
-
+    const filtered = sourceUnits.filter(unit => {
+      const matchesType = !unitFilters.type || unit.type === unitFilters.type
+      const matchesPoints =
+        (!unitFilters.minPoints || unit.points >= parseInt(unitFilters.minPoints)) &&
+        (!unitFilters.maxPoints || unit.points <= parseInt(unitFilters.maxPoints))
+      const matchesSearch = !unitFilters.search ||
+        unit.name.toLowerCase().includes(unitFilters.search.toLowerCase()) ||
+        unit.variant.toLowerCase().includes(unitFilters.search.toLowerCase())
+      const matchesFaction = unitFilters.factions.length === 0 || unitFilters.factions.includes(unit.faction)
+      const matchesExpansion = unitFilters.expansions.length === 0 || unitFilters.expansions.includes(unit.expansion)
+      return matchesType && matchesPoints && matchesSearch && matchesFaction && matchesExpansion
+    })
     setFilteredUnits(filtered)
   }, [availableUnits, collectionUnits, useCollectionAsSource, unitFilters])
 

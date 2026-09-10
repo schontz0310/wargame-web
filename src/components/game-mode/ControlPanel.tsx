@@ -247,6 +247,13 @@ export default function ControlPanel({ draft }: ControlPanelProps) {
             {t('control.viewLog')}
           </button>
           <button
+            onClick={() => router.push(`/game-mode?draftId=${draft.id}&view=battlefield`)}
+            className="px-3 py-1.5 font-mono text-sm corner-clip-sm"
+            style={{ background: 'rgba(122,154,90,0.15)', border: '1px solid #3a4a2a', color: '#7a9a5a' }}
+          >
+            {t('battlefield.openButton')}
+          </button>
+          <button
             onClick={() => setConfirmingReset(true)}
             className="px-3 py-1.5 font-mono text-sm corner-clip-sm"
             style={{ background: 'rgba(150,50,50,0.15)', border: '1px solid #5a2a2a', color: '#c06060' }}

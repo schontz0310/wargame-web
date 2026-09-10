@@ -167,6 +167,7 @@ export const translations = {
       exitFullscreenBtn: '⤡ EXIT',
       enterFullscreenBtn: '⤢ FULLSCREEN',
       viewLog: 'VIEW LOG',
+      viewBattlefield: 'BATTLEFIELD',
       reset: 'RESET',
       viewArmy: 'VIEW ARMY',
       startCleanup: 'START CLEANUP →',
@@ -443,6 +444,11 @@ export const translations = {
       noEligible: 'No eligible units',
       clear: 'Clear',
       confirm: 'CONFIRM',
+    },
+    battlefield: {
+      title: 'BATTLEFIELD',
+      back: 'BACK',
+      openButton: 'BATTLEFIELD',
     },
     terrainPlacement: {
       emptyPile: 'No terrain in the pile.',
@@ -799,6 +805,7 @@ export const translations = {
       exitFullscreenBtn: '⤡ SALIR',
       enterFullscreenBtn: '⤢ PANTALLA COMPLETA',
       viewLog: 'VER LOG',
+      viewBattlefield: 'CAMPO',
       reset: 'RESETEAR',
       viewArmy: 'VER ARMY',
       startCleanup: 'INICIAR LIMPIEZA →',
@@ -1075,6 +1082,11 @@ export const translations = {
       noEligible: 'No hay unidades elegibles',
       clear: 'Limpiar',
       confirm: 'CONFIRMAR',
+    },
+    battlefield: {
+      title: 'CAMPO DE BATALLA',
+      back: 'VOLVER',
+      openButton: 'CAMPO',
     },
     terrainPlacement: {
       emptyPile: 'No hay terreno en la pila.',
@@ -1431,6 +1443,7 @@ export const translations = {
       exitFullscreenBtn: '⤡ SAIR',
       enterFullscreenBtn: '⤢ TELA CHEIA',
       viewLog: 'VER LOG',
+      viewBattlefield: 'CAMPO',
       reset: 'RESETAR',
       viewArmy: 'VER ARMY',
       startCleanup: 'INICIAR LIMPEZA →',
@@ -1707,6 +1720,11 @@ export const translations = {
       noEligible: 'Nenhuma unidade elegível',
       clear: 'Limpar',
       confirm: 'CONFIRMAR',
+    },
+    battlefield: {
+      title: 'CAMPO DE BATALHA',
+      back: 'VOLTAR',
+      openButton: 'CAMPO',
     },
     terrainPlacement: {
       emptyPile: 'Nenhum terreno na pilha.',

@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Campo de Batalha — Preparação de Terreno</title>
+<style>
+  :root{
+    --bg: #14170f;
+    --field: #1c2116;
+    --field-edge: #3a4429;
+    --amber: #c98a2c;
+    --amber-dim: #7a5a22;
+    --ink: #e8e3d3;
+    --ink-dim: #9a9782;
+    --p1: #5f8f6b;
+    --p2: #b8452f;
+    --bad: #d9503a;
+    --good: #6bb35a;
+    --limit: #d9b843;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family: ui-monospace, "SF Mono", Consolas, monospace;
+    display:flex; flex-direction:column; align-items:center;
+    padding:18px 12px 60px; touch-action:manipulation;
+  }
+  h1{ font-size:15px; letter-spacing:.04em; color:var(--ink-dim); font-weight:600; margin:0 0 2px; }
+  .sub{ font-size:12px; color:var(--amber-dim); margin-bottom:14px; text-align:center; }
+  .status-row{
+    width:100%; max-width:680px; display:flex; gap:8px; align-items:stretch; margin-bottom:14px;
+  }
+  .status{
+    flex:1; background:#181c12; border:1px solid var(--field-edge);
+    padding:10px 14px; font-size:11.5px; margin-bottom:0;
+    display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;
+  }
+  .status .phase{color:var(--amber); font-weight:600;}
+  .status .turn-p1{color:var(--p1); font-weight:600;}
+  .status .turn-p2{color:var(--p2); font-weight:600;}
+  .btn-reset{
+    flex:0 0 auto; font-family:inherit; font-size:11px; padding:0 14px;
+    border:1px solid var(--field-edge); background:#181c12; color:var(--ink-dim);
+    border-radius:3px; cursor:pointer; white-space:nowrap;
+  }
+  .btn-reset:hover{ color:var(--amber); border-color:var(--amber-dim); }
+  .stage{
+    position:relative; border:1px solid var(--field-edge);
+    background: radial-gradient(ellipse at 30% 20%, rgba(201,138,44,0.05), transparent 60%), var(--field);
+    box-shadow: 0 0 0 1px #000, 0 12px 28px rgba(0,0,0,.5);
+    touch-action:none; margin-bottom:10px;
+  }
+  svg{display:block;}
+  .field-label{ font-size:6.5px; fill:var(--ink-dim); pointer-events:none; }
+  .gap-label{ font-size:5.5px; pointer-events:none; }
+  .legend-note{
+    width:100%; max-width:680px; font-size:10.5px; color:var(--ink-dim);
+    margin-bottom:14px; display:flex; gap:16px; flex-wrap:wrap; justify-content:center;
+  }
+  .legend-note span{ display:flex; align-items:center; gap:5px; }
+  .legend-note i{ width:14px; height:3px; display:inline-block; border-radius:2px; }
+  .panel{ width:100%; max-width:680px; background:#181c12; border:1px solid var(--field-edge); padding:14px; margin-bottom:14px; }
+  .panel h2{ font-size:11px; letter-spacing:.04em; color:var(--amber); margin:0 0 10px; font-weight:600; }
+  .player-tabs{ display:flex; gap:8px; margin-bottom:12px; }
+  .player-tab{ flex:1; text-align:center; padding:8px; border:1px solid var(--field-edge); background:#14170f; font-size:11px; cursor:pointer; color:var(--ink-dim); }
+  .player-tab.active-p1{border-color:var(--p1); color:var(--p1); background:#1c2c20;}
+  .player-tab.active-p2{border-color:var(--p2); color:var(--p2); background:#2c1f1a;}
+  .cat-group{margin-bottom:10px;}
+  .cat-group h3{ font-size:10px; color:var(--ink-dim); letter-spacing:.03em; margin:0 0 5px; font-weight:600; }
+  .cat-items{ display:flex; flex-wrap:wrap; gap:6px; }
+  .cat-btn{ font-family:inherit; font-size:10.5px; padding:5px 9px; border-radius:3px; border:1px solid var(--field-edge); background:#14170f; color:var(--ink); cursor:pointer; }
+  .cat-btn:disabled{opacity:.3; cursor:not-allowed;}
+  .cat-btn.picked-p1{border-color:var(--p1); background:#1c2c20; color:var(--p1);}
+  .cat-btn.picked-p2{border-color:var(--p2); background:#2c1f1a; color:var(--p2);}
+  .picks-row{ display:flex; justify-content:space-between; font-size:10.5px; color:var(--ink-dim); margin-top:10px; padding-top:10px; border-top:1px dashed var(--field-edge); }
+  .picks-row b{color:var(--ink);}
+  .btn-main{ width:100%; margin-top:12px; padding:11px; font-family:inherit; font-size:12px; font-weight:600; letter-spacing:.03em; background:var(--amber-dim); color:#fff8ec; border:1px solid var(--amber); border-radius:3px; cursor:pointer; }
+  .btn-main:disabled{opacity:.35; cursor:not-allowed;}
+  .dice-result{ font-size:11px; color:var(--ink-dim); text-align:center; margin-top:8px; line-height:1.6; }
+  .dice-result b{color:var(--amber);}
+  .pool-cards{ display:flex; flex-wrap:wrap; gap:8px; }
+  .pool-card{ width:104px; padding:8px; border-radius:4px; border:1px solid var(--field-edge); background:#14170f; font-size:10px; cursor:grab; user-select:none; touch-action:none; }
+  .pool-card.owner-p1{border-left:3px solid var(--p1);}
+  .pool-card.owner-p2{border-left:3px solid var(--p2);}
+  .pool-card .pc-name{color:var(--ink); font-weight:600; display:block; margin-bottom:2px;}
+  .pool-card .pc-type{color:var(--ink-dim); font-size:9px;}
+  .pool-card.dragging-source{opacity:.3;}
+  .pool-empty{ font-size:11px; color:var(--ink-dim); padding:14px 0; text-align:center; width:100%; }
+  .ghost-card{ position:fixed; pointer-events:none; z-index:999; width:104px; padding:8px; border-radius:4px; border:1px solid var(--amber); background:#20240f; font-size:10px; opacity:.95; transform:translate(-50%,-50%); }
+  .ghost-card .pc-name{color:var(--ink); font-weight:600; display:block;}
+  .drop-feedback{ position:fixed; pointer-events:none; z-index:998; font-size:10px; padding:3px 7px; border-radius:3px; background:#000c; color:var(--bad); transform:translate(-50%, 16px); white-space:nowrap; }
+  .rotate-btn{
+    position:fixed; left:50%; bottom:24px; transform:translateX(-50%);
+    z-index:1000; font-family:inherit; font-size:12px; padding:10px 18px;
+    border-radius:20px; border:1px solid var(--amber); background:#20240fee; color:var(--amber);
+    display:none; cursor:pointer;
+  }
+  .legend{ display:grid; grid-template-columns:1fr 1fr; gap:8px 16px; }
+  .legend-item{ display:flex; gap:8px; align-items:flex-start; font-size:10.5px; line-height:1.45; }
+  .legend-swatch{ width:14px; height:14px; flex:0 0 auto; border-radius:3px; margin-top:1px; }
+  .legend-item .t-name{color:var(--ink); font-weight:600; display:block;}
+  .legend-item .t-effect{color:var(--ink-dim);}
+  .hint{ max-width:680px; font-size:11px; color:var(--ink-dim); line-height:1.6; margin-bottom:14px; }
+  @media (max-width:480px){ .legend{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+
+  <h1>PREPARAÇÃO DE TERRENO</h1>
+  <div class="sub">seleção → pool → colocação alternada com rotação e validação de forma real</div>
+
+  <div class="status-row">
+    <div class="status" id="statusBar"></div>
+    <button class="btn-reset" id="btnReset" title="Reiniciar tudo do zero">↺ Reiniciar</button>
+  </div>
+
+  <div class="stage" id="stage"></div>
+
+  <div class="legend-note">
+    <span><i style="background:var(--good)"></i> posição válida</span>
+    <span><i style="background:var(--limit)"></i> no limite (travado nesse eixo)</span>
+    <span><i style="background:var(--bad)"></i> inválida</span>
+  </div>
+
+  <button class="rotate-btn" id="rotateBtn">⟳ Girar 45°</button>
+
+  <div class="panel" id="selectionPanel">
+    <h2>1 · ESCOLHA DE TERRENO (até 3 por jogador)</h2>
+    <div class="player-tabs">
+      <div class="player-tab" id="tabP1">Jogador 1</div>
+      <div class="player-tab" id="tabP2">Jogador 2</div>
+    </div>
+    <div id="catalogList"></div>
+    <div class="picks-row">
+      <span>Jogador 1: <b id="countP1">0</b>/3</span>
+      <span>Jogador 2: <b id="countP2">0</b>/3</span>
+    </div>
+    <button class="btn-main" id="btnFormPool">Formar Pool e Rolar Iniciativa</button>
+    <div class="dice-result" id="diceResult"></div>
+  </div>
+
+  <div class="panel" id="poolPanel" style="display:none;">
+    <h2>2 · POOL DE TERRENO — arraste, gire com o botão flutuante ou tecla R</h2>
+    <div class="pool-cards" id="poolCards"></div>
+  </div>
+
+  <div class="panel">
+    <h2>REFERÊNCIA — EFEITO DE CADA TIPO</h2>
+    <div class="legend" id="legend"></div>
+  </div>
+
+  <div class="hint">
+    Cada peça agora tem forma e rotação reais — um retângulo comprido pode não caber numa orientação e
+    caber girado 90°. Ao arrastar, a peça trava sozinha no limite de 3" (borda, outro terreno ou zona de
+    implantação) em vez de simplesmente recusar: o eixo travado fica em amarelo, o resto continua livre.
+    As linhas pontilhadas mostram a distância real até a borda, o terreno e a zona mais próximos —
+    sempre visíveis nas peças já colocadas, e ao vivo enquanto você arrasta.
+  </div>
+
+<script>
+// ================= ESCALA E CAMPO =================
+const PPI = 16;
+const FIELD_W_IN = 36;
+const FIELD_H_IN = 36;
+const inToPx = v => v * PPI;
+const pxToIn = v => v / PPI;
+const GAP = 3; // distância mínima exigida pela regra (bordas, terreno, zona)
+
+const DEPLOY_DEPTH_IN = 3;
+const DEPLOY_INSET_IN = 8;
+const deploymentZones = [
+  { player: 1, x: DEPLOY_INSET_IN, y: 0, w: FIELD_W_IN - DEPLOY_INSET_IN * 2, h: DEPLOY_DEPTH_IN, colorVar: '--p1' },
+  { player: 2, x: DEPLOY_INSET_IN, y: FIELD_H_IN - DEPLOY_DEPTH_IN, w: FIELD_W_IN - DEPLOY_INSET_IN * 2, h: DEPLOY_DEPTH_IN, colorVar: '--p2' }
+];
+const MAX_TERRAIN_PLACED = 4;
+const MAX_PICKS_PER_PLAYER = 3;
+
+function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+// ================= TIPOS DE EFEITO (Cap. 9) =================
+const TERRAIN_TYPES = {
+  hindering: { label:'Dificultoso', effect:'Metade da velocidade pra quem começa nele; +1 na defesa se a linha de fogo cruzar.', fill:'#5f7a3f', stroke:'#8fae5f' },
+  blocking: { label:'Bloqueador', effect:'Nenhuma unidade ocupa ou atravessa. Bloqueia qualquer linha de fogo.', fill:'#4a4640', stroke:'#8c8478' },
+  shallowWater: { label:'Água Rasa', effect:'Conta como dificultoso pra movimento. Não bloqueia linha de fogo.', fill:'#2f5f6b', stroke:'#5fa3b3' },
+  deepWater: { label:'Água Profunda', effect:'Conta como bloqueador pra movimento. Unidades dentro ficam submersas.', fill:'#1f3f52', stroke:'#3f7a94' },
+  elevated: { label:'Elevado/Abrupto', effect:'Bloqueia linha de fogo se nem atacante nem alvo estiverem nele; +1 de defesa por altura. "Abrupto" só permite subir/descer pelo ponto de acesso (linha amarela).', fill:'#6b5638', stroke:'#a8895a' },
+  clear: { label:'Livre / Sem Efeito', effect:'Nenhum efeito no movimento ou na linha de fogo — parte "normal" de uma peça combinada.', fill:'none', stroke:'#6b6b60' }
+};
+
+// ================= CATÁLOGO (formas reais, em polegadas, centradas em 0,0) =================
+// shapeDef.kind: 'rect' | 'polygon' | 'circles' — tudo pode girar.
+// Brush (losango) e Tarn (oito) ainda são reinterpretações minhas pra demonstrar as formas pedidas;
+// H4, A1 e B1 já são o contorno real, extraído e conferido a partir dos PDFs oficiais.
+const CATALOG = [
+  { name:'Abrupt Elevated (A1)', baseType:'elevated', render:'domeAccess', official:'A1',
+    accessEdge: { x1:1.977, y1:2.03, x2:-1.977, y2:2.03 }, // ponto de acesso (linha amarela do original)
+    shapeDef:{ kind:'polygon', points:[
+      {x:0.117,y:-2.03}, {x:0.71,y:-1.928}, {x:0.983,y:-1.827}, {x:1.193,y:-1.725},
+      {x:1.36,y:-1.624}, {x:1.513,y:-1.522}, {x:1.637,y:-1.421}, {x:1.747,y:-1.32},
+      {x:1.843,y:-1.218}, {x:1.937,y:-1.116}, {x:2.013,y:-1.015}, {x:2.083,y:-0.913},
+      {x:2.15,y:-0.812}, {x:2.207,y:-0.71}, {x:2.26,y:-0.609}, {x:2.307,y:-0.507},
+      {x:2.347,y:-0.406}, {x:2.383,y:-0.304}, {x:2.417,y:-0.203}, {x:2.44,y:-0.102},
+      {x:2.463,y:0.0}, {x:2.48,y:0.102}, {x:2.493,y:0.203}, {x:2.503,y:0.304},
+      {x:2.507,y:0.406}, {x:2.51,y:0.507}, {x:2.507,y:0.609}, {x:2.497,y:0.711},
+      {x:2.487,y:0.812}, {x:2.47,y:0.913}, {x:2.45,y:1.015}, {x:2.43,y:1.116},
+      {x:2.397,y:1.218}, {x:2.363,y:1.319}, {x:2.327,y:1.421}, {x:2.283,y:1.522},
+      {x:2.23,y:1.624}, {x:2.177,y:1.726}, {x:2.117,y:1.827}, {x:2.05,y:1.928},
+      {x:1.977,y:2.03}, {x:-1.977,y:2.03}, {x:-2.05,y:1.928}, {x:-2.117,y:1.827},
+      {x:-2.177,y:1.726}, {x:-2.23,y:1.624}, {x:-2.283,y:1.522}, {x:-2.327,y:1.421},
+      {x:-2.363,y:1.319}, {x:-2.397,y:1.218}, {x:-2.43,y:1.116}, {x:-2.45,y:1.015},
+      {x:-2.47,y:0.913}, {x:-2.487,y:0.812}, {x:-2.497,y:0.711}, {x:-2.507,y:0.609},
+      {x:-2.51,y:0.507}, {x:-2.507,y:0.406}, {x:-2.503,y:0.304}, {x:-2.493,y:0.203},
+      {x:-2.48,y:0.102}, {x:-2.463,y:0.0}, {x:-2.44,y:-0.102}, {x:-2.417,y:-0.203},
+      {x:-2.383,y:-0.304}, {x:-2.347,y:-0.406}, {x:-2.307,y:-0.507}, {x:-2.26,y:-0.609},
+      {x:-2.207,y:-0.71}, {x:-2.15,y:-0.812}, {x:-2.083,y:-0.913}, {x:-2.013,y:-1.015},
+      {x:-1.937,y:-1.116}, {x:-1.843,y:-1.218}, {x:-1.747,y:-1.32}, {x:-1.637,y:-1.421},
+      {x:-1.513,y:-1.522}, {x:-1.36,y:-1.624}, {x:-1.193,y:-1.725}, {x:-0.983,y:-1.827},
+      {x:-0.71,y:-1.928}, {x:-0.117,y:-2.03}
+    ] } },
+  { name:'Fortification Wall (B8)', baseType:'blocking', render:'polygon', official:'B8',
+    shapeDef:{ kind:'polygon', points:[
+      {x:0.502,y:-4.48}, {x:0.498,y:-3.5}, {x:-0.502,y:-3.495}, {x:-0.512,y:-2.49},
+      {x:-1.498,y:-2.495}, {x:-1.498,y:-0.505}, {x:-2.498,y:-0.495}, {x:-2.498,y:0.495},
+      {x:-1.502,y:0.505}, {x:-1.502,y:2.5}, {x:-0.512,y:2.5}, {x:-0.502,y:3.52},
+      {x:0.498,y:3.525}, {x:0.502,y:4.48}, {x:2.492,y:4.48}, {x:2.492,y:3.525},
+      {x:1.498,y:3.52}, {x:1.498,y:2.505}, {x:0.498,y:2.5}, {x:0.492,y:1.505},
+      {x:-0.512,y:1.49}, {x:-0.507,y:-1.495}, {x:0.492,y:-1.5}, {x:0.502,y:-2.5},
+      {x:1.498,y:-2.5}, {x:1.502,y:-3.505}, {x:2.498,y:-3.505}, {x:2.498,y:-4.48}
+    ] } },
+  { name:'Blocking Terrain (B6)', baseType:'blocking', render:'polygon', official:'B6',
+    shapeDef:{ kind:'polygon', points:[
+      {x:-0.765,y:-1.77}, {x:-1.77,y:-0.765}, {x:-1.77,y:0.765}, {x:-0.765,y:1.77},
+      {x:0.76,y:1.77}, {x:1.77,y:0.76}, {x:1.765,y:-0.765}, {x:0.76,y:-1.77}
+    ] } },
+  { name:'Butte (B7)', baseType:'blocking', render:'polygon', official:'B7',
+    shapeDef:{ kind:'polygon', points:[
+      {x:0.13,y:-4.773}, {x:0.957,y:-4.575}, {x:1.323,y:-4.376}, {x:1.583,y:-4.178},
+      {x:1.783,y:-3.979}, {x:1.943,y:-3.781}, {x:2.073,y:-3.583}, {x:2.173,y:-3.384},
+      {x:2.257,y:-3.186}, {x:2.32,y:-2.987}, {x:2.36,y:-2.789}, {x:2.383,y:-2.59},
+      {x:2.393,y:-2.392}, {x:2.387,y:-2.193}, {x:2.363,y:-1.995}, {x:2.32,y:-1.796},
+      {x:2.263,y:-1.598}, {x:2.18,y:-1.399}, {x:2.08,y:-1.201}, {x:1.977,y:-1.002},
+      {x:1.893,y:-0.804}, {x:1.833,y:-0.605}, {x:1.79,y:-0.407}, {x:1.763,y:-0.208},
+      {x:1.75,y:0.0}, {x:1.763,y:0.208}, {x:1.79,y:0.407}, {x:1.833,y:0.605},
+      {x:1.893,y:0.804}, {x:1.977,y:1.002}, {x:2.08,y:1.201}, {x:2.18,y:1.399},
+      {x:2.263,y:1.598}, {x:2.32,y:1.796}, {x:2.363,y:1.995}, {x:2.387,y:2.193},
+      {x:2.393,y:2.392}, {x:2.387,y:2.59}, {x:2.363,y:2.789}, {x:2.32,y:2.987},
+      {x:2.257,y:3.186}, {x:2.173,y:3.384}, {x:2.08,y:3.583}, {x:1.947,y:3.781},
+      {x:1.787,y:3.979}, {x:1.587,y:4.178}, {x:1.333,y:4.376}, {x:0.97,y:4.575},
+      {x:0.123,y:4.773}, {x:-0.123,y:4.773}, {x:-0.97,y:4.575}, {x:-1.333,y:4.376},
+      {x:-1.587,y:4.178}, {x:-1.787,y:3.979}, {x:-1.947,y:3.781}, {x:-2.08,y:3.583},
+      {x:-2.173,y:3.384}, {x:-2.257,y:3.186}, {x:-2.32,y:2.987}, {x:-2.363,y:2.789},
+      {x:-2.387,y:2.59}, {x:-2.393,y:2.392}, {x:-2.387,y:2.193}, {x:-2.363,y:1.995},
+      {x:-2.32,y:1.796}, {x:-2.263,y:1.598}, {x:-2.18,y:1.399}, {x:-2.08,y:1.201},
+      {x:-1.977,y:1.002}, {x:-1.893,y:0.804}, {x:-1.833,y:0.605}, {x:-1.79,y:0.407},
+      {x:-1.763,y:0.208}, {x:-1.75,y:0.0}, {x:-1.763,y:-0.208}, {x:-1.79,y:-0.407},
+      {x:-1.833,y:-0.605}, {x:-1.893,y:-0.804}, {x:-1.977,y:-1.002}, {x:-2.08,y:-1.201},
+      {x:-2.18,y:-1.399}, {x:-2.263,y:-1.598}, {x:-2.32,y:-1.796}, {x:-2.363,y:-1.995},
+      {x:-2.387,y:-2.193}, {x:-2.393,y:-2.392}, {x:-2.383,y:-2.59}, {x:-2.36,y:-2.789},
+      {x:-2.32,y:-2.987}, {x:-2.257,y:-3.186}, {x:-2.173,y:-3.384}, {x:-2.073,y:-3.583},
+      {x:-1.943,y:-3.781}, {x:-1.783,y:-3.979}, {x:-1.583,y:-4.178}, {x:-1.323,y:-4.376},
+      {x:-0.957,y:-4.575}, {x:-0.13,y:-4.773}
+    ] } },
+  { name:'Blocking Terrain (B1)', baseType:'blocking', render:'polygon', official:'B1',
+    shapeDef:{ kind:'polygon', points:[
+      {x:-3.292,y:-4.565}, {x:-3.308,y:-2.5}, {x:-1.798,y:-2.475}, {x:-1.792,y:2.46},
+      {x:-3.308,y:2.495}, {x:-3.308,y:4.545}, {x:3.292,y:4.565}, {x:3.288,y:2.475},
+      {x:0.292,y:2.47}, {x:0.292,y:-2.475}, {x:3.288,y:-2.485}, {x:3.308,y:-4.55}
+    ] } },
+  { name:'Blocking Terrain (B5)', baseType:'blocking', render:'polygon', official:'B5',
+    shapeDef:{ kind:'polygon', points:[
+      {x:-1.198,y:-4.02}, {x:-2.208,y:-3.015}, {x:-2.208,y:-1.615}, {x:-1.208,y:-0.615},
+      {x:-1.208,y:3.015}, {x:-0.202,y:4.02}, {x:1.202,y:4.02}, {x:2.202,y:3.02},
+      {x:2.208,y:1.68}, {x:1.208,y:0.61}, {x:1.208,y:-3.015}, {x:0.202,y:-4.02}
+    ] } },
+  { name:'Blocking Terrain (B4)', baseType:'blocking', render:'zonedRect', official:'B4',
+    shapeDef:{ kind:'rect', w:3.045, h:10.045 },
+    zones:[ { h:3.5275, baseType:'blocking' }, { h:2.985, baseType:'clear' }, { h:3.5325, baseType:'blocking' } ] },
+  { name:'Blocking Terrain (B3)', baseType:'blocking', render:'rect', official:'B3',
+    shapeDef:{ kind:'rect', w:3.045, h:10.045 } },
+  { name:'Blocking Terrain (B2)', baseType:'blocking', render:'zonedRect', official:'B2',
+    shapeDef:{ kind:'rect', w:3.0375, h:10.085 },
+    zones:[ { h:6.03, baseType:'blocking' }, { h:2.5, baseType:'clear' }, { h:1.555, baseType:'blocking' } ] },
+  { name:'Combined Terrain (C2)', baseType:'hindering', render:'splitPolygon', official:'C2',
+    shapeDef:{ kind:'polygon', points:[ {x:0.807,y:-4.963}, {x:0.613,y:-4.937}, {x:0.427,y:-4.89}, {x:0.247,y:-4.837}, {x:0.073,y:-4.777}, {x:-0.1,y:-4.703}, {x:-0.267,y:-4.623}, {x:-0.433,y:-4.537}, {x:-0.6,y:-4.443}, {x:-0.76,y:-4.343}, {x:-0.92,y:-4.237}, {x:-1.067,y:-4.123}, {x:-1.22,y:-4.003}, {x:-1.373,y:-3.87}, {x:-1.513,y:-3.737}, {x:-1.66,y:-3.59}, {x:-1.787,y:-3.443}, {x:-1.913,y:-3.29}, {x:-2.027,y:-3.143}, {x:-2.133,y:-2.983}, {x:-2.24,y:-2.823}, {x:-2.333,y:-2.663}, {x:-2.427,y:-2.497}, {x:-2.507,y:-2.33}, {x:-2.58,y:-2.157}, {x:-2.653,y:-1.983}, {x:-2.713,y:-1.81}, {x:-2.767,y:-1.63}, {x:-2.813,y:-1.45}, {x:-2.86,y:-1.263}, {x:-2.9,y:-1.077}, {x:-2.927,y:-0.89}, {x:-2.953,y:-0.697}, {x:-2.973,y:-0.503}, {x:-2.98,y:-0.303}, {x:-2.987,y:-0.103}, {x:-2.987,y:0.097}, {x:-2.98,y:0.297}, {x:-2.973,y:0.497}, {x:-2.953,y:0.69}, {x:-2.927,y:0.877}, {x:-2.9,y:1.07}, {x:-2.86,y:1.257}, {x:-2.82,y:1.437}, {x:-2.767,y:1.617}, {x:-2.713,y:1.797}, {x:-2.647,y:1.977}, {x:-2.58,y:2.15}, {x:-2.507,y:2.317}, {x:-2.427,y:2.49}, {x:-2.333,y:2.657}, {x:-2.24,y:2.817}, {x:-2.14,y:2.977}, {x:-2.033,y:3.13}, {x:-1.913,y:3.283}, {x:-1.787,y:3.437}, {x:-1.66,y:3.583}, {x:-1.513,y:3.73}, {x:-1.373,y:3.863}, {x:-1.22,y:3.997}, {x:-1.073,y:4.117}, {x:-0.92,y:4.23}, {x:-0.76,y:4.337}, {x:-0.6,y:4.437}, {x:-0.44,y:4.53}, {x:-0.273,y:4.617}, {x:-0.1,y:4.697}, {x:0.067,y:4.77}, {x:0.247,y:4.837}, {x:0.427,y:4.89}, {x:0.607,y:4.93}, {x:0.8,y:4.957}, {x:0.987,y:4.95}, {x:1.187,y:4.937}, {x:1.373,y:4.91}, {x:1.56,y:4.877}, {x:1.747,y:4.837}, {x:1.927,y:4.777}, {x:2.1,y:4.71}, {x:2.26,y:4.61}, {x:2.407,y:4.483}, {x:2.54,y:4.337}, {x:2.66,y:4.177}, {x:2.747,y:4.017}, {x:2.827,y:3.843}, {x:2.88,y:3.67}, {x:2.927,y:3.483}, {x:2.96,y:3.297}, {x:2.98,y:3.103}, {x:2.98,y:2.903}, {x:2.973,y:2.703}, {x:2.953,y:2.51}, {x:2.927,y:2.317}, {x:2.893,y:2.13}, {x:2.847,y:1.95}, {x:2.793,y:1.77}, {x:2.733,y:1.59}, {x:2.66,y:1.417}, {x:2.58,y:1.25}, {x:2.487,y:1.09}, {x:2.38,y:0.923}, {x:2.28,y:0.77}, {x:2.18,y:0.61}, {x:2.08,y:0.443}, {x:2.0,y:0.277}, {x:1.947,y:0.097}, {x:1.947,y:-0.097}, {x:1.993,y:-0.277}, {x:2.08,y:-0.45}, {x:2.173,y:-0.61}, {x:2.273,y:-0.77}, {x:2.38,y:-0.93}, {x:2.48,y:-1.09}, {x:2.573,y:-1.25}, {x:2.653,y:-1.417}, {x:2.727,y:-1.59}, {x:2.793,y:-1.77}, {x:2.847,y:-1.95}, {x:2.887,y:-2.13}, {x:2.927,y:-2.317}, {x:2.953,y:-2.503}, {x:2.973,y:-2.697}, {x:2.98,y:-2.897}, {x:2.98,y:-3.103}, {x:2.96,y:-3.297}, {x:2.933,y:-3.483}, {x:2.887,y:-3.67}, {x:2.827,y:-3.843}, {x:2.753,y:-4.017}, {x:2.66,y:-4.177}, {x:2.547,y:-4.337}, {x:2.413,y:-4.483}, {x:2.267,y:-4.61}, {x:2.107,y:-4.71}, {x:1.933,y:-4.783}, {x:1.753,y:-4.837}, {x:1.573,y:-4.883}, {x:1.387,y:-4.917}, {x:1.193,y:-4.943}, {x:1.0,y:-4.957} ] },
+    zones:[
+      { baseType:'shallowWater', points:[ [0.807,-4.963], [0.613,-4.937], [0.427,-4.89], [0.247,-4.837], [0.073,-4.777], [-0.1,-4.703], [-0.267,-4.623], [-0.433,-4.537], [-0.6,-4.443], [-0.76,-4.343], [-0.92,-4.237], [-1.067,-4.123], [-1.22,-4.003], [-1.373,-3.87], [-1.513,-3.737], [-1.66,-3.59], [-1.787,-3.443], [-1.913,-3.29], [-2.027,-3.143], [-2.133,-2.983], [-2.24,-2.823], [-2.333,-2.663], [-2.427,-2.497], [-2.507,-2.33], [-2.58,-2.157], [-2.653,-1.983], [-2.713,-1.81], [-2.767,-1.63], [-2.813,-1.45], [-2.86,-1.263], [-2.9,-1.077], [-2.927,-0.89], [-2.953,-0.697], [-2.973,-0.503], [-2.98,-0.303], [-2.987,-0.103], [-2.987,0.097], [-2.98,0.297], [-2.973,0.497], [-2.953,0.69], [-2.927,0.877], [-2.9,1.07], [-2.86,1.257], [-2.82,1.437], [-2.767,1.617], [-2.713,1.797], [-2.647,1.977], [-2.58,2.15], [-2.507,2.317], [-2.427,2.49], [-2.333,2.657], [-2.24,2.817], [-2.14,2.977], [-2.033,3.13], [-1.913,3.283], [-1.787,3.437], [-1.66,3.583], [-1.513,3.73], [-1.373,3.863], [-1.22,3.997], [-1.073,4.117], [-0.92,4.23], [-0.76,4.337], [-0.6,4.437], [-0.44,4.53], [-0.273,4.617], [-0.1,4.697], [0.067,4.77], [0.247,4.837], [0.427,4.89], [0.607,4.93], [0.8,4.957], [0.746,4.63], [0.513,4.13], [0.58,3.637], [1.066,3.144], [0.993,2.644], [0.313,2.15], [0.326,1.65], [0.38,1.157], [0.14,0.657], [0.0,0.164], [0.006,-0.336], [0.013,-0.83], [0.053,-1.33], [0.093,-1.823], [0.146,-2.316], [0.213,-2.816], [0.32,-3.31], [0.4,-3.81], [0.513,-4.303], [0.746,-4.803] ] },
+      { baseType:'hindering', points:[ [0.746,-4.803], [0.513,-4.303], [0.4,-3.81], [0.32,-3.31], [0.213,-2.816], [0.146,-2.316], [0.093,-1.823], [0.053,-1.33], [0.013,-0.83], [0.006,-0.336], [0.0,0.164], [0.14,0.657], [0.38,1.157], [0.326,1.65], [0.313,2.15], [0.993,2.644], [1.066,3.144], [0.58,3.637], [0.513,4.13], [0.746,4.63], [0.987,4.95], [1.187,4.937], [1.373,4.91], [1.56,4.877], [1.747,4.837], [1.927,4.777], [2.1,4.71], [2.26,4.61], [2.407,4.483], [2.54,4.337], [2.66,4.177], [2.747,4.017], [2.827,3.843], [2.88,3.67], [2.927,3.483], [2.96,3.297], [2.98,3.103], [2.98,2.903], [2.973,2.703], [2.953,2.51], [2.927,2.317], [2.893,2.13], [2.847,1.95], [2.793,1.77], [2.733,1.59], [2.66,1.417], [2.58,1.25], [2.487,1.09], [2.38,0.923], [2.28,0.77], [2.18,0.61], [2.08,0.443], [2.0,0.277], [1.947,0.097], [1.947,-0.097], [1.993,-0.277], [2.08,-0.45], [2.173,-0.61], [2.273,-0.77], [2.38,-0.93], [2.48,-1.09], [2.573,-1.25], [2.653,-1.417], [2.727,-1.59], [2.793,-1.77], [2.847,-1.95], [2.887,-2.13], [2.927,-2.317], [2.953,-2.503], [2.973,-2.697], [2.98,-2.897], [2.98,-3.103], [2.96,-3.297], [2.933,-3.483], [2.887,-3.67], [2.827,-3.843], [2.753,-4.017], [2.66,-4.177], [2.547,-4.337], [2.413,-4.483], [2.267,-4.61], [2.107,-4.71], [1.933,-4.783], [1.753,-4.837], [1.573,-4.883], [1.387,-4.917], [1.193,-4.943], [1.0,-4.957] ] }
+    ] },
+  { name:'Combined Terrain (C3)', baseType:'hindering', render:'nestedPolygons', official:'C3',
+    shapeDef:{ kind:'rect', w:5.0067, h:9.0133 }, outerRadius:0.35,
+    innerZones:[
+      { baseType:'blocking', points:[[-0.503,-4.5],[-2.263,-4.5],[-2.497,-4.267],[-2.497,-2.513],[-1.51,-2.513],[-1.497,-3.513],[-0.503,-3.513]] },
+      { baseType:'blocking', points:[[-0.497,-1.493],[-0.49,-0.507],[0.517,-0.5],[0.517,0.493],[2.497,0.493],[2.497,-2.5],[0.517,-2.5],[0.51,-1.5]] },
+      { baseType:'blocking', points:[[-2.497,1.5],[-2.497,4.26],[-2.303,4.473],[-0.503,4.493],[-0.497,3.493],[0.503,3.493],[0.503,2.507],[-0.503,2.493],[-0.503,1.5]] }
+    ] },
+  { name:'Combined Terrain (C4)', baseType:'elevated', render:'splitPolygon', official:'C4',
+    shapeDef:{ kind:'polygon', points:[ {x:-1.53,y:-4.603}, {x:-1.763,y:-4.457}, {x:-1.93,y:-4.23}, {x:-2.083,y:-3.997}, {x:-2.197,y:-3.757}, {x:-2.283,y:-3.497}, {x:-2.377,y:-3.243}, {x:-2.443,y:-2.977}, {x:-2.483,y:-2.697}, {x:-2.497,y:-2.41}, {x:-2.497,y:-2.117}, {x:-2.497,y:-1.823}, {x:-2.57,y:-1.597}, {x:-2.863,y:-1.597}, {x:-3.157,y:-1.597}, {x:-3.45,y:-1.597}, {x:-3.497,y:-1.343}, {x:-3.497,y:-1.05}, {x:-3.497,y:-0.757}, {x:-3.497,y:-0.463}, {x:-3.497,y:-0.17}, {x:-3.497,y:0.123}, {x:-3.497,y:0.383}, {x:-3.497,y:0.683}, {x:-3.497,y:0.977}, {x:-3.497,y:1.27}, {x:-3.497,y:1.563}, {x:-3.497,y:1.857}, {x:-3.497,y:2.15}, {x:-3.483,y:2.437}, {x:-3.39,y:2.697}, {x:-3.263,y:2.937}, {x:-3.097,y:3.163}, {x:-2.897,y:3.37}, {x:-2.697,y:3.583}, {x:-2.503,y:3.79}, {x:-2.283,y:3.97}, {x:-2.057,y:4.143}, {x:-1.823,y:4.283}, {x:-1.577,y:4.39}, {x:-1.33,y:4.503}, {x:-1.057,y:4.563}, {x:-0.77,y:4.577}, {x:-0.49,y:4.59}, {x:-0.203,y:4.563}, {x:0.083,y:4.557}, {x:0.37,y:4.563}, {x:0.663,y:4.577}, {x:0.943,y:4.543}, {x:1.217,y:4.503}, {x:1.49,y:4.443}, {x:1.73,y:4.317}, {x:1.963,y:4.163}, {x:2.17,y:3.983}, {x:2.383,y:3.803}, {x:2.597,y:3.617}, {x:2.803,y:3.403}, {x:2.997,y:3.197}, {x:3.183,y:2.983}, {x:3.343,y:2.757}, {x:3.47,y:2.51}, {x:3.49,y:2.23}, {x:3.49,y:1.93}, {x:3.49,y:1.637}, {x:3.49,y:1.343}, {x:3.49,y:1.05}, {x:3.49,y:0.757}, {x:3.49,y:0.463}, {x:3.49,y:0.33}, {x:3.49,y:0.037}, {x:3.49,y:-0.257}, {x:3.49,y:-0.55}, {x:3.49,y:-0.843}, {x:3.49,y:-1.143}, {x:3.49,y:-1.437}, {x:3.357,y:-1.597}, {x:3.063,y:-1.597}, {x:2.77,y:-1.597}, {x:2.503,y:-1.63}, {x:2.503,y:-1.923}, {x:2.503,y:-2.217}, {x:2.503,y:-2.51}, {x:2.457,y:-2.79}, {x:2.41,y:-3.057}, {x:2.33,y:-3.323}, {x:2.243,y:-3.583}, {x:2.097,y:-3.81}, {x:1.983,y:-4.063}, {x:1.87,y:-4.31}, {x:1.657,y:-4.503}, {x:1.41,y:-4.603}, {x:1.11,y:-4.603}, {x:0.817,y:-4.603}, {x:0.523,y:-4.603}, {x:0.23,y:-4.603}, {x:-0.063,y:-4.603}, {x:-0.357,y:-4.603}, {x:-0.65,y:-4.603}, {x:-0.943,y:-4.603}, {x:-1.237,y:-4.603} ] },
+    zones:[
+      { baseType:'elevated', points:[ [-1.503,-4.557], [-1.703,-4.437], [-1.843,-4.263], [-1.97,-4.07], [-2.09,-3.877], [-2.177,-3.677], [-2.243,-3.457], [-2.31,-3.25], [-2.377,-3.037], [-2.423,-2.81], [-2.443,-2.577], [-2.443,-2.337], [-2.443,-2.097], [-2.443,-1.857], [-2.443,-1.617], [-2.237,-1.563], [-2.01,-1.55], [-1.79,-1.49], [-1.617,-1.343], [-1.47,-1.177], [-1.363,-0.983], [-1.29,-0.77], [-1.11,-0.643], [-0.93,-0.497], [-0.783,-0.33], [-0.71,-0.117], [-0.63,0.09], [-0.477,0.257], [-0.297,0.383], [-0.063,0.357], [0.163,0.357], [0.357,0.25], [0.543,0.123], [0.723,-0.017], [0.857,-0.203], [0.977,-0.39], [1.143,-0.55], [1.297,-0.717], [1.483,-0.85], [1.657,-1.01], [1.85,-1.123], [2.037,-1.25], [2.217,-1.403], [2.41,-1.51], [2.457,-1.717], [2.457,-1.957], [2.457,-2.197], [2.457,-2.443], [2.43,-2.67], [2.39,-2.897], [2.343,-3.117], [2.277,-3.33], [2.21,-3.543], [2.077,-3.737], [1.983,-3.937], [1.89,-4.143], [1.777,-4.33], [1.597,-4.477], [1.39,-4.557], [1.15,-4.557], [0.91,-4.557], [0.663,-4.557], [0.423,-4.557], [0.183,-4.557], [-0.057,-4.557], [-0.297,-4.557], [-0.543,-4.557], [-0.783,-4.557], [-1.023,-4.557], [-1.263,-4.557] ] },
+      { baseType:'hindering', points:[ [-3.497,-1.597], [-3.497,-1.277], [-3.497,-0.963], [-3.497,-0.643], [-3.497,-0.33], [-3.497,-0.01], [-3.497,0.303], [-3.243,0.45], [-3.01,0.63], [-2.83,0.877], [-2.67,1.123], [-2.523,1.377], [-2.283,1.577], [-2.057,1.777], [-1.817,1.95], [-1.557,2.09], [-1.31,2.257], [-1.03,2.33], [-0.73,2.317], [-0.443,2.25], [-0.143,2.27], [0.163,2.29], [0.457,2.337], [0.75,2.283], [1.003,2.137], [1.243,1.963], [1.483,1.79], [1.697,1.57], [1.903,1.343], [2.143,1.163], [2.33,0.923], [2.517,0.683], [2.75,0.503], [3.043,0.443], [3.35,0.443], [3.49,0.257], [3.49,-0.063], [3.49,-0.377], [3.49,-0.697], [3.49,-1.01], [3.49,-1.33], [3.443,-1.597], [3.13,-1.597], [2.81,-1.597], [2.497,-1.597], [2.29,-1.437], [2.05,-1.243], [1.81,-1.07], [1.557,-0.917], [1.317,-0.723], [1.11,-0.517], [0.917,-0.29], [0.763,-0.037], [0.523,0.137], [0.283,0.303], [0.003,0.377], [-0.297,0.397], [-0.523,0.217], [-0.683,-0.023], [-0.783,-0.303], [-0.983,-0.523], [-1.223,-0.69], [-1.37,-0.937], [-1.497,-1.197], [-1.703,-1.41], [-1.963,-1.53], [-2.257,-1.55], [-2.55,-1.597], [-2.87,-1.597], [-3.183,-1.597] ] },
+      { baseType:'shallowWater', points:[ [-3.497,0.323], [-3.497,0.77], [-3.497,1.217], [-3.497,1.663], [-3.497,2.11], [-3.457,2.543], [-3.277,2.917], [-3.017,3.257], [-2.71,3.57], [-2.403,3.877], [-2.063,4.137], [-1.703,4.343], [-1.323,4.51], [-0.903,4.577], [-0.47,4.59], [-0.037,4.557], [0.403,4.563], [0.837,4.563], [1.257,4.497], [1.65,4.363], [1.997,4.13], [2.323,3.857], [2.643,3.57], [2.95,3.257], [3.217,2.917], [3.443,2.57], [3.49,2.143], [3.49,1.697], [3.49,1.25], [3.49,0.803], [3.41,0.437], [2.99,0.477], [2.603,0.617], [2.323,0.943], [2.043,1.27], [1.723,1.55], [1.43,1.85], [1.083,2.103], [0.73,2.31], [0.31,2.317], [-0.11,2.29], [-0.523,2.283], [-0.943,2.337], [-1.343,2.243], [-1.703,2.017], [-2.05,1.797], [-2.37,1.523], [-2.643,1.203], [-2.863,0.843], [-3.137,0.51] ] }
+    ],
+    accessCurves:[
+      [[-1.53,-4.603],[-1.79,-4.43],[-1.977,-4.177],[-2.13,-3.91],[-2.25,-3.63],[-2.323,-3.33],[-2.423,-3.043],[-2.477,-2.737],[-2.497,-2.41],[-2.497,-2.083],[-2.497,-1.75],[-2.457,-1.743],[-2.457,-2.077],[-2.457,-2.41],[-2.437,-2.73],[-2.383,-3.037],[-2.277,-3.323],[-2.203,-3.623],[-2.083,-3.903],[-1.923,-4.17],[-1.73,-4.423],[-1.463,-4.563],[-1.13,-4.563],[-0.803,-4.563],[-0.47,-4.563],[-0.137,-4.563],[0.19,-4.563],[0.523,-4.563],[0.85,-4.563],[1.183,-4.563],[1.51,-4.55],[1.763,-4.357],[1.923,-4.097],[2.043,-3.817],[2.21,-3.557],[2.303,-3.263],[2.383,-2.97],[2.443,-2.657],[2.463,-2.337],[2.463,-2.01],[2.463,-1.677],[2.503,-1.817],[2.503,-2.15],[2.503,-2.477],[2.457,-2.79],[2.397,-3.097],[2.31,-3.397],[2.19,-3.67],[2.037,-3.943],[1.917,-4.217],[1.71,-4.457],[1.443,-4.603],[1.11,-4.603],[0.777,-4.603],[0.45,-4.603],[0.117,-4.603],[-0.21,-4.603],[-0.543,-4.603],[-0.87,-4.603],[-1.203,-4.603]]
+    ] },
+  { name:'Combined Terrain (C1)', baseType:'hindering', render:'nestedRect', official:'C1',
+    shapeDef:{ kind:'rect', w:6.92, h:4.9333 }, outerRadius:0.35,
+    innerZones:[ { cx:0.003, cy:-0.983, w:3.0067, h:2.9667, baseType:'blocking' } ] },
+  { name:'Water Terrain (W3)', baseType:'shallowWater', render:'rect', official:'W3',
+    shapeDef:{ kind:'rect', w:2.04, h:8.0467 }, cornerRadius:0.05 },
+  { name:'Water Terrain (W2)', baseType:'shallowWater', render:'rect', official:'W2',
+    shapeDef:{ kind:'rect', w:4.0333, h:5.0333 }, cornerRadius:0.85 },
+  { name:'Water Terrain (W1)', baseType:'shallowWater', render:'rect', official:'W1',
+    shapeDef:{ kind:'rect', w:6.04, h:8.0267 }, cornerRadius:0.85 },
+  { name:'Woodland (H2)', baseType:'hindering', render:'rect', official:'H2',
+    shapeDef:{ kind:'rect', w:3.54, h:10.04 }, cornerRadius:0.4 },
+  { name:'Woodland (H1)', baseType:'hindering', render:'polygon', official:'H1',
+    shapeDef:{ kind:'polygon', points:[ {x:-0.117,y:-4.517}, {x:-0.343,y:-4.463}, {x:-0.55,y:-4.363}, {x:-0.73,y:-4.217}, {x:-0.877,y:-4.03}, {x:-1.003,y:-3.843}, {x:-1.137,y:-3.65}, {x:-1.263,y:-3.457}, {x:-1.39,y:-3.27}, {x:-1.523,y:-3.077}, {x:-1.65,y:-2.883}, {x:-1.777,y:-2.697}, {x:-1.91,y:-2.503}, {x:-2.037,y:-2.31}, {x:-2.163,y:-2.123}, {x:-2.297,y:-1.93}, {x:-2.43,y:-1.737}, {x:-2.55,y:-1.55}, {x:-2.683,y:-1.357}, {x:-2.817,y:-1.163}, {x:-2.943,y:-0.977}, {x:-3.063,y:-0.783}, {x:-3.17,y:-0.577}, {x:-3.237,y:-0.363}, {x:-3.27,y:-0.13}, {x:-3.27,y:0.11}, {x:-3.237,y:0.343}, {x:-3.17,y:0.557}, {x:-3.07,y:0.763}, {x:-2.95,y:0.957}, {x:-2.817,y:1.15}, {x:-2.69,y:1.337}, {x:-2.563,y:1.53}, {x:-2.43,y:1.723}, {x:-2.303,y:1.91}, {x:-2.177,y:2.103}, {x:-2.043,y:2.297}, {x:-1.917,y:2.483}, {x:-1.79,y:2.677}, {x:-1.657,y:2.87}, {x:-1.53,y:3.057}, {x:-1.397,y:3.25}, {x:-1.27,y:3.443}, {x:-1.143,y:3.63}, {x:-1.01,y:3.823}, {x:-0.883,y:4.017}, {x:-0.737,y:4.197}, {x:-0.557,y:4.35}, {x:-0.35,y:4.45}, {x:-0.13,y:4.503}, {x:0.11,y:4.503}, {x:0.337,y:4.45}, {x:0.537,y:4.357}, {x:0.723,y:4.203}, {x:0.863,y:4.023}, {x:0.997,y:3.83}, {x:1.13,y:3.637}, {x:1.257,y:3.45}, {x:1.383,y:3.257}, {x:1.517,y:3.063}, {x:1.643,y:2.877}, {x:1.77,y:2.683}, {x:1.903,y:2.49}, {x:2.03,y:2.303}, {x:2.157,y:2.11}, {x:2.29,y:1.917}, {x:2.417,y:1.73}, {x:2.55,y:1.537}, {x:2.677,y:1.343}, {x:2.803,y:1.157}, {x:2.937,y:0.963}, {x:3.057,y:0.77}, {x:3.157,y:0.57}, {x:3.223,y:0.35}, {x:3.257,y:0.117}, {x:3.257,y:-0.117}, {x:3.23,y:-0.35}, {x:3.163,y:-0.57}, {x:3.063,y:-0.77}, {x:2.937,y:-0.97}, {x:2.817,y:-1.157}, {x:2.683,y:-1.35}, {x:2.55,y:-1.543}, {x:2.423,y:-1.73}, {x:2.297,y:-1.923}, {x:2.163,y:-2.117}, {x:2.037,y:-2.303}, {x:1.903,y:-2.497}, {x:1.777,y:-2.683}, {x:1.65,y:-2.877}, {x:1.517,y:-3.07}, {x:1.39,y:-3.257}, {x:1.263,y:-3.45}, {x:1.13,y:-3.643}, {x:1.003,y:-3.83}, {x:0.877,y:-4.023}, {x:0.73,y:-4.21}, {x:0.55,y:-4.357}, {x:0.343,y:-4.463}, {x:0.123,y:-4.51} ] } },
+  { name:'Water Terrain (W7)', baseType:'shallowWater', render:'polygon', official:'W7',
+    shapeDef:{ kind:'polygon', points:[ {x:2.257,y:-2.517}, {x:2.063,y:-2.503}, {x:1.883,y:-2.483}, {x:1.703,y:-2.457}, {x:1.517,y:-2.423}, {x:1.343,y:-2.39}, {x:1.17,y:-2.343}, {x:0.997,y:-2.297}, {x:0.83,y:-2.237}, {x:0.663,y:-2.177}, {x:0.497,y:-2.11}, {x:0.33,y:-2.03}, {x:0.177,y:-1.957}, {x:0.017,y:-1.87}, {x:-0.137,y:-1.777}, {x:-0.29,y:-1.677}, {x:-0.437,y:-1.577}, {x:-0.583,y:-1.463}, {x:-0.73,y:-1.343}, {x:-0.87,y:-1.223}, {x:-1.01,y:-1.09}, {x:-1.143,y:-0.957}, {x:-1.27,y:-0.817}, {x:-1.397,y:-0.67}, {x:-1.51,y:-0.523}, {x:-1.617,y:-0.377}, {x:-1.717,y:-0.23}, {x:-1.81,y:-0.077}, {x:-1.903,y:0.083}, {x:-1.983,y:0.237}, {x:-2.063,y:0.403}, {x:-2.13,y:0.563}, {x:-2.197,y:0.73}, {x:-2.257,y:0.897}, {x:-2.31,y:1.07}, {x:-2.357,y:1.243}, {x:-2.403,y:1.417}, {x:-2.437,y:1.59}, {x:-2.463,y:1.777}, {x:-2.49,y:1.957}, {x:-2.503,y:2.143}, {x:-2.51,y:2.33}, {x:-2.497,y:2.51}, {x:-2.303,y:2.51}, {x:-2.11,y:2.51}, {x:-1.917,y:2.51}, {x:-1.723,y:2.51}, {x:-1.53,y:2.51}, {x:-1.343,y:2.51}, {x:-1.15,y:2.51}, {x:-0.957,y:2.51}, {x:-0.763,y:2.51}, {x:-0.57,y:2.51}, {x:-0.49,y:2.39}, {x:-0.477,y:2.203}, {x:-0.45,y:2.023}, {x:-0.417,y:1.843}, {x:-0.37,y:1.67}, {x:-0.317,y:1.497}, {x:-0.25,y:1.33}, {x:-0.177,y:1.17}, {x:-0.09,y:1.01}, {x:0.003,y:0.857}, {x:0.103,y:0.71}, {x:0.223,y:0.563}, {x:0.343,y:0.43}, {x:0.483,y:0.297}, {x:0.623,y:0.17}, {x:0.77,y:0.063}, {x:0.923,y:-0.037}, {x:1.077,y:-0.13}, {x:1.237,y:-0.21}, {x:1.397,y:-0.283}, {x:1.57,y:-0.343}, {x:1.737,y:-0.397}, {x:1.917,y:-0.437}, {x:2.097,y:-0.47}, {x:2.283,y:-0.483}, {x:2.47,y:-0.497}, {x:2.51,y:-0.65}, {x:2.51,y:-0.843}, {x:2.51,y:-1.037}, {x:2.51,y:-1.23}, {x:2.51,y:-1.423}, {x:2.51,y:-1.617}, {x:2.51,y:-1.803}, {x:2.51,y:-1.997}, {x:2.51,y:-2.19}, {x:2.51,y:-2.383}, {x:2.443,y:-2.517} ] } },
+  { name:'Water Terrain (W6)', baseType:'shallowWater', render:'polygon', official:'W6',
+    shapeDef:{ kind:'polygon', points:[ {x:3.25,y:-3.517}, {x:2.983,y:-3.497}, {x:2.717,y:-3.477}, {x:2.457,y:-3.443}, {x:2.197,y:-3.397}, {x:1.943,y:-3.35}, {x:1.697,y:-3.29}, {x:1.45,y:-3.217}, {x:1.21,y:-3.143}, {x:0.97,y:-3.05}, {x:0.737,y:-2.957}, {x:0.503,y:-2.857}, {x:0.277,y:-2.743}, {x:0.05,y:-2.617}, {x:-0.17,y:-2.49}, {x:-0.383,y:-2.357}, {x:-0.597,y:-2.21}, {x:-0.81,y:-2.05}, {x:-1.01,y:-1.883}, {x:-1.217,y:-1.703}, {x:-1.41,y:-1.523}, {x:-1.603,y:-1.33}, {x:-1.783,y:-1.13}, {x:-1.957,y:-0.923}, {x:-2.117,y:-0.717}, {x:-2.27,y:-0.51}, {x:-2.417,y:-0.29}, {x:-2.55,y:-0.077}, {x:-2.677,y:0.15}, {x:-2.797,y:0.377}, {x:-2.903,y:0.603}, {x:-3.003,y:0.837}, {x:-3.097,y:1.07}, {x:-3.177,y:1.31}, {x:-3.25,y:1.557}, {x:-3.317,y:1.803}, {x:-3.377,y:2.05}, {x:-3.423,y:2.303}, {x:-3.463,y:2.563}, {x:-3.49,y:2.823}, {x:-3.51,y:3.09}, {x:-3.523,y:3.363}, {x:-3.397,y:3.51}, {x:-3.123,y:3.51}, {x:-2.843,y:3.51}, {x:-2.57,y:3.51}, {x:-2.297,y:3.51}, {x:-2.023,y:3.51}, {x:-1.75,y:3.51}, {x:-1.477,y:3.51}, {x:-1.203,y:3.51}, {x:-0.93,y:3.51}, {x:-0.65,y:3.51}, {x:-0.377,y:3.51}, {x:-0.103,y:3.51}, {x:0.17,y:3.51}, {x:0.443,y:3.51}, {x:0.517,y:3.303}, {x:0.543,y:3.037}, {x:0.597,y:2.783}, {x:0.67,y:2.543}, {x:0.763,y:2.303}, {x:0.877,y:2.077}, {x:1.01,y:1.857}, {x:1.163,y:1.643}, {x:1.337,y:1.443}, {x:1.53,y:1.257}, {x:1.737,y:1.09}, {x:1.95,y:0.95}, {x:2.177,y:0.823}, {x:2.403,y:0.723}, {x:2.643,y:0.637}, {x:2.897,y:0.57}, {x:3.15,y:0.53}, {x:3.417,y:0.51}, {x:3.517,y:0.33}, {x:3.517,y:0.057}, {x:3.517,y:-0.217}, {x:3.517,y:-0.49}, {x:3.517,y:-0.763}, {x:3.517,y:-1.043}, {x:3.517,y:-1.317}, {x:3.517,y:-1.59}, {x:3.517,y:-1.863}, {x:3.517,y:-2.137}, {x:3.517,y:-2.41}, {x:3.517,y:-2.683}, {x:3.517,y:-2.963}, {x:3.517,y:-3.237}, {x:3.517,y:-3.51} ] } },
+  { name:'Water Terrain (W5)', baseType:'shallowWater', render:'rect', official:'W5',
+    shapeDef:{ kind:'rect', w:4.0333, h:10.04 }, cornerRadius:0.95 },
+  { name:'Water Terrain (W4)', baseType:'shallowWater', render:'polygon', official:'W4',
+    shapeDef:{ kind:'polygon', points:[
+      {x:0.163,y:-4.763}, {x:0.96,y:-4.565}, {x:1.323,y:-4.366}, {x:1.583,y:-4.168},
+      {x:1.783,y:-3.969}, {x:1.94,y:-3.771}, {x:2.067,y:-3.573}, {x:2.17,y:-3.374},
+      {x:2.253,y:-3.176}, {x:2.31,y:-2.977}, {x:2.353,y:-2.779}, {x:2.377,y:-2.58},
+      {x:2.387,y:-2.382}, {x:2.38,y:-2.183}, {x:2.357,y:-1.985}, {x:2.317,y:-1.786},
+      {x:2.257,y:-1.588}, {x:2.177,y:-1.389}, {x:2.077,y:-1.191}, {x:1.973,y:-0.992},
+      {x:1.89,y:-0.794}, {x:1.827,y:-0.595}, {x:1.783,y:-0.397}, {x:1.757,y:-0.198},
+      {x:1.747,y:0.0}, {x:1.757,y:0.198}, {x:1.783,y:0.397}, {x:1.827,y:0.595},
+      {x:1.89,y:0.794}, {x:1.97,y:0.992}, {x:2.077,y:1.191}, {x:2.173,y:1.389},
+      {x:2.257,y:1.588}, {x:2.313,y:1.786}, {x:2.353,y:1.985}, {x:2.38,y:2.183},
+      {x:2.387,y:2.382}, {x:2.38,y:2.58}, {x:2.353,y:2.779}, {x:2.313,y:2.977},
+      {x:2.253,y:3.176}, {x:2.173,y:3.374}, {x:2.073,y:3.573}, {x:1.94,y:3.771},
+      {x:1.787,y:3.969}, {x:1.587,y:4.168}, {x:1.33,y:4.366}, {x:0.967,y:4.565},
+      {x:0.147,y:4.763}, {x:-0.147,y:4.763}, {x:-0.967,y:4.565}, {x:-1.33,y:4.366},
+      {x:-1.587,y:4.168}, {x:-1.787,y:3.969}, {x:-1.94,y:3.771}, {x:-2.073,y:3.573},
+      {x:-2.173,y:3.374}, {x:-2.253,y:3.176}, {x:-2.313,y:2.977}, {x:-2.353,y:2.779},
+      {x:-2.38,y:2.58}, {x:-2.387,y:2.382}, {x:-2.38,y:2.183}, {x:-2.353,y:1.985},
+      {x:-2.313,y:1.786}, {x:-2.257,y:1.588}, {x:-2.173,y:1.389}, {x:-2.077,y:1.191},
+      {x:-1.97,y:0.992}, {x:-1.89,y:0.794}, {x:-1.827,y:0.595}, {x:-1.783,y:0.397},
+      {x:-1.757,y:0.198}, {x:-1.747,y:0.0}, {x:-1.757,y:-0.198}, {x:-1.783,y:-0.397},
+      {x:-1.827,y:-0.595}, {x:-1.89,y:-0.794}, {x:-1.973,y:-0.992}, {x:-2.077,y:-1.191},
+      {x:-2.177,y:-1.389}, {x:-2.257,y:-1.588}, {x:-2.317,y:-1.786}, {x:-2.357,y:-1.985},
+      {x:-2.38,y:-2.183}, {x:-2.387,y:-2.382}, {x:-2.377,y:-2.58}, {x:-2.353,y:-2.779},
+      {x:-2.31,y:-2.977}, {x:-2.253,y:-3.176}, {x:-2.17,y:-3.374}, {x:-2.067,y:-3.573},
+      {x:-1.94,y:-3.771}, {x:-1.783,y:-3.969}, {x:-1.583,y:-4.168}, {x:-1.323,y:-4.366},
+      {x:-0.96,y:-4.565}, {x:-0.163,y:-4.763}
+    ] } },
+  { name:'Woodland (H4)', baseType:'hindering', render:'polygon', official:'H4',
+    shapeDef:{ kind:'polygon', points:[
+      {x:0.163,y:-4.763}, {x:0.96,y:-4.565}, {x:1.323,y:-4.366}, {x:1.583,y:-4.168},
+      {x:1.783,y:-3.969}, {x:1.94,y:-3.771}, {x:2.067,y:-3.573}, {x:2.17,y:-3.374},
+      {x:2.253,y:-3.176}, {x:2.31,y:-2.977}, {x:2.353,y:-2.779}, {x:2.377,y:-2.58},
+      {x:2.387,y:-2.382}, {x:2.38,y:-2.183}, {x:2.357,y:-1.985}, {x:2.317,y:-1.786},
+      {x:2.257,y:-1.588}, {x:2.177,y:-1.389}, {x:2.077,y:-1.191}, {x:1.973,y:-0.992},
+      {x:1.89,y:-0.794}, {x:1.827,y:-0.595}, {x:1.783,y:-0.397}, {x:1.757,y:-0.198},
+      {x:1.747,y:0.0}, {x:1.757,y:0.198}, {x:1.783,y:0.397}, {x:1.827,y:0.595},
+      {x:1.89,y:0.794}, {x:1.97,y:0.992}, {x:2.077,y:1.191}, {x:2.173,y:1.389},
+      {x:2.257,y:1.588}, {x:2.313,y:1.786}, {x:2.353,y:1.985}, {x:2.38,y:2.183},
+      {x:2.387,y:2.382}, {x:2.38,y:2.58}, {x:2.353,y:2.779}, {x:2.313,y:2.977},
+      {x:2.253,y:3.176}, {x:2.173,y:3.374}, {x:2.073,y:3.573}, {x:1.94,y:3.771},
+      {x:1.787,y:3.969}, {x:1.587,y:4.168}, {x:1.33,y:4.366}, {x:0.967,y:4.565},
+      {x:0.147,y:4.763}, {x:-0.147,y:4.763}, {x:-0.967,y:4.565}, {x:-1.33,y:4.366},
+      {x:-1.587,y:4.168}, {x:-1.787,y:3.969}, {x:-1.94,y:3.771}, {x:-2.073,y:3.573},
+      {x:-2.173,y:3.374}, {x:-2.253,y:3.176}, {x:-2.313,y:2.977}, {x:-2.353,y:2.779},
+      {x:-2.38,y:2.58}, {x:-2.387,y:2.382}, {x:-2.38,y:2.183}, {x:-2.353,y:1.985},
+      {x:-2.313,y:1.786}, {x:-2.257,y:1.588}, {x:-2.173,y:1.389}, {x:-2.077,y:1.191},
+      {x:-1.97,y:0.992}, {x:-1.89,y:0.794}, {x:-1.827,y:0.595}, {x:-1.783,y:0.397},
+      {x:-1.757,y:0.198}, {x:-1.747,y:0.0}, {x:-1.757,y:-0.198}, {x:-1.783,y:-0.397},
+      {x:-1.827,y:-0.595}, {x:-1.89,y:-0.794}, {x:-1.973,y:-0.992}, {x:-2.077,y:-1.191},
+      {x:-2.177,y:-1.389}, {x:-2.257,y:-1.588}, {x:-2.317,y:-1.786}, {x:-2.357,y:-1.985},
+      {x:-2.38,y:-2.183}, {x:-2.387,y:-2.382}, {x:-2.377,y:-2.58}, {x:-2.353,y:-2.779},
+      {x:-2.31,y:-2.977}, {x:-2.253,y:-3.176}, {x:-2.17,y:-3.374}, {x:-2.067,y:-3.573},
+      {x:-1.94,y:-3.771}, {x:-1.783,y:-3.969}, {x:-1.583,y:-4.168}, {x:-1.323,y:-4.366},
+      {x:-0.96,y:-4.565}, {x:-0.163,y:-4.763}
+    ] } }
+];
+CATALOG.forEach((c,i) => { c.id = 'cat' + i; });
+const CATEGORY_ORDER = [
+  ['elevated', 'Terreno Abrupto'], ['blocking', 'Terreno Bloqueador'], ['hindering', 'Terreno Dificultoso'],
+  ['shallowWater', 'Água Rasa'], ['deepWater', 'Água Profunda']
+];
+
+// ================= GEOMETRIA =================
+function rotatePoint(x, y, thetaRad){
+  return { x: x*Math.cos(thetaRad) - y*Math.sin(thetaRad), y: x*Math.sin(thetaRad) + y*Math.cos(thetaRad) };
+}
+// Retorna o quanto a forma se estende do centro em cada direção, após girar `rotationDeg`.
+function getExtents(shapeDef, rotationDeg){
+  const theta = rotationDeg * Math.PI / 180;
+  let minX=Infinity, maxX=-Infinity, minY=Infinity, maxY=-Infinity;
+  if (shapeDef.kind === 'circles'){
+    shapeDef.circles.forEach(c => {
+      const p = rotatePoint(c.ox, c.oy, theta);
+      minX = Math.min(minX, p.x - c.r); maxX = Math.max(maxX, p.x + c.r);
+      minY = Math.min(minY, p.y - c.r); maxY = Math.max(maxY, p.y + c.r);
+    });
+  } else {
+    const pts = shapeDef.kind === 'rect'
+      ? [{x:-shapeDef.w/2,y:-shapeDef.h/2},{x:shapeDef.w/2,y:-shapeDef.h/2},{x:shapeDef.w/2,y:shapeDef.h/2},{x:-shapeDef.w/2,y:shapeDef.h/2}]
+      : shapeDef.points;
+    pts.forEach(pt => {
+      const p = rotatePoint(pt.x, pt.y, theta);
+      minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+      minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+    });
+  }
+  return { left: -minX, right: maxX, top: -minY, bottom: maxY };
+}
+function toRect(cx, cy, ext){ return { x: cx-ext.left, y: cy-ext.top, w: ext.left+ext.right, h: ext.top+ext.bottom }; }
+
+// ---- Primitivas no espaço do mundo (o contorno real da peça, não a caixa) ----
+function getWorldPrimitives(shapeDef, rotationDeg, cx, cy){
+  const theta = rotationDeg * Math.PI / 180;
+  const polygons = [], circles = [];
+  if (shapeDef.kind === 'circles'){
+    shapeDef.circles.forEach(c => {
+      const p = rotatePoint(c.ox, c.oy, theta);
+      circles.push({ cx: cx + p.x, cy: cy + p.y, r: c.r });
+    });
+  } else {
+    const pts = shapeDef.kind === 'rect'
+      ? [{x:-shapeDef.w/2,y:-shapeDef.h/2},{x:shapeDef.w/2,y:-shapeDef.h/2},{x:shapeDef.w/2,y:shapeDef.h/2},{x:-shapeDef.w/2,y:shapeDef.h/2}]
+      : shapeDef.points;
+    polygons.push(pts.map(pt => { const p = rotatePoint(pt.x, pt.y, theta); return { x: cx+p.x, y: cy+p.y }; }));
+  }
+  return { polygons, circles };
+}
+function translatePrimitives(local, cx, cy){
+  return {
+    polygons: local.polygons.map(poly => poly.map(p => ({ x: p.x+cx, y: p.y+cy }))),
+    circles: local.circles.map(c => ({ cx: c.cx+cx, cy: c.cy+cy, r: c.r }))
+  };
+}
+function rectToPrimitives(rect){
+  return { polygons: [[ {x:rect.x,y:rect.y}, {x:rect.x+rect.w,y:rect.y}, {x:rect.x+rect.w,y:rect.y+rect.h}, {x:rect.x,y:rect.y+rect.h} ]], circles: [] };
+}
+
+// ---- Distância ponto-a-ponto real (aresta a aresta / ponto a segmento), com os pontos mais próximos ----
+function distPointToSegmentP(px,py,ax,ay,bx,by){
+  const dx=bx-ax, dy=by-ay, len2=dx*dx+dy*dy;
+  let t = len2>0 ? ((px-ax)*dx+(py-ay)*dy)/len2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  const qx=ax+t*dx, qy=ay+t*dy;
+  return { dist: Math.hypot(px-qx, py-qy), point: {x:qx,y:qy} };
+}
+function segSegIntersect(p1,p2,p3,p4){
+  const ccw = (a,b,c) => (c.y-a.y)*(b.x-a.x) - (b.y-a.y)*(c.x-a.x);
+  const d1=ccw(p3,p4,p1), d2=ccw(p3,p4,p2), d3=ccw(p1,p2,p3), d4=ccw(p1,p2,p4);
+  return ((d1>0&&d2<0)||(d1<0&&d2>0)) && ((d3>0&&d4<0)||(d3<0&&d4>0));
+}
+function distSegToSegP(a1,a2,b1,b2){
+  if (segSegIntersect(a1,a2,b1,b2)) return { dist:0, pointA:a1, pointB:b1 };
+  const cands = [];
+  let r = distPointToSegmentP(a1.x,a1.y,b1.x,b1.y,b2.x,b2.y); cands.push({dist:r.dist, pointA:a1, pointB:r.point});
+  r = distPointToSegmentP(a2.x,a2.y,b1.x,b1.y,b2.x,b2.y); cands.push({dist:r.dist, pointA:a2, pointB:r.point});
+  r = distPointToSegmentP(b1.x,b1.y,a1.x,a1.y,a2.x,a2.y); cands.push({dist:r.dist, pointA:r.point, pointB:b1});
+  r = distPointToSegmentP(b2.x,b2.y,a1.x,a1.y,a2.x,a2.y); cands.push({dist:r.dist, pointA:r.point, pointB:b2});
+  cands.sort((x,y) => x.dist-y.dist);
+  return cands[0];
+}
+function pointInPolygon(pt, poly){
+  let inside = false;
+  for (let i=0, j=poly.length-1; i<poly.length; j=i++){
+    const xi=poly[i].x, yi=poly[i].y, xj=poly[j].x, yj=poly[j].y;
+    const hit = ((yi>pt.y) !== (yj>pt.y)) && (pt.x < (xj-xi)*(pt.y-yi)/(yj-yi)+xi);
+    if (hit) inside = !inside;
+  }
+  return inside;
+}
+function distPolyToPolyP(polyA, polyB){
+  if (pointInPolygon(polyA[0], polyB)) return { dist:0, pointA:polyA[0], pointB:polyA[0] };
+  if (pointInPolygon(polyB[0], polyA)) return { dist:0, pointA:polyB[0], pointB:polyB[0] };
+  let best = null;
+  for (let i=0;i<polyA.length;i++){
+    const a1=polyA[i], a2=polyA[(i+1)%polyA.length];
+    for (let j=0;j<polyB.length;j++){
+      const b1=polyB[j], b2=polyB[(j+1)%polyB.length];
+      const r = distSegToSegP(a1,a2,b1,b2);
+      if (!best || r.dist<best.dist) best = r;
+    }
+  }
+  return best;
+}
+function distPointToPolyP(pt, poly){
+  if (pointInPolygon(pt, poly)) return { dist:0, point:pt };
+  let best = null;
+  for (let i=0;i<poly.length;i++){
+    const a=poly[i], b=poly[(i+1)%poly.length];
+    const r = distPointToSegmentP(pt.x,pt.y,a.x,a.y,b.x,b.y);
+    if (!best || r.dist<best.dist) best = r;
+  }
+  return best;
+}
+function distCircleToPolyP(c, poly){
+  const r = distPointToPolyP({x:c.cx,y:c.cy}, poly);
+  return { dist: r.dist - c.r, pointA: {x:c.cx,y:c.cy}, pointB: r.point };
+}
+function distCircleToCircleP(c1, c2){
+  const d = Math.hypot(c1.cx-c2.cx, c1.cy-c2.cy);
+  const ux = d>0 ? (c1.cx-c2.cx)/d : 1, uy = d>0 ? (c1.cy-c2.cy)/d : 0;
+  return { dist: d - c1.r - c2.r, pointA:{x:c1.cx-ux*c1.r, y:c1.cy-uy*c1.r}, pointB:{x:c2.cx+ux*c2.r, y:c2.cy+uy*c2.r} };
+}
+// Distância real entre duas peças (menor distância entre seus contornos verdadeiros).
+function shapeDistanceP(primA, primB){
+  let best = null;
+  primA.polygons.forEach(pa => {
+    primB.polygons.forEach(pb => { const r=distPolyToPolyP(pa,pb); if(!best||r.dist<best.dist) best=r; });
+    primB.circles.forEach(cb => { const r=distCircleToPolyP(cb,pa); const rr={dist:r.dist,pointA:r.pointB,pointB:r.pointA}; if(!best||rr.dist<best.dist) best=rr; });
+  });
+  primA.circles.forEach(ca => {
+    primB.polygons.forEach(pb => { const r=distCircleToPolyP(ca,pb); if(!best||r.dist<best.dist) best=r; });
+    primB.circles.forEach(cb => { const r=distCircleToCircleP(ca,cb); if(!best||r.dist<best.dist) best=r; });
+  });
+  return best;
+}
+// Distância exata da peça até uma borda do campo (usa os vértices/círculos de verdade, não a caixa).
+function nearestToFieldEdge(primitives, edge){
+  let best = null;
+  primitives.polygons.forEach(poly => poly.forEach(p => {
+    const val = edge==='left'?p.x : edge==='right'?-p.x : edge==='top'?p.y : -p.y;
+    if (!best || val < best.val) best = { val, point:p };
+  }));
+  primitives.circles.forEach(c => {
+    let val, point;
+    if (edge==='left'){ val=c.cx-c.r; point={x:c.cx-c.r,y:c.cy}; }
+    else if (edge==='right'){ val=-(c.cx+c.r); point={x:c.cx+c.r,y:c.cy}; }
+    else if (edge==='top'){ val=c.cy-c.r; point={x:c.cx,y:c.cy-c.r}; }
+    else { val=-(c.cy+c.r); point={x:c.cx,y:c.cy+c.r}; }
+    if (!best || val < best.val) best = { val, point };
+  });
+  const dist = (edge==='left'||edge==='top') ? best.val : -best.val;
+  return { dist, point: best.point };
+}
+
+// Empurra o centro pra fora de um obstáculo específico ao longo da direção real entre os pontos
+// mais próximos de cada contorno — não ao longo de um eixo de caixa.
+function resolveAgainstObstacle(cx, cy, localPrim, obstaclePrim){
+  const world = translatePrimitives(localPrim, cx, cy);
+  const r = shapeDistanceP(world, obstaclePrim);
+  if (r.dist >= GAP) return { cx, cy, pinned:false };
+  let dx = r.pointA.x - r.pointB.x, dy = r.pointA.y - r.pointB.y;
+  let len = Math.hypot(dx, dy);
+  if (len < 1e-6){ dx = 1; dy = 0; len = 1; }
+  dx /= len; dy /= len;
+  const push = GAP - r.dist;
+  return { cx: cx + dx*push, cy: cy + dy*push, pinned:true };
+}
+
+// Resolve a posição desejada contra todas as restrições usando o contorno real de cada peça:
+// trava por eixo nas bordas do campo (exato) e empurra pra fora de terrenos/zonas ao longo da
+// direção verdadeira de aproximação — não da caixa delimitadora.
+function resolvePosition(desiredX, desiredY, shapeDef, rotationDeg, excludeId){
+  let cx = desiredX, cy = desiredY;
+  const ext = getExtents(shapeDef, rotationDeg);
+  const localPrim = getWorldPrimitives(shapeDef, rotationDeg, 0, 0);
+  const pinned = new Set();
+
+  function clampEdges(){
+    if (cx < GAP+ext.left){ cx = GAP+ext.left; pinned.add('edge-left'); }
+    if (cx > FIELD_W_IN-GAP-ext.right){ cx = FIELD_W_IN-GAP-ext.right; pinned.add('edge-right'); }
+    if (cy < GAP+ext.top){ cy = GAP+ext.top; pinned.add('edge-top'); }
+    if (cy > FIELD_H_IN-GAP-ext.bottom){ cy = FIELD_H_IN-GAP-ext.bottom; pinned.add('edge-bottom'); }
+  }
+
+  const obstacles = [];
+  placedTerrain.forEach(t => {
+    if (t.id === excludeId) return;
+    obstacles.push({ id:'terrain-'+t.id, primitives: getWorldPrimitives(t.shapeDef, t.rotation, t.x, t.y) });
+  });
+  deploymentZones.forEach(z => {
+    obstacles.push({ id:'zone-'+z.player, primitives: rectToPrimitives(z) });
+  });
+
+  for (let pass = 0; pass < 4; pass++){
+    clampEdges();
+    obstacles.forEach(ob => {
+      const r = resolveAgainstObstacle(cx, cy, localPrim, ob.primitives);
+      cx = r.cx; cy = r.cy;
+      if (r.pinned) pinned.add(ob.id);
+    });
+  }
+  clampEdges();
+
+  let ok = cx >= GAP+ext.left-1e-6 && cx <= FIELD_W_IN-GAP-ext.right+1e-6 &&
+           cy >= GAP+ext.top-1e-6 && cy <= FIELD_H_IN-GAP-ext.bottom+1e-6;
+  if (ok){
+    const worldFinal = translatePrimitives(localPrim, cx, cy);
+    obstacles.forEach(ob => { if (shapeDistanceP(worldFinal, ob.primitives).dist < GAP - 1e-6) ok = false; });
+  }
+  return { x: cx, y: cy, pinned, ok };
+}
+
+// ================= SVG SETUP =================
+const stage = document.getElementById('stage');
+const W = inToPx(FIELD_W_IN), H = inToPx(FIELD_H_IN);
+stage.style.width = W + 'px'; stage.style.height = H + 'px';
+const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+svg.setAttribute('width', W); svg.setAttribute('height', H);
+stage.appendChild(svg);
+
+const zoneLayer = document.createElementNS(svg.namespaceURI,'g');
+const gapLayer = document.createElementNS(svg.namespaceURI,'g');
+const terrainLayer = document.createElementNS(svg.namespaceURI,'g');
+const previewLayer = document.createElementNS(svg.namespaceURI,'g');
+svg.appendChild(zoneLayer); svg.appendChild(gapLayer); svg.appendChild(terrainLayer); svg.appendChild(previewLayer);
+const mechLayer = document.createElementNS(svg.namespaceURI,'g');
+svg.appendChild(mechLayer);
+
+function renderZones(){
+  zoneLayer.innerHTML = '';
+  deploymentZones.forEach(z => {
+    const color = cssVar(z.colorVar);
+    const rect = document.createElementNS(svg.namespaceURI,'rect');
+    rect.setAttribute('x', inToPx(z.x)); rect.setAttribute('y', inToPx(z.y));
+    rect.setAttribute('width', inToPx(z.w)); rect.setAttribute('height', inToPx(z.h));
+    rect.setAttribute('fill', color); rect.setAttribute('fill-opacity', '0.14');
+    rect.setAttribute('stroke-dasharray', '3 3');
+    rect.id = 'zoneRect' + z.player;
+    const strokeEl = appendWithInnerStroke(zoneLayer, rect, color, 1.4);
+    if (strokeEl) strokeEl.id = 'zoneStroke' + z.player;
+    const label = document.createElementNS(svg.namespaceURI,'text');
+    label.setAttribute('x', inToPx(z.x + z.w/2));
+    label.setAttribute('y', z.player === 1 ? inToPx(z.y+z.h)+12 : inToPx(z.y)-6);
+    label.setAttribute('text-anchor','middle'); label.setAttribute('class','field-label'); label.setAttribute('fill', color);
+    label.textContent = `Zona J${z.player}`;
+    zoneLayer.appendChild(label);
+  });
+}
+
+let clipCounter = 0;
+// Anexa um elemento com borda 100% INTERNA (nunca ultrapassa o contorno real da forma): desenha o
+// preenchimento normal, depois um clone só-de-traço com o dobro da espessura recortado pela própria
+// forma, então só a metade de dentro do traço fica visível — a silhueta nunca cresce além da medida real.
+function appendWithInnerStroke(container, el, strokeColor, strokeWidth){
+  el.removeAttribute('stroke'); el.removeAttribute('stroke-width'); el.removeAttribute('vector-effect');
+  container.appendChild(el);
+  if (!strokeColor || !strokeWidth) return null;
+  const clipId = 'ic' + (clipCounter++);
+  const clip = document.createElementNS(svg.namespaceURI,'clipPath');
+  clip.setAttribute('id', clipId);
+  clip.appendChild(el.cloneNode(true));
+  container.appendChild(clip);
+  const strokeEl = el.cloneNode(true);
+  strokeEl.removeAttribute('id');
+  strokeEl.removeAttribute('fill-opacity');
+  strokeEl.setAttribute('fill','none');
+  strokeEl.setAttribute('stroke', strokeColor);
+  strokeEl.setAttribute('stroke-width', strokeWidth*2);
+  strokeEl.setAttribute('vector-effect','non-scaling-stroke');
+  strokeEl.setAttribute('clip-path', `url(#${clipId})`);
+  strokeEl.style.pointerEvents = 'none';
+  container.appendChild(strokeEl);
+  return strokeEl;
+}
+
+function blobPath(r, seed, points=11){
+  const pts = [];
+  for (let i=0;i<points;i++){
+    const angle = (i/points)*Math.PI*2;
+    const wobble = 0.85 + 0.15*Math.sin(seed*3.1+i*2.7)*Math.cos(seed+i);
+    pts.push([Math.cos(angle)*r*wobble, Math.sin(angle)*r*wobble]);
+  }
+  let d = `M ${pts[0][0]} ${pts[0][1]} `;
+  for (let i=0;i<pts.length;i++){
+    const p0=pts[i], p1=pts[(i+1)%pts.length];
+    d += `Q ${p0[0]} ${p0[1]} ${(p0[0]+p1[0])/2} ${(p0[1]+p1[1])/2} `;
+  }
+  return d + 'Z';
+}
+
+// Desenha uma peça (catálogo ou já colocada) num grupo transformado: translada, gira e escala pra px.
+function drawTerrainShape(container, item, cxPx, cyPx, rotationDeg, opacity=1, seed=1.7, tintColor=null){
+  const type = TERRAIN_TYPES[item.baseType];
+  const g = document.createElementNS(svg.namespaceURI,'g');
+  g.setAttribute('transform', `translate(${cxPx} ${cyPx}) rotate(${rotationDeg}) scale(${PPI})`);
+  const fill = tintColor || type.fill, stroke = tintColor || type.stroke;
+
+  if (item.render === 'rect'){
+    const {w,h} = item.shapeDef;
+    const rect = document.createElementNS(svg.namespaceURI,'rect');
+    rect.setAttribute('x', -w/2); rect.setAttribute('y', -h/2);
+    rect.setAttribute('width', w); rect.setAttribute('height', h);
+    rect.setAttribute('rx', item.cornerRadius ?? 0.25);
+    rect.setAttribute('fill', fill); rect.setAttribute('fill-opacity', (item.baseType==='blocking'?0.85:0.55)*opacity);
+    appendWithInnerStroke(g, rect, stroke, 1.3);
+  } else if (item.render === 'polygon'){
+    const pts = item.shapeDef.points;
+    const d = 'M ' + pts.map(p => `${p.x},${p.y}`).join(' L ') + ' Z';
+    const path = document.createElementNS(svg.namespaceURI,'path');
+    path.setAttribute('d', d);
+    path.setAttribute('fill', fill); path.setAttribute('fill-opacity', (item.baseType==='blocking'?0.85:0.55)*opacity);
+    appendWithInnerStroke(g, path, stroke, 1.3);
+  } else if (item.render === 'blob'){
+    const c = item.shapeDef.circles[0];
+    const path = document.createElementNS(svg.namespaceURI,'path');
+    path.setAttribute('d', blobPath(c.r, seed));
+    path.setAttribute('transform', `translate(${c.ox} ${c.oy})`);
+    path.setAttribute('fill', fill); path.setAttribute('fill-opacity', 0.55*opacity);
+    appendWithInnerStroke(g, path, stroke, 1.3);
+  } else if (item.render === 'figure8'){
+    item.shapeDef.circles.forEach((c,idx) => {
+      const path = document.createElementNS(svg.namespaceURI,'path');
+      path.setAttribute('d', blobPath(c.r, seed + idx*1.3, 9));
+      path.setAttribute('transform', `translate(${c.ox} ${c.oy})`);
+      path.setAttribute('fill', fill); path.setAttribute('fill-opacity', 0.55*opacity);
+      appendWithInnerStroke(g, path, stroke, 1.3);
+    });
+  } else if (item.render === 'domeAccess'){
+    const pts = item.shapeDef.points;
+    const d = 'M ' + pts.map(p => `${p.x},${p.y}`).join(' L ') + ' Z';
+    const path = document.createElementNS(svg.namespaceURI,'path');
+    path.setAttribute('d', d);
+    path.setAttribute('fill', fill); path.setAttribute('fill-opacity', 0.5*opacity);
+    appendWithInnerStroke(g, path, stroke, 1.3);
+    // ponto de acesso (linha amarela do template original) — único trecho onde dá pra subir/descer
+    if (item.accessEdge){
+      const ae = item.accessEdge;
+      const line = document.createElementNS(svg.namespaceURI,'line');
+      line.setAttribute('x1', ae.x1); line.setAttribute('y1', ae.y1);
+      line.setAttribute('x2', ae.x2); line.setAttribute('y2', ae.y2);
+      line.setAttribute('stroke', tintColor || '#e0c23c');
+      line.setAttribute('stroke-width', 2.2);
+      line.setAttribute('vector-effect','non-scaling-stroke');
+      g.appendChild(line);
+    }
+  } else if (item.render === 'splitPolygon'){
+    (item.zones||[]).forEach(z => {
+      const zType = TERRAIN_TYPES[z.baseType];
+      const d = 'M ' + z.points.map(p => `${p[0]},${p[1]}`).join(' L ') + ' Z';
+      const path = document.createElementNS(svg.namespaceURI,'path');
+      path.setAttribute('d', d);
+      path.setAttribute('fill', tintColor || zType.fill); path.setAttribute('fill-opacity', 0.55*opacity);
+      appendWithInnerStroke(g, path, tintColor || zType.stroke, 1.1);
+    });
+    // pontos de acesso do terreno abrupto (linha/faixa amarela do template original) — único trecho
+    // onde uma unidade pode subir ou descer; o resto do contorno elevado é intransponível.
+    (item.accessCurves||[]).forEach(curve => {
+      const d = 'M ' + curve.map(p => `${p[0]},${p[1]}`).join(' L ') + ' Z';
+      const path = document.createElementNS(svg.namespaceURI,'path');
+      path.setAttribute('d', d);
+      path.setAttribute('fill', tintColor || '#e0c23c'); path.setAttribute('fill-opacity', 0.9*opacity);
+      path.setAttribute('stroke', 'none');
+      g.appendChild(path);
+    });
+  } else if (item.render === 'nestedPolygons'){
+    const outerType = TERRAIN_TYPES[item.baseType];
+    const ow = item.shapeDef.w, oh = item.shapeDef.h;
+    const outer = document.createElementNS(svg.namespaceURI,'rect');
+    outer.setAttribute('x', -ow/2); outer.setAttribute('y', -oh/2);
+    outer.setAttribute('width', ow); outer.setAttribute('height', oh);
+    outer.setAttribute('rx', item.outerRadius ?? 0); outer.setAttribute('ry', item.outerRadius ?? 0);
+    outer.setAttribute('fill', tintColor || outerType.fill); outer.setAttribute('fill-opacity', 0.4*opacity);
+    appendWithInnerStroke(g, outer, tintColor || outerType.stroke, 1.1);
+    (item.innerZones||[]).forEach(z => {
+      const zType = TERRAIN_TYPES[z.baseType];
+      const d = 'M ' + z.points.map(p => `${p[0]},${p[1]}`).join(' L ') + ' Z';
+      const path = document.createElementNS(svg.namespaceURI,'path');
+      path.setAttribute('d', d);
+      path.setAttribute('fill', tintColor || zType.fill); path.setAttribute('fill-opacity', 0.85*opacity);
+      appendWithInnerStroke(g, path, tintColor || zType.stroke, 1.2);
+    });
+  } else if (item.render === 'nestedRect'){
+    const outerType = TERRAIN_TYPES[item.baseType];
+    const ow = item.shapeDef.w, oh = item.shapeDef.h;
+    const outer = document.createElementNS(svg.namespaceURI,'rect');
+    outer.setAttribute('x', -ow/2); outer.setAttribute('y', -oh/2);
+    outer.setAttribute('width', ow); outer.setAttribute('height', oh);
+    outer.setAttribute('rx', item.outerRadius ?? 0); outer.setAttribute('ry', item.outerRadius ?? 0);
+    outer.setAttribute('fill', tintColor || outerType.fill); outer.setAttribute('fill-opacity', 0.4*opacity);
+    appendWithInnerStroke(g, outer, tintColor || outerType.stroke, 1.1);
+    (item.innerZones||[]).forEach(z => {
+      const zType = TERRAIN_TYPES[z.baseType];
+      const rect = document.createElementNS(svg.namespaceURI,'rect');
+      rect.setAttribute('x', z.cx-z.w/2); rect.setAttribute('y', z.cy-z.h/2);
+      rect.setAttribute('width', z.w); rect.setAttribute('height', z.h);
+      rect.setAttribute('fill', tintColor || zType.fill); rect.setAttribute('fill-opacity', 0.85*opacity);
+      appendWithInnerStroke(g, rect, tintColor || zType.stroke, 1.2);
+    });
+  } else if (item.render === 'zonedRect'){
+    const w = item.shapeDef.w, totalH = item.shapeDef.h;
+    let yCursor = -totalH/2;
+    item.zones.forEach(z => {
+      const zType = TERRAIN_TYPES[z.baseType];
+      const rect = document.createElementNS(svg.namespaceURI,'rect');
+      rect.setAttribute('x', -w/2); rect.setAttribute('y', yCursor);
+      rect.setAttribute('width', w); rect.setAttribute('height', z.h);
+      rect.setAttribute('fill', tintColor || zType.fill);
+      rect.setAttribute('fill-opacity', (z.baseType==='clear' ? 0.1 : (z.baseType==='blocking'?0.85:0.55))*opacity);
+      if (z.baseType === 'clear') rect.setAttribute('stroke-dasharray','1.5 1.5');
+      appendWithInnerStroke(g, rect, tintColor || zType.stroke, 1.1);
+      yCursor += z.h;
+    });
+    const outline = document.createElementNS(svg.namespaceURI,'rect');
+    outline.setAttribute('x', -w/2); outline.setAttribute('y', -totalH/2);
+    outline.setAttribute('width', w); outline.setAttribute('height', totalH);
+    outline.setAttribute('fill','none');
+    appendWithInnerStroke(g, outline, tintColor || '#00000080', 0.7);
+  } else if (item.render === 'rings'){
+    const r0 = item.shapeDef.circles[0].r;
+    [1, 0.66, 0.33].forEach((frac, idx) => {
+      const ring = document.createElementNS(svg.namespaceURI,'circle');
+      ring.setAttribute('cx', 0); ring.setAttribute('cy', 0); ring.setAttribute('r', r0*frac);
+      ring.setAttribute('fill', idx===2 ? fill : 'none');
+      ring.setAttribute('fill-opacity', idx===2 ? 0.5*opacity : 0);
+      ring.setAttribute('stroke', stroke); ring.setAttribute('stroke-opacity', (0.9-idx*0.2)*opacity);
+      ring.setAttribute('vector-effect','non-scaling-stroke');
+      g.appendChild(ring);
+    });
+  }
+  container.appendChild(g);
+  return g;
+}
+
+function renderTerrain(){
+  terrainLayer.innerHTML = '';
+  placedTerrain.forEach(f => {
+    drawTerrainShape(terrainLayer, f, inToPx(f.x), inToPx(f.y), f.rotation, 1, f.seed);
+    const type = TERRAIN_TYPES[f.baseType];
+    const label = document.createElementNS(svg.namespaceURI,'text');
+    label.setAttribute('x', inToPx(f.x)); label.setAttribute('y', inToPx(f.y) + inToPx(f.extents.bottom) + 7);
+    label.setAttribute('text-anchor','middle'); label.setAttribute('class','field-label'); label.setAttribute('fill', type.stroke);
+    label.textContent = f.name;
+    terrainLayer.appendChild(label);
+  });
+  renderStaticGapLines();
+}
+
+// ================= LINHAS DE DISTÂNCIA (contorno real, não a caixa) =================
+
+// ================= LINHAS DE DISTÂNCIA (contorno real, não a caixa) =================
+function drawGapLine(container, p1, p2, gap, colorOverride){
+  if (gap < 0.05) return;
+  const line = document.createElementNS(svg.namespaceURI,'line');
+  line.setAttribute('x1', inToPx(p1.x)); line.setAttribute('y1', inToPx(p1.y));
+  line.setAttribute('x2', inToPx(p2.x)); line.setAttribute('y2', inToPx(p2.y));
+  line.setAttribute('stroke', colorOverride || '#ffffff40');
+  line.setAttribute('stroke-width', 0.75);
+  line.setAttribute('stroke-dasharray', '2 3');
+  container.appendChild(line);
+  const lx = inToPx((p1.x+p2.x)/2), ly = inToPx((p1.y+p2.y)/2) - 3;
+  const text = gap.toFixed(1) + '"';
+  const bg = document.createElementNS(svg.namespaceURI,'rect');
+  bg.setAttribute('x', lx - text.length*2 - 1); bg.setAttribute('y', ly - 5.5);
+  bg.setAttribute('width', text.length*4 + 2); bg.setAttribute('height', 7);
+  bg.setAttribute('fill', '#14170fcc');
+  container.appendChild(bg);
+  const label = document.createElementNS(svg.namespaceURI,'text');
+  label.setAttribute('x', lx); label.setAttribute('y', ly);
+  label.setAttribute('text-anchor','middle'); label.setAttribute('class','gap-label');
+  label.setAttribute('fill', colorOverride || '#c9c4ae');
+  label.textContent = text;
+  container.appendChild(label);
+}
+// Pra cada peça já colocada, acha a borda / zona / outro terreno mais próximos usando o contorno
+// real (vértices e círculos), não a caixa delimitadora, e desenha a linha de medição verdadeira.
+function renderStaticGapLines(){
+  gapLayer.innerHTML = '';
+  placedTerrain.forEach(t => {
+    const prim = getWorldPrimitives(t.shapeDef, t.rotation, t.x, t.y);
+
+    let bestEdge = null;
+    ['left','right','top','bottom'].forEach(edge => {
+      const r = nearestToFieldEdge(prim, edge);
+      if (!bestEdge || r.dist < bestEdge.dist) bestEdge = { ...r, edge };
+    });
+    const edgePoint = bestEdge.edge==='left' ? {x:0,y:bestEdge.point.y}
+      : bestEdge.edge==='right' ? {x:FIELD_W_IN,y:bestEdge.point.y}
+      : bestEdge.edge==='top' ? {x:bestEdge.point.x,y:0}
+      : {x:bestEdge.point.x,y:FIELD_H_IN};
+    drawGapLine(gapLayer, bestEdge.point, edgePoint, bestEdge.dist);
+
+    let bestZone = null;
+    deploymentZones.forEach(z => {
+      const r = shapeDistanceP(prim, rectToPrimitives(z));
+      if (!bestZone || r.dist < bestZone.dist) bestZone = r;
+    });
+    if (bestZone) drawGapLine(gapLayer, bestZone.pointA, bestZone.pointB, bestZone.dist);
+
+    let bestOther = null;
+    placedTerrain.forEach(o => {
+      if (o.id === t.id) return;
+      const oPrim = getWorldPrimitives(o.shapeDef, o.rotation, o.x, o.y);
+      const r = shapeDistanceP(prim, oPrim);
+      if (!bestOther || r.dist < bestOther.dist) bestOther = r;
+    });
+    if (bestOther) drawGapLine(gapLayer, bestOther.pointA, bestOther.pointB, bestOther.dist);
+  });
+}
+
+// ================= ESTADO =================
+let activePickTab = 1;
+const picks = { 1: [], 2: [] };
+let pool = [];
+let placedTerrain = [];
+let firstPlayer = null, placingTurn = null;
+let phase = 'selecting';
+
+// ================= STATUS =================
+function renderStatus(){
+  const bar = document.getElementById('statusBar');
+  if (phase === 'selecting'){
+    bar.innerHTML = `<span class="phase">FASE 1 — ESCOLHA DE TERRENO</span><span>Selecione até 3 peças por jogador</span>`;
+  } else if (phase === 'placing'){
+    const turnClass = placingTurn === 1 ? 'turn-p1' : 'turn-p2';
+    bar.innerHTML = `<span class="phase">FASE 2 — COLOCAÇÃO</span>
+      <span>Vez do <span class="${turnClass}">Jogador ${placingTurn}</span></span>
+      <span>${placedTerrain.length}/${MAX_TERRAIN_PLACED} no campo · ${pool.length} no pool</span>`;
+  } else {
+    bar.innerHTML = `<span class="phase">CAMPO PRONTO</span><span>${placedTerrain.length} peças colocadas · ${pool.length} sobraram no pool</span>`;
+  }
+}
+
+// ================= SELEÇÃO =================
+const catalogListEl = document.getElementById('catalogList');
+function renderCatalogList(){
+  catalogListEl.innerHTML = '';
+  CATEGORY_ORDER.forEach(([baseType, label]) => {
+    const itemsForCat = CATALOG.filter(c => c.baseType === baseType);
+    if (itemsForCat.length === 0) return; // esconde categorias sem nenhuma peça real ainda
+    const group = document.createElement('div');
+    group.className = 'cat-group';
+    group.innerHTML = `<h3>${label}</h3>`;
+    const itemsWrap = document.createElement('div');
+    itemsWrap.className = 'cat-items';
+    itemsForCat.forEach(item => {
+      const btn = document.createElement('button');
+      btn.className = 'cat-btn';
+      btn.textContent = item.name;
+      const pickedBy = picks[1].includes(item.id) ? 1 : (picks[2].includes(item.id) ? 2 : null);
+      if (pickedBy === activePickTab) btn.classList.add('picked-p' + activePickTab);
+      btn.disabled = picks[activePickTab].length >= MAX_PICKS_PER_PLAYER && pickedBy !== activePickTab;
+      btn.addEventListener('click', () => togglePick(item.id));
+      itemsWrap.appendChild(btn);
+    });
+    group.appendChild(itemsWrap);
+    catalogListEl.appendChild(group);
+  });
+}
+function togglePick(catalogId){
+  const list = picks[activePickTab];
+  const idx = list.indexOf(catalogId);
+  if (idx >= 0) list.splice(idx, 1);
+  else { if (list.length >= MAX_PICKS_PER_PLAYER) return; list.push(catalogId); }
+  renderCatalogList(); updateCounts();
+}
+function updateCounts(){
+  document.getElementById('countP1').textContent = picks[1].length;
+  document.getElementById('countP2').textContent = picks[2].length;
+  document.getElementById('btnFormPool').disabled = (picks[1].length + picks[2].length) === 0;
+}
+document.getElementById('tabP1').addEventListener('click', () => { activePickTab=1; syncTabs(); renderCatalogList(); });
+document.getElementById('tabP2').addEventListener('click', () => { activePickTab=2; syncTabs(); renderCatalogList(); });
+function syncTabs(){
+  document.getElementById('tabP1').className = 'player-tab' + (activePickTab===1?' active-p1':'');
+  document.getElementById('tabP2').className = 'player-tab' + (activePickTab===2?' active-p2':'');
+}
+document.getElementById('btnFormPool').addEventListener('click', () => {
+  pool = [];
+  [1,2].forEach(p => picks[p].forEach(catalogId => pool.push({ poolId:'p'+Math.random().toString(36).slice(2,9), catalogId, owner:p })));
+  let r1, r2;
+  do { r1 = roll3d6(); r2 = roll3d6(); } while (r1 === r2);
+  firstPlayer = r1 > r2 ? 1 : 2;
+  placingTurn = firstPlayer === 1 ? 2 : 1;
+  document.getElementById('diceResult').innerHTML =
+    `Jogador 1 rolou <b>${r1}</b> · Jogador 2 rolou <b>${r2}</b> — Jogador <b>${firstPlayer}</b> venceu a iniciativa
+     (implanta e joga primeiro). Jogador <b>${placingTurn}</b> começa colocando terreno.`;
+  phase = 'placing';
+  document.getElementById('selectionPanel').style.display = 'none';
+  document.getElementById('poolPanel').style.display = '';
+  renderPool(); renderStatus();
+});
+function roll3d6(){ return (1+Math.floor(Math.random()*6)) + (1+Math.floor(Math.random()*6)) + (1+Math.floor(Math.random()*6)); }
+
+// ================= POOL + DRAG =================
+const poolCardsEl = document.getElementById('poolCards');
+function renderPool(){
+  poolCardsEl.innerHTML = '';
+  if (pool.length === 0){ poolCardsEl.innerHTML = '<div class="pool-empty">Pool vazio.</div>'; checkPlacementEnd(); return; }
+  pool.forEach(p => {
+    const cat = CATALOG.find(c => c.id === p.catalogId);
+    const card = document.createElement('div');
+    card.className = `pool-card owner-p${p.owner}`;
+    card.innerHTML = `<span class="pc-name">${cat.name}</span><span class="pc-type">${TERRAIN_TYPES[cat.baseType].label}</span>`;
+    card.addEventListener('pointerdown', (e) => startDrag(e, p, cat, card));
+    poolCardsEl.appendChild(card);
+  });
+}
+
+let dragState = null;
+let ghostEl = null, feedbackEl = null;
+const rotateBtn = document.getElementById('rotateBtn');
+
+function startDrag(e, poolItem, cat, cardEl){
+  if (phase !== 'placing') return;
+  e.preventDefault();
+  dragState = { poolItem, cat, cardEl, rotation:0, lastClient:{x:e.clientX,y:e.clientY} };
+  cardEl.classList.add('dragging-source');
+  ghostEl = document.createElement('div');
+  ghostEl.className = 'ghost-card';
+  ghostEl.innerHTML = `<span class="pc-name">${cat.name}</span>`;
+  document.body.appendChild(ghostEl);
+  feedbackEl = document.createElement('div');
+  feedbackEl.className = 'drop-feedback';
+  document.body.appendChild(feedbackEl);
+  rotateBtn.style.display = 'block';
+  moveGhost(e.clientX, e.clientY);
+  updatePreview(e.clientX, e.clientY);
+  window.addEventListener('pointermove', onDragMove);
+  window.addEventListener('pointerup', onDragEnd);
+  window.addEventListener('keydown', onDragKey);
+}
+function onDragKey(e){
+  if (!dragState) return;
+  if (e.key === 'r' || e.key === 'R'){ rotateDragging(); }
+}
+function rotateDragging(){
+  if (!dragState) return;
+  dragState.rotation = (dragState.rotation + 45) % 360;
+  updatePreview(dragState.lastClient.x, dragState.lastClient.y);
+}
+rotateBtn.addEventListener('click', rotateDragging);
+
+function moveGhost(clientX, clientY){
+  ghostEl.style.left = clientX + 'px'; ghostEl.style.top = clientY + 'px';
+  feedbackEl.style.left = clientX + 'px'; feedbackEl.style.top = clientY + 'px';
+}
+
+function onDragMove(e){
+  if (!dragState) return;
+  dragState.lastClient = { x:e.clientX, y:e.clientY };
+  moveGhost(e.clientX, e.clientY);
+  updatePreview(e.clientX, e.clientY);
+}
+
+function updatePreview(clientX, clientY){
+  previewLayer.innerHTML = '';
+  const rect = stage.getBoundingClientRect();
+  const overField = clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom;
+  resetPinnedHighlights();
+  if (!overField){ feedbackEl.style.display='none'; dragState.lastResult=null; return; }
+
+  const desiredX = pxToIn(clientX - rect.left), desiredY = pxToIn(clientY - rect.top);
+  const result = resolvePosition(desiredX, desiredY, dragState.cat.shapeDef, dragState.rotation, null);
+  dragState.lastResult = result;
+
+  const state = !result.ok ? 'bad' : (result.pinned.size > 0 ? 'limit' : 'good');
+  const color = state === 'bad' ? cssVar('--bad') : state === 'limit' ? cssVar('--limit') : cssVar('--good');
+
+  drawTerrainShape(previewLayer, dragState.cat, inToPx(result.x), inToPx(result.y), dragState.rotation, 0.85, 1.7, state==='bad' ? cssVar('--bad') : null);
+  // contorno REAL da peça (não a caixa), na cor de estado
+  outlineShape(previewLayer, getWorldPrimitives(dragState.cat.shapeDef, dragState.rotation, result.x, result.y), color);
+
+  highlightPinned(result.pinned, color);
+  drawLiveGapLines(getWorldPrimitives(dragState.cat.shapeDef, dragState.rotation, result.x, result.y));
+
+  feedbackEl.style.display = result.ok ? 'none' : 'block';
+  feedbackEl.textContent = result.ok ? '' : 'não cabe aqui — tente girar (R) ou outra posição';
+}
+
+// Desenha só o contorno (sem preenchimento) das primitivas reais de uma peça — usado pra destacar
+// o limite exato de colisão, que é a forma em si, não a caixa que a envolve.
+function outlineShape(container, primitives, color, width){
+  primitives.polygons.forEach(poly => {
+    const d = 'M ' + poly.map(p => `${inToPx(p.x)},${inToPx(p.y)}`).join(' L ') + ' Z';
+    const path = document.createElementNS(svg.namespaceURI,'path');
+    path.setAttribute('class','pinned-outline');
+    path.setAttribute('d', d); path.setAttribute('fill','none');
+    appendWithInnerStroke(container, path, color, width||2);
+  });
+  primitives.circles.forEach(c => {
+    const circle = document.createElementNS(svg.namespaceURI,'circle');
+    circle.setAttribute('class','pinned-outline');
+    circle.setAttribute('cx', inToPx(c.cx)); circle.setAttribute('cy', inToPx(c.cy)); circle.setAttribute('r', inToPx(c.r));
+    circle.setAttribute('fill','none');
+    appendWithInnerStroke(container, circle, color, width||2);
+  });
+}
+
+function resetPinnedHighlights(){
+  deploymentZones.forEach(z => {
+    const el = document.getElementById('zoneStroke' + z.player);
+    if (el){ el.setAttribute('stroke-width', '2.8'); el.setAttribute('stroke', cssVar(z.colorVar)); }
+  });
+  document.querySelectorAll('.pinned-outline').forEach(n => n.remove());
+}
+function highlightPinned(pinnedSet, color){
+  pinnedSet.forEach(id => {
+    if (id === 'zone-1' || id === 'zone-2'){
+      const el = document.getElementById('zoneStroke' + id.split('-')[1]);
+      if (el){ el.setAttribute('stroke', color); el.setAttribute('stroke-width','6'); }
+    } else if (id.startsWith('terrain-')){
+      const t = placedTerrain.find(x => x.id === id.replace('terrain-',''));
+      if (t) outlineShape(previewLayer, getWorldPrimitives(t.shapeDef, t.rotation, t.x, t.y), color, 2.5);
+    } else if (id.startsWith('edge-')){
+      const edge = id.replace('edge-','');
+      const line = document.createElementNS(svg.namespaceURI,'line');
+      line.setAttribute('class','pinned-outline');
+      line.setAttribute('stroke', color); line.setAttribute('stroke-width','4');
+      if (edge==='left'){ line.setAttribute('x1',0); line.setAttribute('x2',0); line.setAttribute('y1',0); line.setAttribute('y2',H); }
+      if (edge==='right'){ line.setAttribute('x1',W); line.setAttribute('x2',W); line.setAttribute('y1',0); line.setAttribute('y2',H); }
+      if (edge==='top'){ line.setAttribute('x1',0); line.setAttribute('x2',W); line.setAttribute('y1',0); line.setAttribute('y2',0); }
+      if (edge==='bottom'){ line.setAttribute('x1',0); line.setAttribute('x2',W); line.setAttribute('y1',H); line.setAttribute('y2',H); }
+      previewLayer.appendChild(line);
+    }
+  });
+}
+// Linhas de medição ao vivo pra peça sendo arrastada, usando o contorno real dela.
+function drawLiveGapLines(prim){
+  let bestEdge = null;
+  ['left','right','top','bottom'].forEach(edge => {
+    const r = nearestToFieldEdge(prim, edge);
+    if (!bestEdge || r.dist < bestEdge.dist) bestEdge = { ...r, edge };
+  });
+  const edgePoint = bestEdge.edge==='left' ? {x:0,y:bestEdge.point.y}
+    : bestEdge.edge==='right' ? {x:FIELD_W_IN,y:bestEdge.point.y}
+    : bestEdge.edge==='top' ? {x:bestEdge.point.x,y:0}
+    : {x:bestEdge.point.x,y:FIELD_H_IN};
+  drawGapLine(previewLayer, bestEdge.point, edgePoint, bestEdge.dist, '#e8e3d3');
+
+  let bestZone = null;
+  deploymentZones.forEach(z => { const r = shapeDistanceP(prim, rectToPrimitives(z)); if (!bestZone || r.dist<bestZone.dist) bestZone = r; });
+  if (bestZone) drawGapLine(previewLayer, bestZone.pointA, bestZone.pointB, bestZone.dist, '#e8e3d3');
+
+  let bestOther = null;
+  placedTerrain.forEach(o => {
+    const oPrim = getWorldPrimitives(o.shapeDef, o.rotation, o.x, o.y);
+    const r = shapeDistanceP(prim, oPrim);
+    if (!bestOther || r.dist < bestOther.dist) bestOther = r;
+  });
+  if (bestOther) drawGapLine(previewLayer, bestOther.pointA, bestOther.pointB, bestOther.dist, '#e8e3d3');
+}
+
+function onDragEnd(){
+  window.removeEventListener('pointermove', onDragMove);
+  window.removeEventListener('pointerup', onDragEnd);
+  window.removeEventListener('keydown', onDragKey);
+  previewLayer.innerHTML = ''; resetPinnedHighlights();
+  ghostEl?.remove(); feedbackEl?.remove(); rotateBtn.style.display = 'none';
+  dragState.cardEl.classList.remove('dragging-source');
+
+  if (dragState.lastResult && dragState.lastResult.ok){
+    placeTerrain(dragState.poolItem, dragState.cat, dragState.lastResult.x, dragState.lastResult.y, dragState.rotation);
+  }
+  dragState = null;
+}
+
+function placeTerrain(poolItem, cat, x, y, rotation){
+  placedTerrain.push({
+    ...cat,
+    id: poolItem.poolId, x: Math.round(x*10)/10, y: Math.round(y*10)/10, rotation,
+    extents: getExtents(cat.shapeDef, rotation), seed: 1 + Math.random()*5
+  });
+  pool = pool.filter(p => p.poolId !== poolItem.poolId);
+  placingTurn = placingTurn === 1 ? 2 : 1;
+  renderTerrain(); renderPool(); renderStatus(); checkPlacementEnd();
+}
+function checkPlacementEnd(){
+  if (phase === 'placing' && (placedTerrain.length >= MAX_TERRAIN_PLACED || pool.length === 0)){
+    phase = 'done'; renderStatus();
+  }
+}
+
+// ================= LEGENDA =================
+const legendEl = document.getElementById('legend');
+Object.values(TERRAIN_TYPES).forEach(t => {
+  const item = document.createElement('div');
+  item.className = 'legend-item';
+  item.innerHTML = `<div class="legend-swatch" style="background:${t.fill}; border:1px solid ${t.stroke}"></div>
+    <div><span class="t-name">${t.label}</span><span class="t-effect">${t.effect}</span></div>`;
+  legendEl.appendChild(item);
+});
+
+// ================= BASE DE MECH (livre, sem validação de distância) =================
+const MECH_RADIUS_IN = 1; // 2" de diâmetro
+let mechUnit = { x: FIELD_W_IN/2, y: FIELD_H_IN/2 };
+let mechDragging = false;
+
+function renderMech(){
+  mechLayer.innerHTML = '';
+  const cx = inToPx(mechUnit.x), cy = inToPx(mechUnit.y);
+  const rPx = inToPx(MECH_RADIUS_IN);
+
+  const base = document.createElementNS(svg.namespaceURI,'circle');
+  base.setAttribute('cx', cx); base.setAttribute('cy', cy); base.setAttribute('r', rPx);
+  base.setAttribute('fill', '#c9822c'); base.setAttribute('fill-opacity', '0.85');
+  base.style.cursor = 'grab';
+  base.style.touchAction = 'none';
+  base.addEventListener('pointerdown', onMechPointerDown);
+  appendWithInnerStroke(mechLayer, base, '#f2eddc', 2);
+
+  const dot = document.createElementNS(svg.namespaceURI,'circle');
+  dot.setAttribute('cx', cx); dot.setAttribute('cy', cy); dot.setAttribute('r', 2.5);
+  dot.setAttribute('fill', '#2a1d0e'); dot.style.pointerEvents = 'none';
+  mechLayer.appendChild(dot);
+
+  const label = document.createElementNS(svg.namespaceURI,'text');
+  label.setAttribute('x', cx); label.setAttribute('y', cy - rPx - 5);
+  label.setAttribute('text-anchor','middle'); label.setAttribute('class','field-label');
+  label.setAttribute('fill', '#f2eddc'); label.style.pointerEvents = 'none';
+  label.textContent = 'Mech (2")';
+  mechLayer.appendChild(label);
+}
+
+function onMechPointerDown(e){
+  e.stopPropagation();
+  mechDragging = true;
+  stage.setPointerCapture(e.pointerId);
+  window.addEventListener('pointermove', onMechPointerMove);
+  window.addEventListener('pointerup', onMechPointerUp);
+}
+function onMechPointerMove(e){
+  if (!mechDragging) return;
+  const rect = stage.getBoundingClientRect();
+  let xIn = pxToIn(e.clientX - rect.left);
+  let yIn = pxToIn(e.clientY - rect.top);
+  // única restrição: não sair do campo — fora isso, movimento totalmente livre
+  xIn = Math.max(MECH_RADIUS_IN, Math.min(FIELD_W_IN - MECH_RADIUS_IN, xIn));
+  yIn = Math.max(MECH_RADIUS_IN, Math.min(FIELD_H_IN - MECH_RADIUS_IN, yIn));
+  mechUnit.x = xIn; mechUnit.y = yIn;
+  renderMech();
+}
+function onMechPointerUp(){
+  mechDragging = false;
+  window.removeEventListener('pointermove', onMechPointerMove);
+  window.removeEventListener('pointerup', onMechPointerUp);
+}
+
+// ================= RESET =================
+function resetAll(){
+  if (dragState) return; // não reinicia no meio de um arraste
+  activePickTab = 1;
+  picks[1] = []; picks[2] = [];
+  pool = [];
+  placedTerrain = [];
+  firstPlayer = null; placingTurn = null;
+  phase = 'selecting';
+  document.getElementById('diceResult').innerHTML = '';
+  document.getElementById('selectionPanel').style.display = '';
+  document.getElementById('poolPanel').style.display = 'none';
+  syncTabs(); renderCatalogList(); updateCounts();
+  renderTerrain(); renderStatus();
+}
+document.getElementById('btnReset').addEventListener('click', () => {
+  if (phase === 'selecting' && placedTerrain.length === 0 && pool.length === 0){ resetAll(); return; }
+  const btn = document.getElementById('btnReset');
+  if (!btn.dataset.confirming){
+    btn.dataset.confirming = '1';
+    btn.textContent = 'Clique de novo pra confirmar';
+    btn.style.color = 'var(--bad)'; btn.style.borderColor = 'var(--bad)';
+    btn.dataset.timeoutId = setTimeout(() => {
+      delete btn.dataset.confirming;
+      btn.textContent = '↺ Reiniciar';
+      btn.style.color = ''; btn.style.borderColor = '';
+    }, 3000);
+    return;
+  }
+  clearTimeout(Number(btn.dataset.timeoutId));
+  delete btn.dataset.confirming;
+  btn.textContent = '↺ Reiniciar';
+  btn.style.color = ''; btn.style.borderColor = '';
+  resetAll();
+});
+
+// ================= INIT =================
+syncTabs(); renderCatalogList(); updateCounts();
+renderZones(); renderTerrain(); renderStatus(); renderMech();
+</script>
+</body>
+</html>

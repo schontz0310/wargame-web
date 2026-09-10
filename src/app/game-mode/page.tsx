@@ -8,6 +8,7 @@ import DraftPicker from '@/components/game-mode/DraftPicker'
 import ControlPanel from '@/components/game-mode/ControlPanel'
 import ArmyGrid from '@/components/game-mode/ArmyGrid'
 import BattleLogView from '@/components/game-mode/BattleLogView'
+import BattlefieldView from '@/components/game-mode/BattlefieldView'
 import PreparationPhase from '@/components/game-mode/preparation/PreparationPhase'
 import { useT } from '@/hooks/useT'
 
@@ -87,6 +88,10 @@ function GameModeContent() {
 
   if (view === 'log') {
     return <BattleLogView draft={draft} />
+  }
+
+  if (view === 'battlefield') {
+    return <BattlefieldView draft={draft} />
   }
 
   return <ControlPanel draft={draft} />

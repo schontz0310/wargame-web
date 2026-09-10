@@ -1362,10 +1362,10 @@ let unitDragState = null;
 // Retorna half-extents (rx, ry) do token no espaço do mundo, dado o tipo e rotação
 function getDeployExtents(type, rotDeg) {
   const t = (type || '').toLowerCase();
-  if (t === 'infantry') return { rx: 0.5, ry: 0.5 };
+  if (t === 'infantry') return { rx: 0.75, ry: 0.75 };
   if (t === 'vehicle') {
     const rad = (rotDeg || 0) * Math.PI / 180;
-    const halfL = 1.5, halfW = 0.5; // 3"×1"
+    const halfL = 1.5, halfW = 0.75; // 3"×1.5"
     return {
       rx: Math.abs(Math.cos(rad)) * halfL + Math.abs(Math.sin(rad)) * halfW,
       ry: Math.abs(Math.sin(rad)) * halfL + Math.abs(Math.cos(rad)) * halfW,
@@ -1413,9 +1413,9 @@ function renderDeployTokens() {
       const bg = document.createElementNS(svg.namespaceURI, 'g');
       bg.setAttribute('transform', `translate(${cx} ${cy}) rotate(${u.rotation}) scale(${PPI})`);
       const rect = document.createElementNS(svg.namespaceURI, 'rect');
-      rect.setAttribute('x', '-1.5'); rect.setAttribute('y', '-0.5');
-      rect.setAttribute('width', '3'); rect.setAttribute('height', '1');
-      rect.setAttribute('rx', '0.5');
+      rect.setAttribute('x', '-1.5'); rect.setAttribute('y', '-0.75');
+      rect.setAttribute('width', '3'); rect.setAttribute('height', '1.5');
+      rect.setAttribute('rx', '0.75');
       rect.setAttribute('fill', fill);
       rect.setAttribute('fill-opacity', isDragging ? '0.55' : '0.88');
       rect.setAttribute('stroke', '#ffffff90');
@@ -1449,7 +1449,7 @@ function renderDeployTokens() {
       }
     } else {
       // Círculo: mech 2" (r=1") ou infantaria 1" (r=0.5")
-      const rIn = type === 'infantry' ? 0.5 : 1;
+      const rIn = type === 'infantry' ? 0.75 : 1;
       const rPx = inToPx(rIn);
       const base = document.createElementNS(svg.namespaceURI, 'circle');
       base.setAttribute('cx', cx); base.setAttribute('cy', cy); base.setAttribute('r', rPx);

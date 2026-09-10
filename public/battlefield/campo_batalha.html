@@ -144,6 +144,12 @@
     <div class="pool-cards" id="poolCards"></div>
   </div>
 
+  <div class="panel" id="deployPanel" style="display:none;">
+    <h2>3 · IMPLANTAÇÃO DE BATTLEFORCE</h2>
+    <p style="font-size:12px;color:var(--ink-dim);margin:4px 0 12px">Arraste as unidades para posicioná-las dentro da zona de implantação (área hachurada). Confirme quando todos estiverem prontos.</p>
+    <button class="btn-main" id="btnConfirmDeploy">Confirmar Implantação →</button>
+  </div>
+
   <div class="panel">
     <h2>REFERÊNCIA — EFEITO DE CADA TIPO</h2>
     <div class="legend" id="legend"></div>
@@ -609,7 +615,9 @@ const terrainLayer = document.createElementNS(svg.namespaceURI,'g');
 const previewLayer = document.createElementNS(svg.namespaceURI,'g');
 svg.appendChild(zoneLayer); svg.appendChild(gapLayer); svg.appendChild(terrainLayer); svg.appendChild(previewLayer);
 const mechLayer = document.createElementNS(svg.namespaceURI,'g');
+const deployLayer = document.createElementNS(svg.namespaceURI,'g');
 svg.appendChild(mechLayer);
+svg.appendChild(deployLayer);
 
 function renderZones(){
   zoneLayer.innerHTML = '';
@@ -910,6 +918,8 @@ function renderStatus(){
     bar.innerHTML = `<span class="phase">FASE 2 — COLOCAÇÃO</span>
       <span>Vez do <span class="${turnClass}">Jogador ${placingTurn}</span></span>
       <span>${placedTerrain.length}/${MAX_TERRAIN_PLACED} no campo · ${pool.length} no pool</span>`;
+  } else if (phase === 'deploying') {
+    bar.innerHTML = `<span class="phase">FASE 3 — IMPLANTAÇÃO</span><span>Posicione as unidades nas zonas de implantação</span>`;
   } else {
     bar.innerHTML = `<span class="phase">CAMPO PRONTO</span><span>${placedTerrain.length} peças colocadas · ${pool.length} sobraram no pool</span>`;
   }
@@ -1023,7 +1033,14 @@ function rotateDragging(){
   dragState.rotation = (dragState.rotation + 45) % 360;
   updatePreview(dragState.lastClient.x, dragState.lastClient.y);
 }
-rotateBtn.addEventListener('click', rotateDragging);
+rotateBtn.addEventListener('pointerdown', function(e){
+  if (!dragState) return;
+  e.preventDefault();
+  rotateDragging();
+});
+rotateBtn.addEventListener('pointerup', function(e){
+  e.stopPropagation();
+});
 
 function moveGhost(clientX, clientY){
   ghostEl.style.left = clientX + 'px'; ghostEl.style.top = clientY + 'px';
@@ -1216,15 +1233,83 @@ function onMechPointerDown(e){
   window.addEventListener('pointermove', onMechPointerMove);
   window.addEventListener('pointerup', onMechPointerUp);
 }
+function closestPointOnPolyBoundary(pt, poly){
+  let best = null;
+  for (let i = 0; i < poly.length; i++){
+    const a = poly[i], b = poly[(i+1) % poly.length];
+    const r = distPointToSegmentP(pt.x, pt.y, a.x, a.y, b.x, b.y);
+    if (!best || r.dist < best.dist) best = { dist: r.dist, point: r.point };
+  }
+  return best;
+}
+function pushMechOutOfPolygon(cx, cy, r, poly){
+  const inside = pointInPolygon({x:cx, y:cy}, poly);
+  const closest = closestPointOnPolyBoundary({x:cx, y:cy}, poly);
+  if (!closest || closest.dist < 0.0001) return { x: cx, y: cy - r };
+  const px = closest.point.x, py = closest.point.y;
+  const dx = cx - px, dy = cy - py, dist = closest.dist;
+  if (inside){
+    // empurra para fora: posiciona centro a r" do ponto de contorno, do lado externo
+    return { x: px - (dx/dist)*r, y: py - (dy/dist)*r };
+  } else {
+    if (dist >= r) return { x: cx, y: cy };
+    return { x: px + (dx/dist)*r, y: py + (dy/dist)*r };
+  }
+}
+function getBlockingOnlyPrimitives(t){
+  if (t.render === 'zonedRect'){
+    // Apenas as faixas blocking são colisão — a faixa clear (corredor) é livre
+    const w = t.shapeDef.w, theta = t.rotation * Math.PI / 180;
+    const polygons = [];
+    let yCursor = -t.shapeDef.h / 2;
+    (t.zones || []).forEach(z => {
+      if (z.baseType === 'blocking'){
+        const corners = [
+          {x:-w/2, y:yCursor}, {x:w/2, y:yCursor},
+          {x:w/2,  y:yCursor+z.h}, {x:-w/2, y:yCursor+z.h}
+        ].map(p => { const r = rotatePoint(p.x, p.y, theta); return {x: t.x+r.x, y: t.y+r.y}; });
+        polygons.push(corners);
+      }
+      yCursor += z.h;
+    });
+    return polygons.length ? { polygons, circles: [] } : null;
+  }
+  // Demais tipos blocking: usa a forma completa
+  if (t.baseType === 'blocking') return getWorldPrimitives(t.shapeDef, t.rotation, t.x, t.y);
+  return null;
+}
+function resolveMechAgainstBlocking(xIn, yIn){
+  for (let pass = 0; pass < 4; pass++){
+    for (const t of placedTerrain){
+      const prims = getBlockingOnlyPrimitives(t);
+      if (!prims) continue;
+      for (const poly of prims.polygons){
+        const r = pushMechOutOfPolygon(xIn, yIn, MECH_RADIUS_IN, poly);
+        xIn = r.x; yIn = r.y;
+      }
+      for (const circ of prims.circles){
+        const d = Math.hypot(xIn - circ.cx, yIn - circ.cy);
+        const minDist = MECH_RADIUS_IN + circ.r;
+        if (d < minDist){
+          if (d < 0.0001){ yIn += minDist; }
+          else { const f = minDist/d; xIn = circ.cx + (xIn - circ.cx)*f; yIn = circ.cy + (yIn - circ.cy)*f; }
+        }
+      }
+    }
+    xIn = Math.max(MECH_RADIUS_IN, Math.min(FIELD_W_IN - MECH_RADIUS_IN, xIn));
+    yIn = Math.max(MECH_RADIUS_IN, Math.min(FIELD_H_IN - MECH_RADIUS_IN, yIn));
+  }
+  return { x: xIn, y: yIn };
+}
 function onMechPointerMove(e){
   if (!mechDragging) return;
   const rect = stage.getBoundingClientRect();
   let xIn = pxToIn(e.clientX - rect.left);
   let yIn = pxToIn(e.clientY - rect.top);
-  // única restrição: não sair do campo — fora isso, movimento totalmente livre
   xIn = Math.max(MECH_RADIUS_IN, Math.min(FIELD_W_IN - MECH_RADIUS_IN, xIn));
   yIn = Math.max(MECH_RADIUS_IN, Math.min(FIELD_H_IN - MECH_RADIUS_IN, yIn));
-  mechUnit.x = xIn; mechUnit.y = yIn;
+  const resolved = resolveMechAgainstBlocking(xIn, yIn);
+  mechUnit.x = resolved.x; mechUnit.y = resolved.y;
   renderMech();
 }
 function onMechPointerUp(){
@@ -1269,23 +1354,135 @@ document.getElementById('btnReset').addEventListener('click', () => {
   resetAll();
 });
 
+// ================= DEPLOY DE BATTLEFORCE =================
+const UNIT_R_IN = 0.65;
+const PLAYER_FILL = { 1: '#c9822c', 2: '#2c8ac9' };
+let deployUnitsState = [];
+let unitDragState = null;
+
+function initDeployTokens(players) {
+  deployUnitsState = [];
+  players.forEach(({ playerId, side, units }) => {
+    const zone = deploymentZones.find(z => z.player === side);
+    if (!zone) return;
+    const n = units.length || 1;
+    units.forEach((unit, i) => {
+      const spacing = zone.w / (n + 1);
+      deployUnitsState.push({
+        playerId, side,
+        instanceKey: unit.instanceKey,
+        name: unit.name,
+        type: unit.type,
+        x: zone.x + spacing * (i + 1),
+        y: zone.y + zone.h / 2,
+      });
+    });
+  });
+  renderDeployTokens();
+}
+
+function renderDeployTokens() {
+  deployLayer.innerHTML = '';
+  deployUnitsState.forEach((u, idx) => {
+    const cx = inToPx(u.x), cy = inToPx(u.y);
+    const rPx = inToPx(UNIT_R_IN);
+    const fill = PLAYER_FILL[u.playerId] || '#888888';
+    const isDragging = unitDragState && unitDragState.idx === idx;
+
+    const g = document.createElementNS(svg.namespaceURI, 'g');
+    g.style.cursor = isDragging ? 'grabbing' : 'grab';
+    g.style.touchAction = 'none';
+
+    const base = document.createElementNS(svg.namespaceURI, 'circle');
+    base.setAttribute('cx', cx); base.setAttribute('cy', cy); base.setAttribute('r', rPx);
+    base.setAttribute('fill', fill);
+    base.setAttribute('fill-opacity', isDragging ? '0.6' : '0.9');
+    appendWithInnerStroke(g, base, '#ffffff80', 1.5);
+
+    const abbr = u.name.length > 7 ? u.name.slice(0, 6) + '…' : u.name;
+    const label = document.createElementNS(svg.namespaceURI, 'text');
+    label.setAttribute('x', cx); label.setAttribute('y', cy + rPx * 0.35);
+    label.setAttribute('text-anchor', 'middle');
+    label.setAttribute('font-size', `${rPx * 0.52}px`);
+    label.setAttribute('fill', '#fff');
+    label.setAttribute('pointer-events', 'none');
+    label.setAttribute('font-family', 'monospace');
+    label.textContent = abbr;
+    g.appendChild(label);
+
+    g.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      const zone = deploymentZones.find(z => z.player === u.side);
+      unitDragState = { idx, zone };
+      renderDeployTokens();
+      window.addEventListener('pointermove', onDeployMove);
+      window.addEventListener('pointerup', onDeployUp);
+    });
+
+    deployLayer.appendChild(g);
+  });
+}
+
+function onDeployMove(e) {
+  if (!unitDragState) return;
+  const rect = stage.getBoundingClientRect();
+  let xIn = pxToIn(e.clientX - rect.left);
+  let yIn = pxToIn(e.clientY - rect.top);
+  const z = unitDragState.zone;
+  if (z) {
+    xIn = Math.max(z.x + UNIT_R_IN, Math.min(z.x + z.w - UNIT_R_IN, xIn));
+    yIn = Math.max(z.y + UNIT_R_IN, Math.min(z.y + z.h - UNIT_R_IN, yIn));
+  }
+  deployUnitsState[unitDragState.idx].x = xIn;
+  deployUnitsState[unitDragState.idx].y = yIn;
+  renderDeployTokens();
+}
+
+function onDeployUp() {
+  unitDragState = null;
+  window.removeEventListener('pointermove', onDeployMove);
+  window.removeEventListener('pointerup', onDeployUp);
+  renderDeployTokens();
+}
+
+document.getElementById('btnConfirmDeploy').addEventListener('click', () => {
+  window.parent.postMessage({
+    type: 'DEPLOYMENT_DONE',
+    units: deployUnitsState.map(u => ({ playerId: u.playerId, instanceKey: u.instanceKey, x: u.x, y: u.y })),
+  }, '*');
+});
+
 // ================= INTEGRAÇÃO REACT (postMessage) =================
 window.addEventListener('message', function(e) {
-  if (!e.data || e.data.type !== 'BATTLEFIELD_INIT') return;
-  var d = e.data;
-  pool = [];
-  (d.pile || []).forEach(function(item) {
-    var cat = CATALOG.find(function(c) { return c.official === item.code; });
-    if (!cat) return;
-    pool.push({ poolId: 'p' + Math.random().toString(36).slice(2, 9), catalogId: cat.id, owner: item.playerId });
-  });
-  firstPlayer = d.firstPlayerId || 1;
-  placingTurn = firstPlayer === 1 ? 2 : 1;
-  phase = 'placing';
-  document.getElementById('selectionPanel').style.display = 'none';
-  document.getElementById('poolPanel').style.display = '';
-  renderPool();
-  renderStatus();
+  if (!e.data) return;
+
+  if (e.data.type === 'BATTLEFIELD_INIT') {
+    var d = e.data;
+    pool = [];
+    (d.pile || []).forEach(function(item) {
+      var cat = CATALOG.find(function(c) { return c.official === item.code; });
+      if (!cat) return;
+      pool.push({ poolId: 'p' + Math.random().toString(36).slice(2, 9), catalogId: cat.id, owner: item.playerId });
+    });
+    firstPlayer = d.firstPlayerId || 1;
+    placingTurn = firstPlayer === 1 ? 2 : 1;
+    phase = 'placing';
+    document.getElementById('selectionPanel').style.display = 'none';
+    document.getElementById('poolPanel').style.display = '';
+    renderPool();
+    renderStatus();
+  }
+
+  if (e.data.type === 'DEPLOYMENT_INIT') {
+    phase = 'deploying';
+    mechLayer.innerHTML = '';
+    document.getElementById('selectionPanel').style.display = 'none';
+    document.getElementById('poolPanel').style.display = 'none';
+    document.getElementById('deployPanel').style.display = '';
+    renderZones();
+    renderStatus();
+    initDeployTokens(e.data.players || []);
+  }
 });
 
 // ================= INIT =================

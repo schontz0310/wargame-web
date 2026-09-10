@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { apiService, type Draft, type DraftUnit, type Unit } from '@/lib/api'
 import { type PreparationState, nextPlayerId, getInstanceKey } from '@/lib/gameMode'
 import { useT } from '@/hooks/useT'
+import DeploymentCanvas from './DeploymentCanvas'
 
 interface BattleforceDeploymentProps {
   draft: Draft
@@ -23,6 +24,7 @@ function slotCost(type: string) { return type.toLowerCase() === 'infantry' ? 1 :
 
 export default function BattleforceDeployment({ draft, preparationState, onUpdateState, onNextStage }: BattleforceDeploymentProps) {
   const t = useT()
+  const [mode, setMode] = useState<'physical' | 'digital' | null>(null)
   const [dialResetConfirmed, setDialResetConfirmed] = useState(false)
   const [unitCache, setUnitCache] = useState<Record<string, Unit>>({})
   const [boardingModal, setBoardingModal] = useState<BoardingModal | null>(null)
@@ -144,6 +146,44 @@ export default function BattleforceDeployment({ draft, preparationState, onUpdat
     const armyUnits = result.armyUnits ?? []
     return playerDeployed.length === armyUnits.length
   })
+
+  if (mode === 'digital') {
+    return (
+      <DeploymentCanvas
+        draft={draft}
+        onNextStage={onNextStage}
+        onBack={() => setMode(null)}
+      />
+    )
+  }
+
+  if (mode === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-8" style={{ background: '#0d1208' }}>
+        <div className="max-w-lg w-full space-y-4">
+          <h2 className="font-mono text-sm tracking-widest uppercase text-center mb-8" style={{ color: '#c9a84c' }}>
+            {t('deployment.chooseMode')}
+          </h2>
+          <button
+            onClick={() => setMode('physical')}
+            className="w-full p-5 font-mono text-left corner-clip-sm"
+            style={{ background: 'rgba(122,154,90,0.1)', border: '1px solid #3a5a2a', color: '#e8d5a0' }}
+          >
+            <div className="text-sm font-bold mb-1" style={{ color: '#7a9a5a' }}>{t('deployment.modePhysical')}</div>
+            <div className="text-xs" style={{ color: '#4a5e3a' }}>{t('deployment.modePhysicalDesc')}</div>
+          </button>
+          <button
+            onClick={() => setMode('digital')}
+            className="w-full p-5 font-mono text-left corner-clip-sm"
+            style={{ background: 'rgba(201,168,76,0.08)', border: '1px solid #c9a84c44', color: '#e8d5a0' }}
+          >
+            <div className="text-sm font-bold mb-1" style={{ color: '#c9a84c' }}>{t('deployment.modeDigital')}</div>
+            <div className="text-xs" style={{ color: '#7a6a3a' }}>{t('deployment.modeDigitalDesc')}</div>
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen p-8" style={{ background: '#0d1208' }}>

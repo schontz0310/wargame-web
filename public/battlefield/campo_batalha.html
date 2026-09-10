@@ -1355,10 +1355,24 @@ document.getElementById('btnReset').addEventListener('click', () => {
 });
 
 // ================= DEPLOY DE BATTLEFORCE =================
-const UNIT_R_IN = 0.65;
 const PLAYER_FILL = { 1: '#c9822c', 2: '#2c8ac9' };
 let deployUnitsState = [];
 let unitDragState = null;
+
+// Retorna half-extents (rx, ry) do token no espaço do mundo, dado o tipo e rotação
+function getDeployExtents(type, rotDeg) {
+  const t = (type || '').toLowerCase();
+  if (t === 'infantry') return { rx: 0.5, ry: 0.5 };
+  if (t === 'vehicle') {
+    const rad = (rotDeg || 0) * Math.PI / 180;
+    const halfL = 1.5, halfW = 0.5; // 3"×1"
+    return {
+      rx: Math.abs(Math.cos(rad)) * halfL + Math.abs(Math.sin(rad)) * halfW,
+      ry: Math.abs(Math.sin(rad)) * halfL + Math.abs(Math.cos(rad)) * halfW,
+    };
+  }
+  return { rx: 1, ry: 1 }; // mech 2"
+}
 
 function initDeployTokens(players) {
   deployUnitsState = [];
@@ -1373,6 +1387,7 @@ function initDeployTokens(players) {
         instanceKey: unit.instanceKey,
         name: unit.name,
         type: unit.type,
+        rotation: 0,
         x: zone.x + spacing * (i + 1),
         y: zone.y + zone.h / 2,
       });
@@ -1385,30 +1400,76 @@ function renderDeployTokens() {
   deployLayer.innerHTML = '';
   deployUnitsState.forEach((u, idx) => {
     const cx = inToPx(u.x), cy = inToPx(u.y);
-    const rPx = inToPx(UNIT_R_IN);
     const fill = PLAYER_FILL[u.playerId] || '#888888';
     const isDragging = unitDragState && unitDragState.idx === idx;
+    const type = (u.type || '').toLowerCase();
 
     const g = document.createElementNS(svg.namespaceURI, 'g');
     g.style.cursor = isDragging ? 'grabbing' : 'grab';
     g.style.touchAction = 'none';
 
-    const base = document.createElementNS(svg.namespaceURI, 'circle');
-    base.setAttribute('cx', cx); base.setAttribute('cy', cy); base.setAttribute('r', rPx);
-    base.setAttribute('fill', fill);
-    base.setAttribute('fill-opacity', isDragging ? '0.6' : '0.9');
-    appendWithInnerStroke(g, base, '#ffffff80', 1.5);
+    if (type === 'vehicle') {
+      // Cápsula oblong: 3"×1" com raio de borda 0.5"
+      const bg = document.createElementNS(svg.namespaceURI, 'g');
+      bg.setAttribute('transform', `translate(${cx} ${cy}) rotate(${u.rotation}) scale(${PPI})`);
+      const rect = document.createElementNS(svg.namespaceURI, 'rect');
+      rect.setAttribute('x', '-1.5'); rect.setAttribute('y', '-0.5');
+      rect.setAttribute('width', '3'); rect.setAttribute('height', '1');
+      rect.setAttribute('rx', '0.5');
+      rect.setAttribute('fill', fill);
+      rect.setAttribute('fill-opacity', isDragging ? '0.55' : '0.88');
+      rect.setAttribute('stroke', '#ffffff90');
+      rect.setAttribute('stroke-width', '0.05');
+      rect.setAttribute('vector-effect', 'non-scaling-stroke');
+      bg.appendChild(rect);
+      g.appendChild(bg);
 
-    const abbr = u.name.length > 7 ? u.name.slice(0, 6) + '…' : u.name;
-    const label = document.createElementNS(svg.namespaceURI, 'text');
-    label.setAttribute('x', cx); label.setAttribute('y', cy + rPx * 0.35);
-    label.setAttribute('text-anchor', 'middle');
-    label.setAttribute('font-size', `${rPx * 0.52}px`);
-    label.setAttribute('fill', '#fff');
-    label.setAttribute('pointer-events', 'none');
-    label.setAttribute('font-family', 'monospace');
-    label.textContent = abbr;
-    g.appendChild(label);
+      const abbr = u.name.length > 10 ? u.name.slice(0, 9) + '…' : u.name;
+      const label = document.createElementNS(svg.namespaceURI, 'text');
+      label.setAttribute('x', cx); label.setAttribute('y', cy + inToPx(0.18));
+      label.setAttribute('text-anchor', 'middle');
+      label.setAttribute('font-size', `${inToPx(0.32)}px`);
+      label.setAttribute('fill', '#fff');
+      label.setAttribute('pointer-events', 'none');
+      label.setAttribute('font-family', 'monospace');
+      label.textContent = abbr;
+      g.appendChild(label);
+
+      if (isDragging) {
+        // Dica: R para girar
+        const hint = document.createElementNS(svg.namespaceURI, 'text');
+        hint.setAttribute('x', cx); hint.setAttribute('y', cy - inToPx(0.7));
+        hint.setAttribute('text-anchor', 'middle');
+        hint.setAttribute('font-size', `${inToPx(0.28)}px`);
+        hint.setAttribute('fill', '#c9a84c');
+        hint.setAttribute('pointer-events', 'none');
+        hint.setAttribute('font-family', 'monospace');
+        hint.textContent = '[R] girar';
+        g.appendChild(hint);
+      }
+    } else {
+      // Círculo: mech 2" (r=1") ou infantaria 1" (r=0.5")
+      const rIn = type === 'infantry' ? 0.5 : 1;
+      const rPx = inToPx(rIn);
+      const base = document.createElementNS(svg.namespaceURI, 'circle');
+      base.setAttribute('cx', cx); base.setAttribute('cy', cy); base.setAttribute('r', rPx);
+      base.setAttribute('fill', fill);
+      base.setAttribute('fill-opacity', isDragging ? '0.6' : '0.9');
+      appendWithInnerStroke(g, base, '#ffffff80', 1.5);
+
+      const abbr = u.name.length > (type === 'infantry' ? 4 : 7)
+        ? u.name.slice(0, type === 'infantry' ? 3 : 6) + '…'
+        : u.name;
+      const label = document.createElementNS(svg.namespaceURI, 'text');
+      label.setAttribute('x', cx); label.setAttribute('y', cy + rPx * 0.35);
+      label.setAttribute('text-anchor', 'middle');
+      label.setAttribute('font-size', `${rPx * 0.52}px`);
+      label.setAttribute('fill', '#fff');
+      label.setAttribute('pointer-events', 'none');
+      label.setAttribute('font-family', 'monospace');
+      label.textContent = abbr;
+      g.appendChild(label);
+    }
 
     g.addEventListener('pointerdown', (e) => {
       e.stopPropagation();
@@ -1417,24 +1478,35 @@ function renderDeployTokens() {
       renderDeployTokens();
       window.addEventListener('pointermove', onDeployMove);
       window.addEventListener('pointerup', onDeployUp);
+      window.addEventListener('keydown', onDeployKey);
     });
 
     deployLayer.appendChild(g);
   });
 }
 
+function onDeployKey(e) {
+  if (!unitDragState) return;
+  const u = deployUnitsState[unitDragState.idx];
+  if ((e.key === 'r' || e.key === 'R') && (u.type || '').toLowerCase() === 'vehicle') {
+    u.rotation = (u.rotation + 90) % 360;
+    renderDeployTokens();
+  }
+}
+
 function onDeployMove(e) {
   if (!unitDragState) return;
+  const u = deployUnitsState[unitDragState.idx];
   const rect = stage.getBoundingClientRect();
   let xIn = pxToIn(e.clientX - rect.left);
   let yIn = pxToIn(e.clientY - rect.top);
   const z = unitDragState.zone;
   if (z) {
-    xIn = Math.max(z.x + UNIT_R_IN, Math.min(z.x + z.w - UNIT_R_IN, xIn));
-    yIn = Math.max(z.y + UNIT_R_IN, Math.min(z.y + z.h - UNIT_R_IN, yIn));
+    const ext = getDeployExtents(u.type, u.rotation);
+    xIn = Math.max(z.x + ext.rx, Math.min(z.x + z.w - ext.rx, xIn));
+    yIn = Math.max(z.y + ext.ry, Math.min(z.y + z.h - ext.ry, yIn));
   }
-  deployUnitsState[unitDragState.idx].x = xIn;
-  deployUnitsState[unitDragState.idx].y = yIn;
+  u.x = xIn; u.y = yIn;
   renderDeployTokens();
 }
 
@@ -1442,13 +1514,19 @@ function onDeployUp() {
   unitDragState = null;
   window.removeEventListener('pointermove', onDeployMove);
   window.removeEventListener('pointerup', onDeployUp);
+  window.removeEventListener('keydown', onDeployKey);
   renderDeployTokens();
 }
 
 document.getElementById('btnConfirmDeploy').addEventListener('click', () => {
   window.parent.postMessage({
     type: 'DEPLOYMENT_DONE',
-    units: deployUnitsState.map(u => ({ playerId: u.playerId, instanceKey: u.instanceKey, x: u.x, y: u.y })),
+    units: deployUnitsState.map(u => ({
+      playerId: u.playerId,
+      instanceKey: u.instanceKey,
+      x: u.x, y: u.y,
+      rotation: u.rotation,
+    })),
   }, '*');
 });
 
